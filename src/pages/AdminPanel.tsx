@@ -596,7 +596,7 @@ const AdminPanel = () => {
                           type="file"
                           accept=".xlsx,.xls"
                           onChange={handleFileChange}
-                          className="border-2"
+                          className="border-2 cursor-pointer file:cursor-pointer"
                         />
                         {uploadFile && (
                           <p className="text-sm text-muted-foreground mt-2">

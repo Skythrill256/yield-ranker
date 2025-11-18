@@ -3,9 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PerformanceChart } from "@/components/PerformanceChart";
-import { ArrowLeft, TrendingUp, TrendingDown, Plus, X, Loader2, BarChart3, LineChartIcon } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Plus, X, Loader2, LineChartIcon } from "lucide-react";
 import {
   fetchETFData,
   fetchComparisonData,
@@ -34,15 +32,13 @@ const ETFDetail = () => {
   const [etf, setEtf] = useState<ETF | null>(null);
   const [allETFs, setAllETFs] = useState<ETF[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<ComparisonTimeframe>("6M");
+  const [selectedTimeframe, setSelectedTimeframe] = useState<ComparisonTimeframe>("1D");
   const [chartType, setChartType] = useState<ChartType>("totalReturn");
   const [comparisonETFs, setComparisonETFs] = useState<string[]>([]);
   const [showComparisonSelector, setShowComparisonSelector] = useState(false);
   const [chartData, setChartData] = useState<any[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [activeChartTab, setActiveChartTab] = useState<string>("performance");
-  const [hasLoadedLiveChart, setHasLoadedLiveChart] = useState(false);
 
   const toggleComparison = (compSymbol: string) => {
     if (comparisonETFs.includes(compSymbol)) {
@@ -198,23 +194,6 @@ const ETFDetail = () => {
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200">
           <Card className="p-6 mb-8">
-            <Tabs value={activeChartTab} onValueChange={setActiveChartTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="performance">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Performance Summary
-                </TabsTrigger>
-                <TabsTrigger value="live">
-                  <LineChartIcon className="w-4 h-4 mr-2" />
-                  Live Price Chart
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="performance">
-                <PerformanceChart etf={etf} />
-              </TabsContent>
-
-              <TabsContent value="live">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex-1">
                 <h2 className="text-xl font-semibold mb-2">
@@ -492,8 +471,6 @@ const ETFDetail = () => {
                 </AreaChart>
               )}
             </ResponsiveContainer>
-              </TabsContent>
-            </Tabs>
           </Card>
         </div>
 

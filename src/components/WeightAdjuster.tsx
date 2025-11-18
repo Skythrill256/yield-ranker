@@ -106,7 +106,7 @@ export const WeightAdjuster = ({ onWeightsChange }: WeightAdjusterProps) => {
           <div className="space-y-3 p-4 rounded-lg bg-secondary/30 border border-border/50 transition-smooth hover:bg-secondary/50">
             <div className="flex items-center justify-between">
               <Label htmlFor="stddev-weight" className="text-sm font-medium text-foreground">
-                DVI
+                Dividend Volatility Index
               </Label>
               <span className="text-lg font-bold tabular-nums text-primary">{stdDevWeight}%</span>
             </div>

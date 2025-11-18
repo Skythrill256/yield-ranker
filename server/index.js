@@ -16,6 +16,44 @@ const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Yield Ranker Backend API',
+    endpoints: {
+      health: '/health',
+      etfs: '/api/etfs',
+      upload: '/api/admin/upload-dtr',
+      yahoo: ['/api/yahoo-finance/returns', '/api/yahoo-finance/dividends', '/api/yahoo-finance/etf']
+    }
+  });
+});
+
+app.get('/health', async (req, res) => {
+  const checks = {
+    server: 'ok',
+    supabase: 'unknown',
+    database: 'unknown'
+  };
+
+  try {
+    const { data, error } = await supabase.from('etfs').select('count');
+    if (error) {
+      checks.supabase = 'error';
+      checks.database = error.message;
+    } else {
+      checks.supabase = 'connected';
+      checks.database = 'ok';
+    }
+  } catch (error) {
+    checks.supabase = 'error';
+    checks.database = error.message;
+  }
+
+  const statusCode = checks.supabase === 'connected' ? 200 : 500;
+  res.status(statusCode).json(checks);
+});
+
 function parseExcelValue(value) {
   if (value === null || value === undefined || value === '') {
     return null;
@@ -301,13 +339,15 @@ app.get('/api/yahoo-finance/dividends', async (req, res) => {
       .filter(e => e.dividends !== undefined)
       .map(e => ({
         date: e.date.toISOString().split('T')[0],
-        amount: e.dividends
+        dividend: e.dividends
       }))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     res.json({
-      symbol,
-      dividends
+      data: {
+        symbol,
+        dividends
+      }
     });
   } catch (error) {
     console.error(`Error fetching dividend history for ${symbol}:`, error);
