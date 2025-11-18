@@ -114,7 +114,15 @@ export default function Dashboard() {
     const loadETFData = async () => {
       setIsLoadingData(true);
       const data = await fetchETFData();
-      setEtfData(data);
+      const seen = new Set<string>();
+      const deduplicated = data.filter((etf) => {
+        if (seen.has(etf.symbol)) {
+          return false;
+        }
+        seen.add(etf.symbol);
+        return true;
+      });
+      setEtfData(deduplicated);
       setIsLoadingData(false);
     };
     loadETFData();
@@ -1051,7 +1059,7 @@ export default function Dashboard() {
                         .filter((etf) => etf.symbol !== selectedETF.symbol)
                         .sort((a, b) => a.symbol.localeCompare(b.symbol))
                         .slice(0, 20)
-                        .map((etf) => {
+                        .map((etf, idx) => {
                           const isSelected = comparisonETFs.includes(
                             etf.symbol
                           );
@@ -1059,7 +1067,7 @@ export default function Dashboard() {
                             !isSelected && comparisonETFs.length >= 5;
                           return (
                             <button
-                              key={etf.symbol}
+                              key={`${etf.symbol}-${idx}`}
                               onClick={() =>
                                 !isDisabled && toggleComparison(etf.symbol)
                               }
@@ -2069,7 +2077,7 @@ export default function Dashboard() {
                             <tbody className="[&_tr:last-child]:border-0">
                               {displayedETFs.map((etf, idx) => (
                                 <tr
-                                  key={idx}
+                                  key={`${etf.symbol}-${idx}`}
                                   className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
                                 >
                                   <td

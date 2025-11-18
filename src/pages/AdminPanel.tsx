@@ -11,6 +11,7 @@ import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
 import {
   BarChart3,
   ChevronLeft,
+  Database,
   LogOut,
   Menu,
   PanelLeft,
@@ -19,6 +20,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Upload,
   Users,
 } from "lucide-react";
 
@@ -41,6 +43,10 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "etf-data">("users");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
 
   const userMetadata =
     (user?.user_metadata as {
@@ -175,6 +181,60 @@ const AdminPanel = () => {
     navigate("/login");
   };
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      setUploadStatus("");
+    }
+  };
+
+  const handleUploadDTR = async () => {
+    if (!uploadFile) {
+      setUploadStatus("Please select a file first");
+      return;
+    }
+
+    setUploading(true);
+    setUploadStatus("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const response = await fetch(`${apiUrl}/api/admin/upload-dtr`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Upload failed");
+      }
+
+      setUploadStatus(`Success! Processed ${result.count} ETFs`);
+      toast({
+        title: "Upload successful",
+        description: result.message,
+      });
+      setUploadFile(null);
+      const fileInput = document.getElementById("dtr-file-input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      setUploadStatus(`Error: ${message}`);
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: message,
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (!isAdmin) {
     return null;
   }
@@ -236,15 +296,36 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "Dashboard"}
           </button>
           <button
+            onClick={() => setActiveTab("users")}
             className={`w-full flex items-center ${
               sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium bg-primary text-white`}
+            } rounded-lg text-sm font-medium ${
+              activeTab === "users"
+                ? "bg-primary text-white"
+                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+            } transition-colors`}
             title={sidebarCollapsed ? "Users" : ""}
           >
             <Users className="w-5 h-5" />
             {!sidebarCollapsed && "User Administration"}
+          </button>
+          <button
+            onClick={() => setActiveTab("etf-data")}
+            className={`w-full flex items-center ${
+              sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+            } rounded-lg text-sm font-medium ${
+              activeTab === "etf-data"
+                ? "bg-primary text-white"
+                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+            } transition-colors`}
+            title={sidebarCollapsed ? "ETF Data" : ""}
+          >
+            <Database className="w-5 h-5" />
+            {!sidebarCollapsed && "ETF Data Management"}
           </button>
           <button
             onClick={() => navigate("/settings")}
@@ -291,7 +372,7 @@ const AdminPanel = () => {
                 <Menu className="h-6 w-6" />
               </Button>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                User Administration
+                {activeTab === "users" ? "User Administration" : "ETF Data Management"}
               </h1>
             </div>
             <div className="flex items-center gap-3">
@@ -311,6 +392,8 @@ const AdminPanel = () => {
         </header>
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+            {activeTab === "users" && (
+              <>
             <div className="grid gap-4 sm:grid-cols-3">
               <Card className="p-5 border-2 border-slate-200">
                 <div className="flex items-center justify-between mb-3">
@@ -486,6 +569,82 @@ const AdminPanel = () => {
                 </div>
               </div>
             </Card>
+              </>
+            )}
+
+            {activeTab === "etf-data" && (
+              <Card className="border-2 border-slate-200">
+                <div className="p-6 space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground mb-2">
+                      Upload DTR Spreadsheet
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to update all ETF data in the system.
+                      The file should have a Sheet1 with the standard DTR format.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                      <div className="flex-1">
+                        <label htmlFor="dtr-file-input" className="block text-sm font-medium text-foreground mb-2">
+                          Select Excel File
+                        </label>
+                        <Input
+                          id="dtr-file-input"
+                          type="file"
+                          accept=".xlsx,.xls"
+                          onChange={handleFileChange}
+                          className="border-2"
+                        />
+                        {uploadFile && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Selected: {uploadFile.name}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        onClick={handleUploadDTR}
+                        disabled={!uploadFile || uploading}
+                        className="sm:w-auto"
+                      >
+                        {uploading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload & Process
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {uploadStatus && (
+                      <Card className={`p-4 ${uploadStatus.startsWith("Error") ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+                        <p className={`text-sm font-medium ${uploadStatus.startsWith("Error") ? "text-red-800" : "text-green-800"}`}>
+                          {uploadStatus}
+                        </p>
+                      </Card>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-sm font-semibold text-foreground mb-3">
+                      Expected File Format
+                    </h3>
+                    <div className="bg-slate-50 p-4 rounded-lg text-xs text-slate-700 space-y-2 font-mono">
+                      <p>Sheet Name: Sheet1</p>
+                      <p>Row 1 (Headers): Favorites | SYMBOL | Issuer | DESC | Pay Day | IPO PRICE | Price | Price Change | Dividend | # Pmts | Annual Div | Forward Yield | Dividend Volatility Index | Weighted Rank | 3 YR Annlzd | 12 Month | 6 Month | 3 Month | 1 Month | 1 Week</p>
+                      <p>Row 2+: Data rows (one ETF per row)</p>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </main>

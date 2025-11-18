@@ -281,7 +281,7 @@ export const ETFTable = ({
           <tbody>
             {displayedETFs.map((etf, index) => (
                 <tr
-                  key={etf.symbol}
+                  key={`${etf.symbol}-${index}`}
                   className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
@@ -365,7 +365,7 @@ export const ETFTable = ({
                         </div>
                       </button>
                     ) : (
-                      <span className="text-primary">{etf.weightedRank}</span>
+                      <span className="text-primary">{etf.weightedRank !== null ? etf.weightedRank : '-'}</span>
                     )}
                   </td>
                   {returnColumns.map((col, colIndex) => {

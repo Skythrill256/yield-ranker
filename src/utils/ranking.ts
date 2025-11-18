@@ -42,12 +42,28 @@ export const calculateWeightedRank = (
 };
 
 export const rankETFs = (etfs: ETF[], weights: RankingWeights): ETF[] => {
+  if (!etfs || etfs.length === 0) return [];
+  
+  const hasSpreadsheetRanks = etfs.some(etf => etf.weightedRank !== null && etf.weightedRank !== undefined);
+  
+  if (hasSpreadsheetRanks) {
+    return etfs.sort((a, b) => {
+      const rankA = a.weightedRank ?? 9999;
+      const rankB = b.weightedRank ?? 9999;
+      return rankA - rankB;
+    });
+  }
+  
   const rankedETFs = etfs.map(etf => ({
     ...etf,
     weightedRank: calculateWeightedRank(etf, etfs, weights),
   }));
 
-  const sortedETFs = rankedETFs.sort((a, b) => b.weightedRank - a.weightedRank);
+  const sortedETFs = rankedETFs.sort((a, b) => {
+    const scoreA = typeof a.weightedRank === 'number' ? a.weightedRank : 0;
+    const scoreB = typeof b.weightedRank === 'number' ? b.weightedRank : 0;
+    return scoreB - scoreA;
+  });
   
   return sortedETFs.map((etf, index) => ({
     ...etf,

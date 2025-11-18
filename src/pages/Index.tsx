@@ -47,7 +47,15 @@ const Index = () => {
       try {
         setIsLoading(true);
         const data = await fetchETFData();
-        setEtfData(data);
+        const seen = new Set<string>();
+        const deduplicated = data.filter((etf) => {
+          if (seen.has(etf.symbol)) {
+            return false;
+          }
+          seen.add(etf.symbol);
+          return true;
+        });
+        setEtfData(deduplicated);
       } catch (error) {
         console.error('[Index] Error fetching ETF data:', error);
       } finally {

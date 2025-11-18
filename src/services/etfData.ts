@@ -3,7 +3,76 @@ import { ETF } from "@/types/etf";
 const dataCache = new Map<string, { data: ETF; timestamp: number }>();
 const CACHE_DURATION = 30000;
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+type DatabaseETF = {
+  symbol: string;
+  issuer: string | null;
+  description: string | null;
+  pay_day: string | null;
+  ipo_price: number | null;
+  price: number | null;
+  price_change: number | null;
+  dividend: number | null;
+  payments_per_year: number | null;
+  annual_div: number | null;
+  forward_yield: number | null;
+  dividend_volatility_index: number | null;
+  weighted_rank: number | null;
+  three_year_annualized: number | null;
+  total_return_12m: number | null;
+  total_return_6m: number | null;
+  total_return_3m: number | null;
+  total_return_1m: number | null;
+  total_return_1w: number | null;
+  price_return_3y: number | null;
+  price_return_12m: number | null;
+  price_return_6m: number | null;
+  price_return_3m: number | null;
+  price_return_1m: number | null;
+  price_return_1w: number | null;
+};
+
+function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
+  const price = dbEtf.price ?? 0;
+  const annualDiv = dbEtf.annual_div ?? 0;
+  let forwardYield = dbEtf.forward_yield ?? 0;
+  
+  if (price > 0 && annualDiv > 0) {
+    forwardYield = (annualDiv / price) * 100;
+  }
+
+  return {
+    symbol: dbEtf.symbol,
+    name: dbEtf.description || dbEtf.symbol,
+    issuer: dbEtf.issuer || '',
+    description: dbEtf.description || '',
+    payDay: dbEtf.pay_day || undefined,
+    ipoPrice: dbEtf.ipo_price ?? 0,
+    price: price,
+    priceChange: dbEtf.price_change ?? 0,
+    dividend: dbEtf.dividend ?? 0,
+    numPayments: dbEtf.payments_per_year ?? 12,
+    annualDividend: annualDiv,
+    forwardYield: forwardYield,
+    standardDeviation: dbEtf.dividend_volatility_index ?? 0,
+    weightedRank: dbEtf.weighted_rank ?? null,
+    week52Low: 0,
+    week52High: 0,
+    totalReturn3Yr: dbEtf.three_year_annualized ?? undefined,
+    totalReturn12Mo: dbEtf.total_return_12m ?? undefined,
+    totalReturn6Mo: dbEtf.total_return_6m ?? undefined,
+    totalReturn3Mo: dbEtf.total_return_3m ?? undefined,
+    totalReturn1Mo: dbEtf.total_return_1m ?? undefined,
+    totalReturn1Wk: dbEtf.total_return_1w ?? undefined,
+    priceReturn3Yr: dbEtf.price_return_3y ?? undefined,
+    priceReturn12Mo: dbEtf.price_return_12m ?? undefined,
+    priceReturn6Mo: dbEtf.price_return_6m ?? undefined,
+    priceReturn3Mo: dbEtf.price_return_3m ?? undefined,
+    priceReturn1Mo: dbEtf.price_return_1m ?? undefined,
+    priceReturn1Wk: dbEtf.price_return_1w ?? undefined,
+  };
+}
 
 export const fetchETFData = async (): Promise<ETF[]> => {
   const cached = dataCache.get("__ALL__");
@@ -11,20 +80,45 @@ export const fetchETFData = async (): Promise<ETF[]> => {
   if (cached && now - cached.timestamp < CACHE_DURATION) {
     return cached.data as unknown as ETF[];
   }
-  const response = await fetch(`${API_BASE_URL}/api/yahoo-finance/etf`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch ETF data");
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/etfs`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch ETF data");
+    }
+    const json = await response.json();
+    const dbEtfs: DatabaseETF[] = json.data;
+    const etfs: ETF[] = dbEtfs.map(mapDatabaseETFToETF);
+    dataCache.set("__ALL__", { data: etfs as unknown as ETF, timestamp: now });
+    return etfs;
+  } catch (error) {
+    console.warn('[ETF Data] Backend not available, using mock data. Error:', error);
+    const { mockETFs } = await import('@/data/mockETFs');
+    return mockETFs;
   }
-  const json = await response.json();
-  const etfs: ETF[] = json.data;
-  dataCache.set("__ALL__", { data: etfs as unknown as ETF, timestamp: now });
-  return etfs;
 };
 
 export const fetchSingleETF = async (symbol: string): Promise<ETF | null> => {
-  const all = await fetchETFData();
-  const found = all.find((e) => e.symbol === symbol);
-  return found || null;
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/etfs/${symbol.toUpperCase()}`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error("Failed to fetch ETF");
+    }
+    const json = await response.json();
+    const dbEtf: DatabaseETF = json.data;
+    return mapDatabaseETFToETF(dbEtf);
+  } catch (error) {
+    console.warn('[ETF Data] Backend not available for single ETF, falling back to all data');
+    const all = await fetchETFData();
+    return all.find(e => e.symbol === symbol.toUpperCase()) || null;
+  }
 };
 
 export const clearETFCache = () => {
@@ -197,5 +291,7 @@ export const fetchDividendHistory = async (
   }
   const json = await response.json();
   const data = json.data as { symbol: string; dividends: DividendHistoryPoint[] };
-  return data.dividends || [];
+  const dividends = data.dividends || [];
+  dividends.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return dividends;
 };
