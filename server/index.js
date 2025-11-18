@@ -81,35 +81,6 @@ app.post('/api/admin/upload-dtr', upload.single('file'), async (req, res) => {
     const oneMonthIndex = headers.indexOf('1 Month');
     const oneWeekIndex = headers.indexOf('1 Week');
     
-    const priceReturn3YrIndex = headers.findIndex(h => 
-      h && (h.includes('3 Yr') || h.includes('3 YR')) && 
-      (h.toLowerCase().includes('price') || h.includes('PRICE'))
-    );
-    const priceReturn12MoIndex = headers.findIndex(h => 
-      h && (h.includes('12') || h.toLowerCase().includes('twelve')) && 
-      h.toLowerCase().includes('price') && 
-      (h.toLowerCase().includes('month') || h.toLowerCase().includes('mo'))
-    );
-    const priceReturn6MoIndex = headers.findIndex(h => 
-      h && h.includes('6') && 
-      h.toLowerCase().includes('price') && 
-      h.toLowerCase().includes('month')
-    );
-    const priceReturn3MoIndex = headers.findIndex(h => 
-      h && h.includes('3') && 
-      h.toLowerCase().includes('price') && 
-      h.toLowerCase().includes('month')
-    );
-    const priceReturn1MoIndex = headers.findIndex(h => 
-      h && h.includes('1') && 
-      h.toLowerCase().includes('price') && 
-      h.toLowerCase().includes('month')
-    );
-    const priceReturn1WkIndex = headers.findIndex(h => 
-      h && h.includes('1') && 
-      h.toLowerCase().includes('price') && 
-      (h.toLowerCase().includes('week') || h.toLowerCase().includes('wk'))
-    );
 
     if (symbolIndex === -1) {
       return res.status(400).json({ error: 'SYMBOL column not found' });
@@ -151,13 +122,8 @@ app.post('/api/admin/upload-dtr', upload.single('file'), async (req, res) => {
         total_return_3m: threeMonthIndex !== -1 ? parseExcelValue(row[threeMonthIndex]) : null,
         total_return_1m: oneMonthIndex !== -1 ? parseExcelValue(row[oneMonthIndex]) : null,
         total_return_1w: oneWeekIndex !== -1 ? parseExcelValue(row[oneWeekIndex]) : null,
-        price_return_3y: priceReturn3YrIndex !== -1 ? parseExcelValue(row[priceReturn3YrIndex]) : null,
-        price_return_12m: priceReturn12MoIndex !== -1 ? parseExcelValue(row[priceReturn12MoIndex]) : null,
-        price_return_6m: priceReturn6MoIndex !== -1 ? parseExcelValue(row[priceReturn6MoIndex]) : null,
-        price_return_3m: priceReturn3MoIndex !== -1 ? parseExcelValue(row[priceReturn3MoIndex]) : null,
-        price_return_1m: priceReturn1MoIndex !== -1 ? parseExcelValue(row[priceReturn1MoIndex]) : null,
-        price_return_1w: priceReturn1WkIndex !== -1 ? parseExcelValue(row[priceReturn1WkIndex]) : null,
         favorites: false,
+        spreadsheet_updated_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
@@ -229,6 +195,161 @@ app.get('/api/etfs/:symbol', async (req, res) => {
   } catch (error) {
     console.error('Fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch ETF', details: error.message });
+  }
+});
+
+app.get('/api/yahoo-finance/returns', async (req, res) => {
+  const { symbol } = req.query;
+  
+  if (!symbol) {
+    return res.status(400).json({ error: 'Symbol is required' });
+  }
+
+  try {
+    const yahooFinance = await import('yahoo-finance2').then(m => m.default);
+    
+    const quote = await yahooFinance.quote(symbol);
+    const currentPrice = quote.regularMarketPrice || null;
+    const priceChange = quote.regularMarketChange || null;
+    
+    const now = Math.floor(Date.now() / 1000);
+    const oneWeekAgo = now - (7 * 24 * 60 * 60);
+    const oneMonthAgo = now - (30 * 24 * 60 * 60);
+    const threeMonthsAgo = now - (90 * 24 * 60 * 60);
+    const sixMonthsAgo = now - (180 * 24 * 60 * 60);
+    const oneYearAgo = now - (365 * 24 * 60 * 60);
+    const threeYearsAgo = now - (3 * 365 * 24 * 60 * 60);
+
+    const historical = await yahooFinance.historical(symbol, {
+      period1: new Date(threeYearsAgo * 1000),
+      period2: new Date(now * 1000),
+      interval: '1d'
+    });
+
+    function findClosestPrice(targetTimestamp) {
+      if (!historical || historical.length === 0) return null;
+      
+      let closest = historical[0];
+      let minDiff = Math.abs(Math.floor(historical[0].date.getTime() / 1000) - targetTimestamp);
+      
+      for (const point of historical) {
+        const diff = Math.abs(Math.floor(point.date.getTime() / 1000) - targetTimestamp);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = point;
+        }
+      }
+      
+      return closest.close;
+    }
+
+    function calculateReturn(oldPrice, newPrice) {
+      if (!oldPrice || !newPrice || oldPrice <= 0) return null;
+      return ((newPrice - oldPrice) / oldPrice) * 100;
+    }
+
+    const price1WkAgo = findClosestPrice(oneWeekAgo);
+    const price1MoAgo = findClosestPrice(oneMonthAgo);
+    const price3MoAgo = findClosestPrice(threeMonthsAgo);
+    const price6MoAgo = findClosestPrice(sixMonthsAgo);
+    const price12MoAgo = findClosestPrice(oneYearAgo);
+    const price3YrAgo = findClosestPrice(threeYearsAgo);
+
+    res.json({
+      symbol,
+      currentPrice,
+      priceChange,
+      priceReturn1Wk: calculateReturn(price1WkAgo, currentPrice),
+      priceReturn1Mo: calculateReturn(price1MoAgo, currentPrice),
+      priceReturn3Mo: calculateReturn(price3MoAgo, currentPrice),
+      priceReturn6Mo: calculateReturn(price6MoAgo, currentPrice),
+      priceReturn12Mo: calculateReturn(price12MoAgo, currentPrice),
+      priceReturn3Yr: calculateReturn(price3YrAgo, currentPrice),
+      totalReturn1Wk: calculateReturn(price1WkAgo, currentPrice),
+      totalReturn1Mo: calculateReturn(price1MoAgo, currentPrice),
+      totalReturn3Mo: calculateReturn(price3MoAgo, currentPrice),
+      totalReturn6Mo: calculateReturn(price6MoAgo, currentPrice),
+      totalReturn12Mo: calculateReturn(price12MoAgo, currentPrice),
+      totalReturn3Yr: calculateReturn(price3YrAgo, currentPrice),
+    });
+  } catch (error) {
+    console.error(`Error fetching Yahoo Finance data for ${symbol}:`, error);
+    res.status(500).json({ error: 'Failed to fetch Yahoo Finance data' });
+  }
+});
+
+app.get('/api/yahoo-finance/dividends', async (req, res) => {
+  const { symbol } = req.query;
+  
+  if (!symbol) {
+    return res.status(400).json({ error: 'Symbol is required' });
+  }
+
+  try {
+    const yahooFinance = await import('yahoo-finance2').then(m => m.default);
+    
+    const fiveYearsAgo = Math.floor(Date.now() / 1000) - (5 * 365 * 24 * 60 * 60);
+    const now = Math.floor(Date.now() / 1000);
+    
+    const events = await yahooFinance.historical(symbol, {
+      period1: new Date(fiveYearsAgo * 1000),
+      period2: new Date(now * 1000),
+      events: 'dividends'
+    });
+
+    const dividends = (events || [])
+      .filter(e => e.dividends !== undefined)
+      .map(e => ({
+        date: e.date.toISOString().split('T')[0],
+        amount: e.dividends
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    res.json({
+      symbol,
+      dividends
+    });
+  } catch (error) {
+    console.error(`Error fetching dividend history for ${symbol}:`, error);
+    res.status(500).json({ error: 'Failed to fetch dividend history' });
+  }
+});
+
+app.get('/api/yahoo-finance/etf', async (req, res) => {
+  const { symbol } = req.query;
+  
+  if (!symbol) {
+    return res.status(400).json({ error: 'Symbol is required' });
+  }
+
+  try {
+    const yahooFinance = await import('yahoo-finance2').then(m => m.default);
+    
+    const threeYearsAgo = Math.floor(Date.now() / 1000) - (3 * 365 * 24 * 60 * 60);
+    const now = Math.floor(Date.now() / 1000);
+    
+    const historical = await yahooFinance.historical(symbol, {
+      period1: new Date(threeYearsAgo * 1000),
+      period2: new Date(now * 1000),
+      interval: '1d'
+    });
+
+    const data = (historical || []).map(point => ({
+      timestamp: Math.floor(point.date.getTime() / 1000),
+      close: point.close,
+      high: point.high,
+      low: point.low,
+      open: point.open,
+      volume: point.volume
+    }));
+
+    res.json({
+      symbol,
+      data
+    });
+  } catch (error) {
+    console.error(`Error fetching historical data for ${symbol}:`, error);
+    res.status(500).json({ error: 'Failed to fetch historical data' });
   }
 });
 

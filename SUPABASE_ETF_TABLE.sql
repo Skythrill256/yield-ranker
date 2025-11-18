@@ -19,13 +19,8 @@ CREATE TABLE IF NOT EXISTS etfs (
   total_return_3m NUMERIC,
   total_return_1m NUMERIC,
   total_return_1w NUMERIC,
-  price_return_3y NUMERIC,
-  price_return_12m NUMERIC,
-  price_return_6m NUMERIC,
-  price_return_3m NUMERIC,
-  price_return_1m NUMERIC,
-  price_return_1w NUMERIC,
   favorites BOOLEAN DEFAULT false,
+  spreadsheet_updated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
