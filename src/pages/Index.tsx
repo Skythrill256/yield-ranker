@@ -131,6 +131,12 @@ const Index = () => {
     ? rankedETFs.filter((etf) => favorites.has(etf.symbol))
     : rankedETFs;
 
+  // Re-rank after filtering to ensure sequential numbering (1, 2, 3...)
+  const rerankedETFs = filteredETFs.map((etf, index) => ({
+    ...etf,
+    weightedRank: index + 1,
+  }));
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -279,7 +285,7 @@ const Index = () => {
                 </div>
               ) : (
                 <ETFTable
-                  etfs={filteredETFs}
+                  etfs={rerankedETFs}
                   showRankingPanel={showRankingPanel}
                   onRankingClick={() => setShowRankingPanel(true)}
                   viewMode={returnView}
