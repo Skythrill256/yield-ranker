@@ -142,10 +142,13 @@ const Index = () => {
 
   const rankedETFs = rankETFs(etfData, weights);
 
-  // Filter ETFs based on favorites only (search is in navbar)
-  const filteredETFs = showFavoritesOnly
-    ? rankedETFs.filter((etf) => favorites.has(etf.symbol))
+  const sortedETFs = isGuest 
+    ? [...rankedETFs].sort((a, b) => a.symbol.localeCompare(b.symbol))
     : rankedETFs;
+
+  const filteredETFs = showFavoritesOnly
+    ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
+    : sortedETFs;
 
   return (
     <div className="min-h-screen bg-background">
@@ -176,8 +179,8 @@ const Index = () => {
         <div className="space-y-6">
           {infoBanner && (
             <div className="w-full">
-              <Card className="p-3 border-2 border-primary/20 bg-primary/5">
-                <p className="text-sm text-foreground leading-relaxed">
+              <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                <p className="text-base md:text-lg text-foreground leading-relaxed font-medium">
                   {infoBanner}
                 </p>
               </Card>

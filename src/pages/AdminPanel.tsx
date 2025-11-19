@@ -139,9 +139,10 @@ const AdminPanel = () => {
     setSettingsLoading(true);
     try {
       const data = await getSiteSettings();
-      setSiteSettings(data);
+      const filteredData = data.filter(setting => setting.key !== 'homepage_subtitle');
+      setSiteSettings(filteredData);
       const values: Record<string, string> = {};
-      data.forEach((setting) => {
+      filteredData.forEach((setting) => {
         values[setting.key] = setting.value;
       });
       setSettingsValues(values);

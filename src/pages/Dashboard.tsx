@@ -1733,8 +1733,8 @@ export default function Dashboard() {
               <>
                 {infoBanner && (
                   <div className="w-full max-w-[98%] mx-auto">
-                    <Card className="p-3 border-2 border-primary/20 bg-primary/5">
-                      <p className="text-sm text-foreground leading-relaxed">
+                    <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                      <p className="text-base md:text-lg text-foreground leading-relaxed font-medium">
                         {infoBanner}
                       </p>
                     </Card>
