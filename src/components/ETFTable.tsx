@@ -329,7 +329,7 @@ export const ETFTable = ({
                         </div>
                       </button>
                     ) : (
-                      <span className="text-primary">{index + 1}</span>
+                      <span className="text-primary">{etf.weightedRank !== null ? etf.weightedRank : '-'}</span>
                     )}
                   </td>
                   {returnColumns.map((col, colIndex) => {

@@ -457,12 +457,7 @@ export default function Dashboard() {
     ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
     : sortedETFs;
 
-  const rerankedETFs = favoritesFilteredETFs.map((etf, index) => ({
-    ...etf,
-    weightedRank: index + 1,
-  }));
-
-  const uniqueSymbolETFs = rerankedETFs.filter((etf, index, self) => {
+  const uniqueSymbolETFs = favoritesFilteredETFs.filter((etf, index, self) => {
     return self.findIndex((e) => e.symbol === etf.symbol) === index;
   });
 
@@ -2019,7 +2014,7 @@ export default function Dashboard() {
                                       </button>
                                     ) : (
                                       <span className="text-primary">
-                                        {idx + 1}
+                                        {etf.weightedRank || 0}
                                       </span>
                                     )}
                                   </td>
