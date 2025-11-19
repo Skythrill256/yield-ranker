@@ -101,6 +101,9 @@ export default function Dashboard() {
   const [adminUpdatingId, setAdminUpdatingId] = useState<string | null>(null);
   const [etfData, setEtfData] = useState<ETF[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>("");
 
   const isAdmin = profile?.role === "admin";
   const isPremium = !!profile;
@@ -230,6 +233,73 @@ export default function Dashboard() {
       );
     } finally {
       setAdminUpdatingId(null);
+    }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setUploadFile(file);
+      setUploadStatus("");
+    }
+  };
+
+  const handleUploadDTR = async () => {
+    if (!uploadFile) {
+      setUploadStatus("Please select a file first");
+      toast({
+        variant: "destructive",
+        title: "No file selected",
+        description: "Please select an Excel file to upload",
+      });
+      return;
+    }
+
+    setUploading(true);
+    setUploadStatus("Uploading and processing...");
+
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+      
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+
+      const response = await fetch(`${API_BASE_URL}/api/admin/upload-dtr`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      setUploadStatus(`Success! Processed ${result.count} ETFs`);
+      toast({
+        title: "Upload successful",
+        description: `Uploaded ${result.count} ETFs to database`,
+      });
+      
+      setUploadFile(null);
+      const fileInput = document.getElementById("dtr-file-input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+      
+      window.dispatchEvent(new Event("storage"));
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      setUploadStatus(`Error: ${message}`);
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: message,
+      });
+    } finally {
+      setUploading(false);
     }
   };
   // note: adminSection state defined above; removing legacy duplicate
@@ -1637,8 +1707,8 @@ export default function Dashboard() {
                                     <tr>
                                       <th className="px-4 py-3 text-left text-sm font-semibold">User</th>
                                       <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
-                                      <th className="px-4 py-3 text-center text-sm font-semibold">Role</th>
-                                      <th className="px-4 py-3 text-center text-sm font-semibold">Premium</th>
+                                      <th className="px-4 py-3 text-center text-sm font-semibold">Status</th>
+                                      <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
                                       <th className="px-4 py-3 text-center text-sm font-semibold">Created</th>
                                     </tr>
                                   </thead>
@@ -1650,22 +1720,33 @@ export default function Dashboard() {
                                         </td>
                                         <td className="px-4 py-3 text-sm text-muted-foreground">{profile.email}</td>
                                         <td className="px-4 py-3 text-center">
-                                          <Button
-                                            variant={profile.role === 'admin' ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => handleAdminRoleToggle(profile)}
-                                            disabled={adminUpdatingId === `${profile.id}-role`}
-                                            className="min-w-[80px]"
-                                          >
-                                            {profile.role === 'admin' ? 'Admin' : 'User'}
-                                          </Button>
+                                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                                            profile.role === 'admin' 
+                                              ? 'bg-orange-100 text-orange-700 border border-orange-300' 
+                                              : profile.is_premium 
+                                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                                                : 'bg-slate-100 text-slate-700 border border-slate-300'
+                                          }`}>
+                                            {profile.role === 'admin' ? 'Admin' : profile.is_premium ? 'Premium' : 'Guest'}
+                                          </span>
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                          <Switch
-                                            checked={profile.is_premium}
-                                            onCheckedChange={(checked) => handleAdminPremiumToggle(profile, checked)}
-                                            disabled={adminUpdatingId === `${profile.id}-premium`}
-                                          />
+                                          <div className="flex items-center justify-center gap-2">
+                                            <Button
+                                              variant={profile.role === 'admin' ? 'default' : 'outline'}
+                                              size="sm"
+                                              onClick={() => handleAdminRoleToggle(profile)}
+                                              disabled={adminUpdatingId === `${profile.id}-role`}
+                                              className="min-w-[80px]"
+                                            >
+                                              {profile.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                                            </Button>
+                                            <Switch
+                                              checked={profile.is_premium}
+                                              onCheckedChange={(checked) => handleAdminPremiumToggle(profile, checked)}
+                                              disabled={adminUpdatingId === `${profile.id}-premium` || profile.role === 'admin'}
+                                            />
+                                          </div>
                                         </td>
                                         <td className="px-4 py-3 text-center text-sm text-muted-foreground">
                                           {new Date(profile.created_at).toLocaleDateString()}
@@ -1697,11 +1778,30 @@ export default function Dashboard() {
                                   type="file"
                                   accept=".xlsx"
                                   className="border-2"
+                                  onChange={handleFileChange}
                                 />
-                                <Button className="w-full sm:w-auto">
+                                {uploadFile && (
+                                  <p className="text-sm text-muted-foreground">
+                                    Selected: {uploadFile.name}
+                                  </p>
+                                )}
+                                <Button 
+                                  className="w-full sm:w-auto" 
+                                  onClick={handleUploadDTR}
+                                  disabled={uploading || !uploadFile}
+                                >
                                   <Upload className="h-4 w-4 mr-2" />
-                                  Upload and Process
+                                  {uploading ? 'Uploading...' : 'Upload and Process'}
                                 </Button>
+                                {uploadStatus && (
+                                  <p className={`text-sm font-medium ${
+                                    uploadStatus.startsWith('Success') ? 'text-green-600' : 
+                                    uploadStatus.startsWith('Error') ? 'text-red-600' : 
+                                    'text-blue-600'
+                                  }`}>
+                                    {uploadStatus}
+                                  </p>
+                                )}
                               </div>
                             </Card>
                           </div>
