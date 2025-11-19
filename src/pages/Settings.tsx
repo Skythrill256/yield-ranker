@@ -244,14 +244,14 @@ export default function Settings() {
                 {adminPanelExpanded && (
                   <div className="pl-4 mt-1 space-y-1">
                     <button
-                      onClick={() => navigate("/admin?tab=users")}
+                      onClick={() => navigate("/admin/users")}
                       className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       Users
                     </button>
                     <button
-                      onClick={() => navigate("/admin?tab=upload")}
+                      onClick={() => navigate("/admin/data")}
                       className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
                     >
                       <Upload className="w-4 h-4" />

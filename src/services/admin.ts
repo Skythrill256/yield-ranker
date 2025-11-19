@@ -12,7 +12,6 @@ export type ProfileRow = {
 };
 
 export type SiteSetting = {
-  id: number;
   key: string;
   value: string;
   description: string | null;
@@ -51,10 +50,17 @@ export const updateProfile = async (
   return data as ProfileRow;
 };
 
+export const trackUserLogin = async (): Promise<void> => {
+  const { error } = await supabase.rpc("track_user_login");
+  if (error) {
+    console.error("Failed to track login:", error);
+  }
+};
+
 export const getSiteSettings = async (): Promise<SiteSetting[]> => {
   const { data, error } = await supabase
     .from("site_settings")
-    .select("id,key,value,description,updated_by,updated_at")
+    .select("key,value,description,updated_by,updated_at")
     .order("key", { ascending: true });
   if (error) {
     throw error;
@@ -64,13 +70,20 @@ export const getSiteSettings = async (): Promise<SiteSetting[]> => {
 
 export const updateSiteSetting = async (
   key: string,
-  value: string
+  value: string,
+  updatedBy?: string | null
 ): Promise<SiteSetting> => {
   const { data, error } = await supabase
     .from("site_settings")
-    .update({ value })
-    .eq("key", key)
-    .select("id,key,value,description,updated_by,updated_at")
+    .upsert(
+      {
+        key,
+        value,
+        updated_by: updatedBy ?? null,
+      },
+      { onConflict: "key" }
+    )
+    .select("key,value,description,updated_by,updated_at")
     .single();
   if (error) {
     throw error;

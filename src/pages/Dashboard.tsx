@@ -1385,55 +1385,7 @@ export default function Dashboard() {
               </span>
             )}
           </button>
-          {isAdmin &&
-            (!sidebarCollapsed ? (
-              <div>
-                <button
-                  onClick={() => setAdminPanelExpanded(!adminPanelExpanded)}
-                  className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    adminSection
-                      ? "bg-primary text-white"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5" />
-                    Admin Panel
-                  </div>
-                  {adminPanelExpanded ? (
-                    <ChevronDown className="w-4 h-4" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
-                </button>
-                {adminPanelExpanded && (
-                  <div className="pl-4 mt-1 space-y-1">
-                    <button
-                      onClick={() => navigate("/admin?tab=users")}
-                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                    >
-                      <Users className="w-4 h-4" />
-                      Users
-                    </button>
-                    <button
-                      onClick={() => navigate("/admin?tab=upload")}
-                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Data
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={() => navigate("/admin?tab=users")}
-                className="w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                title="Admin Panel"
-              >
-                <Users className="w-5 h-5" />
-              </button>
-            ))}
+          {isAdmin && null}
           <button
             onClick={() => {
               setShowFavoritesOnly(false);
@@ -1937,9 +1889,9 @@ export default function Dashboard() {
                                 <th className="h-6 px-1 text-center bg-slate-50 text-xs">
                                   <SortButton field="standardDeviation">
                                     <div className="whitespace-normal leading-tight">
-                                      Std
+                                      Dividend
                                       <br />
-                                      Dev
+                                      Volatility
                                     </div>
                                   </SortButton>
                                 </th>

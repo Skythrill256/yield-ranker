@@ -88,16 +88,27 @@ const AdminPanel = () => {
   }, [isAdmin, navigate]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tab = params.get("tab");
-    if (tab === "users") {
+    const path = location.pathname;
+    if (path.endsWith("/users")) {
       setActiveTab("users");
-    } else if (tab === "upload" || tab === "data") {
+    } else if (path.endsWith("/data")) {
       setActiveTab("etf-data");
-    } else if (tab === "settings") {
+    } else if (path.endsWith("/settings")) {
       setActiveTab("site-settings");
+    } else {
+      const params = new URLSearchParams(location.search);
+      const tab = params.get("tab");
+      if (tab === "users") {
+        setActiveTab("users");
+      } else if (tab === "upload" || tab === "data") {
+        setActiveTab("etf-data");
+      } else if (tab === "settings") {
+        setActiveTab("site-settings");
+      } else {
+        setActiveTab("users");
+      }
     }
-  }, [location.search]);
+  }, [location.pathname, location.search]);
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -148,7 +159,7 @@ const AdminPanel = () => {
   const handleSaveSettings = async () => {
     try {
       for (const [key, value] of Object.entries(settingsValues)) {
-        await updateSiteSetting(key, value);
+        await updateSiteSetting(key, value, profile?.id ?? null);
       }
       toast({
         title: "Settings saved",
@@ -371,7 +382,7 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "Dashboard"}
           </button>
           <button
-            onClick={() => navigate("/admin?tab=users")}
+            onClick={() => navigate("/admin/users")}
             className={`w-full flex items-center ${
               sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
@@ -387,7 +398,7 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "User Administration"}
           </button>
           <button
-            onClick={() => navigate("/admin?tab=upload")}
+            onClick={() => navigate("/admin/data")}
             className={`w-full flex items-center ${
               sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
@@ -403,7 +414,7 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "ETF Data Management"}
           </button>
           <button
-            onClick={() => navigate("/admin?tab=settings")}
+            onClick={() => navigate("/admin/settings")}
             className={`w-full flex items-center ${
               sidebarCollapsed
                 ? "justify-center px-0 py-2.5"

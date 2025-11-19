@@ -70,6 +70,30 @@ const App = () => (
               path="/admin"
               element={
                 <RequireAuth>
+                  <Navigate to="/admin/users" replace />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <RequireAuth>
+                  <AdminPanel />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/data"
+              element={
+                <RequireAuth>
+                  <AdminPanel />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <RequireAuth>
                   <AdminPanel />
                 </RequireAuth>
               }

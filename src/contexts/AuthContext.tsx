@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, ReactNode } fr
 import type { Session, User } from '@supabase/supabase-js';
 import { getSession, onAuthChange, signOut as supabaseSignOut } from '@/auth/api';
 import { supabase, type Profile as ProfileRow } from '@/lib/supabase';
+import { trackUserLogin } from '@/services/admin';
 
 type AuthContextType = {
   session: Session | null;
@@ -17,6 +18,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasTrackedLogin, setHasTrackedLogin] = useState(false);
 
   const loadProfile = async (userId: string | undefined) => {
     if (!userId) {
@@ -43,6 +45,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (active) {
           setSession(current);
           await loadProfile(current?.user.id);
+          if (current?.user?.id && !hasTrackedLogin) {
+            await trackUserLogin();
+            setHasTrackedLogin(true);
+          }
         }
       } catch {
         if (active) {
@@ -56,12 +62,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     hydrate();
-    const unsubscribe = onAuthChange((next) => {
+    const unsubscribe = onAuthChange(async (next) => {
       setSession(next);
       if (next?.user?.id) {
-        loadProfile(next.user.id);
+        await loadProfile(next.user.id);
+        if (!hasTrackedLogin) {
+          await trackUserLogin();
+          setHasTrackedLogin(true);
+        }
       } else {
         setProfile(null);
+        setHasTrackedLogin(false);
       }
       setLoading(false);
     });
@@ -69,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [hasTrackedLogin]);
 
   const signOut = async () => {
     await supabaseSignOut();
