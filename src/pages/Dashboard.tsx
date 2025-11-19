@@ -1763,41 +1763,75 @@ export default function Dashboard() {
                               <p className="text-muted-foreground">Upload Excel files to update ETF information</p>
                             </div>
 
-                            <Card className="p-6 border-2 bg-slate-50">
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="dtr-file-input" className="text-base font-semibold">Upload DTR Excel File</Label>
-                                  <p className="text-sm text-muted-foreground mt-1">Select an Excel file (.xlsx) containing ETF data</p>
-                                </div>
-                                <Input
-                                  id="dtr-file-input"
-                                  type="file"
-                                  accept=".xlsx"
-                                  className="border-2"
-                                  onChange={handleFileChange}
-                                />
-                                {uploadFile && (
+                            <Card className="p-8 border-2 bg-white shadow-sm">
+                              <div className="space-y-6">
+                                <div className="space-y-2">
+                                  <Label htmlFor="dtr-file-input" className="text-lg font-bold text-foreground">
+                                    Upload Excel File
+                                  </Label>
                                   <p className="text-sm text-muted-foreground">
-                                    Selected: {uploadFile.name}
+                                    Select an Excel file (.xlsx or .xls) containing ETF data to update the database
                                   </p>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                  <div className="flex-1 w-full">
+                                    <Input
+                                      id="dtr-file-input"
+                                      type="file"
+                                      accept=".xlsx,.xls"
+                                      className="border-2 border-slate-300 hover:border-primary transition-colors cursor-pointer h-12 text-base file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90 file:cursor-pointer"
+                                      onChange={handleFileChange}
+                                    />
+                                  </div>
+                                  <Button 
+                                    size="lg"
+                                    className="h-12 px-6 whitespace-nowrap w-full sm:w-auto" 
+                                    onClick={handleUploadDTR}
+                                    disabled={uploading || !uploadFile}
+                                  >
+                                    <Upload className="h-5 w-5 mr-2" />
+                                    {uploading ? 'Uploading...' : 'Upload and Process'}
+                                  </Button>
+                                </div>
+
+                                {uploadFile && (
+                                  <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                                    <p className="text-sm font-semibold text-blue-900">
+                                      Selected File:
+                                    </p>
+                                    <p className="text-sm text-blue-700 mt-1">
+                                      {uploadFile.name}
+                                    </p>
+                                  </div>
                                 )}
-                                <Button 
-                                  className="w-full sm:w-auto" 
-                                  onClick={handleUploadDTR}
-                                  disabled={uploading || !uploadFile}
-                                >
-                                  <Upload className="h-4 w-4 mr-2" />
-                                  {uploading ? 'Uploading...' : 'Upload and Process'}
-                                </Button>
+
                                 {uploadStatus && (
-                                  <p className={`text-sm font-medium ${
-                                    uploadStatus.startsWith('Success') ? 'text-green-600' : 
-                                    uploadStatus.startsWith('Error') ? 'text-red-600' : 
-                                    'text-blue-600'
+                                  <div className={`p-4 rounded-lg border-2 ${
+                                    uploadStatus.startsWith('Success') 
+                                      ? 'bg-green-50 border-green-200' 
+                                      : uploadStatus.startsWith('Error') 
+                                        ? 'bg-red-50 border-red-200' 
+                                        : 'bg-blue-50 border-blue-200'
                                   }`}>
-                                    {uploadStatus}
-                                  </p>
+                                    <p className={`text-sm font-semibold ${
+                                      uploadStatus.startsWith('Success') ? 'text-green-900' : 
+                                      uploadStatus.startsWith('Error') ? 'text-red-900' : 
+                                      'text-blue-900'
+                                    }`}>
+                                      {uploadStatus}
+                                    </p>
+                                  </div>
                                 )}
+
+                                <div className="pt-4 border-t border-slate-200">
+                                  <h3 className="text-sm font-semibold text-foreground mb-2">Requirements:</h3>
+                                  <ul className="text-sm text-muted-foreground space-y-1">
+                                    <li>• File must be in .xlsx or .xls format</li>
+                                    <li>• Maximum file size: 10MB</li>
+                                    <li>• Must contain a SYMBOL column with ticker symbols</li>
+                                  </ul>
+                                </div>
                               </div>
                             </Card>
                           </div>
