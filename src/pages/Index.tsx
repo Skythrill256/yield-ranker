@@ -155,7 +155,7 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5"></div>
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl"></div>
-        
+
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-32 relative">
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
@@ -165,25 +165,27 @@ const Index = () => {
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-medium">
-              Maximizing Investment Value Through Dividend Income and Price Change with Advanced Screening and Custom Rankings
+              Maximizing Investment Value Through Dividend Income and Price
+              Change with Advanced Screening and Custom Rankings
             </p>
-            {!user && (
-              <div className="pt-4">
-                <Button
-                  onClick={() => navigate("/login")}
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90 text-white px-8 py-4 text-lg font-semibold shadow-lg"
-                >
-                  Get Started Free
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </section>
 
       <main className="w-full max-w-[98%] mx-auto px-2 sm:px-3 py-8 md:py-12">
         <div className="space-y-6">
+          {!user && (
+            <div className="w-full flex justify-center">
+              <Button
+                onClick={() => navigate("/login")}
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-white px-8 py-4 text-lg font-semibold shadow-lg"
+              >
+                Login / Register
+              </Button>
+            </div>
+          )}
+          
           {infoBanner && (
             <div className="w-full">
               <Card className="p-3 border-2 border-primary/20 bg-primary/5">
