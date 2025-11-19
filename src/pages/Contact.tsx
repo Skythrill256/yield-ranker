@@ -16,14 +16,41 @@ const Contact = () => {
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      setFormData({ name: "", email: "", subject: "", message: "" });
-    }, 3000);
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("http://localhost:4000/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: `Contact Form: ${formData.subject}`,
+          html: `
+            <h3>New Contact Form Submission</h3>
+            <p><strong>Name:</strong> ${formData.name}</p>
+            <p><strong>Email:</strong> ${formData.email}</p>
+            <p><strong>Subject:</strong> ${formData.subject}</p>
+            <p><strong>Message:</strong></p>
+            <p>${formData.message.replace(/\n/g, "<br>")}</p>
+          `,
+        }),
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+        setTimeout(() => {
+          setSubmitted(false);
+          setFormData({ name: "", email: "", subject: "", message: "" });
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -153,10 +180,17 @@ const Contact = () => {
                 <Button
                   type="submit"
                   size="lg"
+                  disabled={isSubmitting}
                   className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity h-12 text-base font-semibold"
                 >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Message
+                  {isSubmitting ? (
+                    "Sending..."
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send Message
+                    </>
+                  )}
                 </Button>
               </form>
             )}

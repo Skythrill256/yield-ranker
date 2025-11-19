@@ -34,6 +34,12 @@ export const Header = () => {
     (user?.email ? user.email.split("@")[0] : "Guest");
   const roleDisplay = profile?.role === 'admin' ? 'Admin' : (profile ? 'Premium' : 'Guest');
 
+  const lastLogin = user?.last_sign_in_at
+    ? new Date(user.last_sign_in_at).toLocaleString()
+    : null;
+
+  console.log("Current user:", user);
+
   const go = (path: string) => {
     navigate(path);
     setMobileMenuOpen(false);
@@ -125,9 +131,14 @@ export const Header = () => {
                 <DropdownMenuContent align="end" className="w-56 text-base">
                   <DropdownMenuItem className="cursor-pointer bg-slate-50" onClick={() => go("/profile")}>
                     <User className="w-5 h-5 mr-2 text-primary" />
-                    <div className="flex flex-col">
+                    <div className="flex flex-col items-start text-left">
                       <span className="font-medium text-base">{loading ? "Loading..." : displayName}</span>
                       <span className="text-sm text-muted-foreground">{roleDisplay}</span>
+                      {lastLogin && (
+                        <span className="text-xs text-muted-foreground mt-1">
+                          Last login: {lastLogin}
+                        </span>
+                      )}
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -239,9 +250,14 @@ export const Header = () => {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem className="cursor-pointer bg-slate-50" onClick={() => go("/profile")}>
                       <User className="w-4 h-4 mr-2 text-primary" />
-                      <div className="flex flex-col">
+                      <div className="flex flex-col items-start text-left">
                         <span className="font-medium">{loading ? "Loading..." : displayName}</span>
                         <span className="text-xs text-muted-foreground">{roleDisplay}</span>
+                        {lastLogin && (
+                          <span className="text-[10px] text-muted-foreground mt-1">
+                            Last login: {lastLogin}
+                          </span>
+                        )}
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
