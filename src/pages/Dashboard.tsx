@@ -9,7 +9,7 @@ import {
   ChartType,
   ComparisonTimeframe,
 } from "@/services/etfData";
-import { rankETFs } from "@/utils/ranking";
+import { rankETFs, calculateWeightedRank } from "@/utils/ranking";
 import { RankingWeights } from "@/types/etf";
 import { ETF } from "@/types/etf";
 import {
@@ -428,8 +428,12 @@ export default function Dashboard() {
     setShowRankingPanel(false);
   };
 
-  const rankedETFs = rankETFs(etfData, weights);
-  const filteredETFs = rankedETFs.filter((etf) => {
+  const etfsWithScores = etfData.map(etf => ({
+    ...etf,
+    customScore: calculateWeightedRank(etf, etfData, weights),
+  }));
+
+  const filteredETFs = etfsWithScores.filter((etf) => {
     if (searchQuery.trim() === "") return true;
     return (
       etf.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -949,7 +953,7 @@ export default function Dashboard() {
                       selectedETF.symbol,
                       ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
                     ].map((symbol, index) => {
-                      const etf = rankedETFs.find((e) => e.symbol === symbol);
+                      const etf = etfsWithScores.find((e) => e.symbol === symbol);
                       if (!etf) return null;
                       const colors = [
                         "#3b82f6",
@@ -1007,7 +1011,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {rankedETFs
+                      {etfsWithScores
                         .filter((etf) => etf.symbol !== selectedETF.symbol)
                         .sort((a, b) => a.symbol.localeCompare(b.symbol))
                         .slice(0, 20)
