@@ -133,31 +133,6 @@ export default function Dashboard() {
     loadETFData();
   }, []);
 
-  useEffect(() => {
-    if (!etfData.length) return;
-    const symbols = etfData.map((e) => e.symbol);
-    const tick = async () => {
-      try {
-        const updates = await fetchQuickUpdates(symbols);
-        setEtfData((prev) =>
-          prev.map((etf) => {
-            const u = updates[etf.symbol];
-            if (!u || u.price == null) return etf;
-            return {
-              ...etf,
-              price: u.price,
-              priceChange: u.priceChange ?? etf.priceChange,
-            };
-          })
-        );
-      } catch (_e) {
-        // ignore quick update errors
-      }
-    };
-    tick();
-    const interval = setInterval(tick, 15000);
-    return () => clearInterval(interval);
-  }, [etfData]);
 
   const fetchAdminProfiles = useCallback(async () => {
     setAdminLoading(true);
@@ -255,6 +230,26 @@ export default function Dashboard() {
       return;
     }
 
+    if (!uploadFile.name.endsWith('.xlsx') && !uploadFile.name.endsWith('.xls')) {
+      setUploadStatus("Invalid file type");
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload an Excel file (.xlsx or .xls)",
+      });
+      return;
+    }
+
+    if (uploadFile.size > 10 * 1024 * 1024) {
+      setUploadStatus("File too large");
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "File size must be less than 10MB",
+      });
+      return;
+    }
+
     setUploading(true);
     setUploadStatus("Uploading and processing...");
 
@@ -269,29 +264,30 @@ export default function Dashboard() {
         body: formData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
       const result = await response.json();
-      
-      setUploadStatus(`Success! Processed ${result.count} ETFs`);
-      toast({
-        title: "Upload successful",
-        description: `Uploaded ${result.count} ETFs to database`,
-      });
-      
-      setUploadFile(null);
-      const fileInput = document.getElementById("dtr-file-input") as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
-      
-      window.dispatchEvent(new Event("storage"));
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+
+      if (response.ok && result.success) {
+        setUploadStatus(result.message || `Successfully processed ${result.count} ETFs`);
+        toast({
+          title: "Upload successful",
+          description: result.message || `Processed ${result.count} ETFs`,
+        });
+        
+        setUploadFile(null);
+        const fileInput = document.getElementById("dtr-file-input") as HTMLInputElement;
+        if (fileInput) fileInput.value = "";
+        
+        await loadData();
+        
+        window.dispatchEvent(new Event("storage"));
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        throw new Error(result.error || result.details || 'Upload failed');
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Upload failed';
+      const message = error instanceof Error ? error.message : 'Failed to upload file. Please check your connection.';
       setUploadStatus(`Error: ${message}`);
       toast({
         variant: "destructive",

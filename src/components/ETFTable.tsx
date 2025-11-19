@@ -254,6 +254,8 @@ export const ETFTable = ({
             {displayedETFs.map((etf, index) => (
                 <tr
                   key={`${etf.symbol}-${index}`}
+                  id={`etf-row-${etf.symbol}`}
+                  data-etf-symbol={etf.symbol}
                   className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
@@ -273,6 +275,7 @@ export const ETFTable = ({
                     />
                   </td>
                   <td
+                    data-symbol-cell
                     className="py-1 px-1.5 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary text-xs"
                   >
                     {etf.symbol}

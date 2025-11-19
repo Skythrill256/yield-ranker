@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search, TrendingUp, FileText, BookOpen, X } from "lucide-react";
 import { Input } from "./ui/input";
 import { mockETFs } from "@/data/mockETFs";
@@ -8,6 +8,7 @@ export const SearchDropdown = () => {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const searchRef = useRef<HTMLDivElement>(null);
 
   const pages = [
@@ -41,6 +42,57 @@ export const SearchDropdown = () => {
     navigate(path);
     setQuery("");
     setIsOpen(false);
+  };
+
+  const handleETFSelect = (symbol: string) => {
+    const isHomePage = location.pathname === "/";
+    
+    if (isHomePage) {
+      const etfRow = document.getElementById(`etf-row-${symbol}`);
+      
+      if (etfRow) {
+        setQuery("");
+        setIsOpen(false);
+        
+        setTimeout(() => {
+          etfRow.scrollIntoView({ 
+            behavior: "smooth", 
+            block: "center",
+            inline: "nearest" 
+          });
+          
+          etfRow.classList.add("animate-pulse");
+          etfRow.style.backgroundColor = "rgba(59, 130, 246, 0.15)";
+          
+          const symbolCell = etfRow.querySelector('[data-symbol-cell]') as HTMLElement;
+          if (symbolCell) {
+            symbolCell.style.backgroundColor = "rgba(59, 130, 246, 0.3)";
+            symbolCell.style.fontWeight = "900";
+            symbolCell.style.transform = "scale(1.1)";
+            symbolCell.style.transition = "all 0.3s ease";
+          }
+          
+          setTimeout(() => {
+            etfRow.classList.remove("animate-pulse");
+            etfRow.style.backgroundColor = "";
+            
+            if (symbolCell) {
+              symbolCell.style.backgroundColor = "";
+              symbolCell.style.fontWeight = "";
+              symbolCell.style.transform = "";
+            }
+          }, 2000);
+        }, 100);
+      } else {
+        navigate(`/etf/${symbol}`);
+        setQuery("");
+        setIsOpen(false);
+      }
+    } else {
+      navigate(`/etf/${symbol}`);
+      setQuery("");
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -83,7 +135,7 @@ export const SearchDropdown = () => {
                     {filteredETFs.map((etf) => (
                       <button
                         key={etf.symbol}
-                        onClick={() => handleSelect(`/etf/${etf.symbol}`)}
+                        onClick={() => handleETFSelect(etf.symbol)}
                         className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left border-b border-slate-100 last:border-0"
                       >
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">

@@ -52,9 +52,6 @@ const Favorites = () => {
       setIsLoading(false);
     };
     loadETFData();
-    
-    const interval = setInterval(loadETFData, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const totalWeight = yieldWeight + stdDevWeight + totalReturnWeight;

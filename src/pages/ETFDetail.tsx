@@ -71,11 +71,6 @@ const ETFDetail = () => {
     };
 
     loadData();
-
-    // Refresh data every 1 minute
-    const interval = setInterval(loadData, 60000);
-
-    return () => clearInterval(interval);
   }, [symbol]);
 
   const buildChartData = useCallback(async () => {
