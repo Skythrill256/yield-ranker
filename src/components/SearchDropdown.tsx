@@ -46,8 +46,9 @@ export const SearchDropdown = () => {
 
   const handleETFSelect = (symbol: string) => {
     const isHomePage = location.pathname === "/";
+    const isDashboard = location.pathname === "/dashboard";
     
-    if (isHomePage) {
+    if (isHomePage || isDashboard) {
       const etfRow = document.getElementById(`etf-row-${symbol}`);
       
       if (etfRow) {
@@ -64,23 +65,9 @@ export const SearchDropdown = () => {
           etfRow.classList.add("animate-pulse");
           etfRow.style.backgroundColor = "rgba(59, 130, 246, 0.15)";
           
-          const symbolCell = etfRow.querySelector('[data-symbol-cell]') as HTMLElement;
-          if (symbolCell) {
-            symbolCell.style.backgroundColor = "rgba(59, 130, 246, 0.3)";
-            symbolCell.style.fontWeight = "900";
-            symbolCell.style.transform = "scale(1.1)";
-            symbolCell.style.transition = "all 0.3s ease";
-          }
-          
           setTimeout(() => {
             etfRow.classList.remove("animate-pulse");
             etfRow.style.backgroundColor = "";
-            
-            if (symbolCell) {
-              symbolCell.style.backgroundColor = "";
-              symbolCell.style.fontWeight = "";
-              symbolCell.style.transform = "";
-            }
           }, 2000);
         }, 100);
       } else {

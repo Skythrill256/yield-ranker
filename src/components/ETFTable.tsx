@@ -256,11 +256,11 @@ export const ETFTable = ({
                   key={`${etf.symbol}-${index}`}
                   id={`etf-row-${etf.symbol}`}
                   data-etf-symbol={etf.symbol}
-                  className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
+                  className="border-b border-slate-200 transition-all hover:bg-slate-100 group"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <td 
-                    className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200"
+                    className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 border-r border-slate-200 transition-all"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFavorite(etf.symbol);
@@ -276,7 +276,7 @@ export const ETFTable = ({
                   </td>
                   <td
                     data-symbol-cell
-                    className="py-1 px-1.5 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary text-xs"
+                    className="py-1 px-1.5 align-middle sticky left-0 z-10 border-r border-slate-200 font-bold text-primary text-xs transition-all"
                   >
                     {etf.symbol}
                   </td>

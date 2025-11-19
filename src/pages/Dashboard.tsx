@@ -2009,10 +2009,11 @@ export default function Dashboard() {
                               {displayedETFs.map((etf, idx) => (
                                 <tr
                                   key={`${etf.symbol}-${idx}`}
-                                  className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
+                                  id={`etf-row-${etf.symbol}`}
+                                  className="border-b border-slate-200 transition-all hover:bg-slate-100 group"
                                 >
                                   <td
-                                    className="py-0.5 px-1 align-middle text-center sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200"
+                                    className="py-0.5 px-1 align-middle text-center sticky left-0 z-10 border-r border-slate-200 transition-all"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       toggleFavorite(etf.symbol);
@@ -2027,7 +2028,8 @@ export default function Dashboard() {
                                     />
                                   </td>
                                   <td
-                                    className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary transition-colors text-xs"
+                                    data-symbol-cell
+                                    className="py-0.5 px-1 align-middle sticky left-0 z-10 border-r border-slate-200 font-bold text-primary text-xs transition-all"
                                   >
                                     {etf.symbol}
                                   </td>
