@@ -41,9 +41,7 @@ const Index = () => {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [etfData, setEtfData] = useState<ETF[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [infoBanner] = useState(
-    "Comprehensive ETF dividend and return analysis. Price data sourced from market feeds."
-  );
+  const [infoBanner, setInfoBanner] = useState("");
   const lastUpdated = new Date();
 
   useEffect(() => {
@@ -66,8 +64,22 @@ const Index = () => {
         setIsLoading(false);
       }
     };
+    
+    const loadSiteSettings = async () => {
+      try {
+        const { getSiteSettings } = await import("@/services/admin");
+        const settings = await getSiteSettings();
+        const bannerSetting = settings.find(s => s.key === "homepage_banner");
+        if (bannerSetting) {
+          setInfoBanner(bannerSetting.value);
+        }
+      } catch (error) {
+        console.error("Failed to load site settings:", error);
+      }
+    };
 
     loadData();
+    loadSiteSettings();
 
     const interval = setInterval(loadData, 30000);
 
@@ -283,7 +295,7 @@ const Index = () => {
                   Covered Call Option ETFs
                 </h3>
                 <p className="text-xs text-muted-foreground leading-tight">
-                  Last updated:{" "}
+                  EOD - Last updated:{" "}
                   {lastUpdated.toLocaleDateString("en-US", {
                     month: "numeric",
                     day: "numeric",

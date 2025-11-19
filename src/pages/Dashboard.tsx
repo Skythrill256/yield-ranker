@@ -83,9 +83,7 @@ export default function Dashboard() {
   const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
   const [accountPanelExpanded, setAccountPanelExpanded] = useState(false);
   const [showRankingPanel, setShowRankingPanel] = useState(false);
-  const [infoBanner, setInfoBanner] = useState(
-    "The highest yielding dividend etf is GraniteShares YieldBOOST TSLA ETF (TSYY) with a dividend yield of 166.82%, followed by YieldMax SMCI Option Income Strategy ETF (SMCY) and YieldMax™ COIN Option Income Strategy ETF (CONY). Last updated Oct 31, 2025."
-  );
+  const [infoBanner, setInfoBanner] = useState("");
   const [showTotalReturns, setShowTotalReturns] = useState(true);
   const [chartType, setChartType] = useState<ChartType>("totalReturn");
   const [comparisonETFs, setComparisonETFs] = useState<string[]>([]);
@@ -121,7 +119,22 @@ export default function Dashboard() {
       setEtfData(deduplicated);
       setIsLoadingData(false);
     };
+    
+    const loadSiteSettings = async () => {
+      try {
+        const { getSiteSettings } = await import("@/services/admin");
+        const settings = await getSiteSettings();
+        const bannerSetting = settings.find(s => s.key === "homepage_banner");
+        if (bannerSetting) {
+          setInfoBanner(bannerSetting.value);
+        }
+      } catch (error) {
+        console.error("Failed to load site settings:", error);
+      }
+    };
+    
     loadETFData();
+    loadSiteSettings();
   }, []);
 
   useEffect(() => {
@@ -1736,7 +1749,7 @@ export default function Dashboard() {
                             Covered Call Option ETFs
                           </h3>
                           <span className="text-xs text-muted-foreground leading-tight">
-                            Last updated:{" "}
+                            EOD - Last updated:{" "}
                             {new Date().toLocaleDateString("en-US", {
                               month: "numeric",
                               day: "numeric",

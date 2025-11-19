@@ -24,6 +24,7 @@ import NotFound from "./pages/NotFound";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DoNotSell from "./pages/DoNotSell";
+import { DisclaimerModal } from "./components/DisclaimerModal";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <AuthProvider>
+          <DisclaimerModal />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/etf/:symbol" element={<ETFDetail />} />
