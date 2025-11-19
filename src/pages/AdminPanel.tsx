@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -7,19 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { listProfiles, updateProfile, ProfileRow, deleteUser, getSiteSettings, updateSiteSetting, SiteSetting } from "@/services/admin";
-import * as XLSX from "xlsx";
+import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
 import {
   BarChart3,
   ChevronLeft,
@@ -34,7 +22,6 @@ import {
   ShieldCheck,
   Upload,
   Users,
-  Trash2,
 } from "lucide-react";
 
 const formatDate = (value: string) =>
@@ -49,7 +36,6 @@ const formatDate = (value: string) =>
 const AdminPanel = () => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { toast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -57,15 +43,10 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "etf-data" | "settings">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "etf-data">("users");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
-  const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [editingSettings, setEditingSettings] = useState<Record<string, string>>({});
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<ProfileRow | null>(null);
 
   const userMetadata =
     (user?.user_metadata as {
@@ -91,14 +72,6 @@ const AdminPanel = () => {
     }
   }, [isAdmin, navigate]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tab = params.get("tab");
-    if (tab === "users" || tab === "etf-data" || tab === "settings") {
-      setActiveTab(tab);
-    }
-  }, [location.search]);
-
   const fetchProfiles = async () => {
     setLoading(true);
     try {
@@ -117,32 +90,9 @@ const AdminPanel = () => {
     }
   };
 
-  const fetchSettings = async () => {
-    setSettingsLoading(true);
-    try {
-      const data = await getSiteSettings();
-      setSiteSettings(data);
-      const initialEdits: Record<string, string> = {};
-      data.forEach(setting => {
-        initialEdits[setting.key] = setting.value;
-      });
-      setEditingSettings(initialEdits);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to load settings";
-      toast({
-        variant: "destructive",
-        title: "Failed to load settings",
-        description: message,
-      });
-    } finally {
-      setSettingsLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (isAdmin) {
       fetchProfiles();
-      fetchSettings();
     }
   }, [isAdmin]);
 
@@ -226,60 +176,6 @@ const AdminPanel = () => {
     }
   };
 
-  const openDeleteDialog = (profile: ProfileRow) => {
-    setUserToDelete(profile);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteUser = async () => {
-    if (!userToDelete) return;
-    
-    const key = `${userToDelete.id}-delete`;
-    setUpdatingId(key);
-    setDeleteDialogOpen(false);
-    
-    try {
-      await deleteUser(userToDelete.id);
-      setProfiles(prev => prev.filter(p => p.id !== userToDelete.id));
-      toast({
-        title: "User deleted",
-        description: "The user has been permanently removed.",
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to delete user";
-      toast({
-        variant: "destructive",
-        title: "Delete failed",
-        description: message,
-      });
-    } finally {
-      setUpdatingId(null);
-      setUserToDelete(null);
-    }
-  };
-
-  const handleUpdateSetting = async (key: string) => {
-    setUpdatingId(key);
-    try {
-      const value = editingSettings[key];
-      const updated = await updateSiteSetting(key, value);
-      setSiteSettings(prev => prev.map(s => s.key === key ? updated : s));
-      toast({
-        title: "Setting updated",
-        description: "Homepage message has been updated successfully.",
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to update setting";
-      toast({
-        variant: "destructive",
-        title: "Update failed",
-        description: message,
-      });
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   const signOutAndRedirect = async () => {
     await signOut();
     navigate("/login");
@@ -300,37 +196,32 @@ const AdminPanel = () => {
     }
 
     setUploading(true);
-    setUploadStatus("Uploading and processing...");
+    setUploadStatus("");
 
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-      
       const formData = new FormData();
-      formData.append('file', uploadFile);
+      formData.append("file", uploadFile);
 
-      const response = await fetch(`${API_BASE_URL}/api/admin/upload-dtr`, {
-        method: 'POST',
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
+      const response = await fetch(`${apiUrl}/api/admin/upload-dtr`, {
+        method: "POST",
         body: formData,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(result.error || "Upload failed");
       }
 
-      const result = await response.json();
-      
       setUploadStatus(`Success! Processed ${result.count} ETFs`);
       toast({
         title: "Upload successful",
-        description: `Uploaded ${result.count} ETFs to database`,
+        description: result.message,
       });
       setUploadFile(null);
       const fileInput = document.getElementById("dtr-file-input") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
-
-      window.dispatchEvent(new Event("storage"));
-      window.location.reload();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed";
       setUploadStatus(`Error: ${message}`);
@@ -437,20 +328,16 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "ETF Data Management"}
           </button>
           <button
-            onClick={() => setActiveTab("settings")}
+            onClick={() => navigate("/settings")}
             className={`w-full flex items-center ${
               sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium ${
-              activeTab === "settings"
-                ? "bg-primary text-white"
-                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            } transition-colors`}
-            title={sidebarCollapsed ? "Site Settings" : ""}
+            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            title={sidebarCollapsed ? "Settings" : ""}
           >
             <Settings className="w-5 h-5" />
-            {!sidebarCollapsed && "Site Settings"}
+            {!sidebarCollapsed && "Settings"}
           </button>
         </nav>
         <div
@@ -485,7 +372,7 @@ const AdminPanel = () => {
                 <Menu className="h-6 w-6" />
               </Button>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                {activeTab === "users" ? "User Administration" : activeTab === "etf-data" ? "ETF Data Management" : "Site Settings"}
+                {activeTab === "users" ? "User Administration" : "ETF Data Management"}
               </h1>
             </div>
             <div className="flex items-center gap-3">
@@ -563,51 +450,19 @@ const AdminPanel = () => {
                       className="pl-10 h-10 border-2"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const emails = profiles.map(p => p.email).join(', ');
-                        navigator.clipboard.writeText(emails);
-                        toast({
-                          title: "Emails copied",
-                          description: `${profiles.length} email addresses copied to clipboard`,
-                        });
-                      }}
-                      disabled={loading || profiles.length === 0}
-                      className="h-10 border-2"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="mr-2"
-                      >
-                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-                      </svg>
-                      Copy Emails
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={fetchProfiles}
-                      disabled={loading}
-                      className="h-10 border-2"
-                    >
-                      <RefreshCw
-                        className={`w-4 h-4 mr-2 ${
-                          loading ? "animate-spin" : ""
-                        }`}
-                      />
-                      Refresh
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={fetchProfiles}
+                    disabled={loading}
+                    className="h-10 border-2"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 mr-2 ${
+                        loading ? "animate-spin" : ""
+                      }`}
+                    />
+                    Refresh
+                  </Button>
                 </div>
                 <div className="overflow-x-auto border border-slate-200 rounded-lg">
                   <table className="min-w-full divide-y divide-slate-200 bg-white">
@@ -626,12 +481,6 @@ const AdminPanel = () => {
                           Premium
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Last In
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Visits
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                           Created
                         </th>
                         <th className="px-4 py-3" />
@@ -641,7 +490,7 @@ const AdminPanel = () => {
                       {loading ? (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={6}
                             className="px-4 py-10 text-center text-sm text-muted-foreground"
                           >
                             Loading users...
@@ -650,10 +499,10 @@ const AdminPanel = () => {
                       ) : filteredProfiles.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={8}
+                            colSpan={6}
                             className="px-4 py-10 text-center text-sm text-muted-foreground"
                           >
-                            No users found for "{searchQuery}"
+                            No users found for “{searchQuery}”
                           </td>
                         </tr>
                       ) : (
@@ -696,37 +545,20 @@ const AdminPanel = () => {
                                 />
                               </td>
                               <td className="px-4 py-3 text-sm text-muted-foreground">
-                                {profile.last_login ? formatDate(profile.last_login) : "—"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground">
-                                {profile.visit_count || 0}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground">
                                 {formatDate(profile.created_at)}
                               </td>
                               <td className="px-4 py-3 text-sm text-right">
-                                <div className="flex items-center gap-2 justify-end">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRoleToggle(profile)}
-                                    disabled={updatingId === roleKey}
-                                    className="border-2"
-                                  >
-                                    {profile.role === "admin"
-                                      ? "Remove admin"
-                                      : "Make admin"}
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openDeleteDialog(profile)}
-                                    disabled={updatingId === `${profile.id}-delete`}
-                                    className="border-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRoleToggle(profile)}
+                                  disabled={updatingId === roleKey}
+                                  className="border-2"
+                                >
+                                  {profile.role === "admin"
+                                    ? "Remove admin"
+                                    : "Make admin"}
+                                </Button>
                               </td>
                             </tr>
                           );
@@ -753,55 +585,52 @@ const AdminPanel = () => {
                     </p>
                   </div>
 
-                  <Card className="bg-gradient-to-br from-primary/5 to-blue-50 border-2 border-primary/20 p-5">
-                    <div className="space-y-4">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                        <div className="flex-1">
-                          <label htmlFor="dtr-file-input" className="block text-sm font-semibold text-slate-900 mb-2">
-                            Select Excel File
-                          </label>
-                          <Input
-                            id="dtr-file-input"
-                            type="file"
-                            accept=".xlsx,.xls"
-                            onChange={handleFileChange}
-                            className="border-2 bg-white"
-                          />
-                          {uploadFile && (
-                            <p className="text-sm text-slate-700 mt-2 font-medium">
-                              Selected: {uploadFile.name}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          onClick={handleUploadDTR}
-                          disabled={!uploadFile || uploading}
-                          className="sm:w-auto"
-                          size="lg"
-                        >
-                          {uploading ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-4 h-4 mr-2" />
-                              Upload & Process
-                            </>
-                          )}
-                        </Button>
-                      </div>
-
-                      {uploadStatus && (
-                        <Card className={`p-4 ${uploadStatus.startsWith("Error") ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
-                          <p className={`text-sm font-medium ${uploadStatus.startsWith("Error") ? "text-red-800" : "text-green-800"}`}>
-                            {uploadStatus}
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                      <div className="flex-1">
+                        <label htmlFor="dtr-file-input" className="block text-sm font-medium text-foreground mb-2">
+                          Select Excel File
+                        </label>
+                        <Input
+                          id="dtr-file-input"
+                          type="file"
+                          accept=".xlsx,.xls"
+                          onChange={handleFileChange}
+                          className="border-2"
+                        />
+                        {uploadFile && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Selected: {uploadFile.name}
                           </p>
-                        </Card>
-                      )}
+                        )}
+                      </div>
+                      <Button
+                        onClick={handleUploadDTR}
+                        disabled={!uploadFile || uploading}
+                        className="sm:w-auto"
+                      >
+                        {uploading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Upload & Process
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  </Card>
+
+                    {uploadStatus && (
+                      <Card className={`p-4 ${uploadStatus.startsWith("Error") ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+                        <p className={`text-sm font-medium ${uploadStatus.startsWith("Error") ? "text-red-800" : "text-green-800"}`}>
+                          {uploadStatus}
+                        </p>
+                      </Card>
+                    )}
+                  </div>
 
                   <div className="border-t pt-6">
                     <h3 className="text-sm font-semibold text-foreground mb-3">
@@ -816,107 +645,9 @@ const AdminPanel = () => {
                 </div>
               </Card>
             )}
-
-            {activeTab === "settings" && (
-              <Card className="border-2 border-slate-200">
-                <div className="p-6 space-y-6">
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground mb-2">
-                      Site Content Settings
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Edit the messages and timestamps displayed on the homepage and in the disclaimer. Changes will be visible to all users immediately.
-                    </p>
-                  </div>
-
-                  {settingsLoading ? (
-                    <div className="flex items-center justify-center py-10">
-                      <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {siteSettings.map((setting, index) => (
-                        <div key={setting.key} className="space-y-3">
-                          <div>
-                            <label className="block text-sm font-medium text-foreground mb-1">
-                              {setting.key === "homepage_subtitle" 
-                                ? "Homepage Subtitle" 
-                                : setting.key === "homepage_banner"
-                                ? "Homepage Info Banner"
-                                : "EOD Data Last Updated"}
-                            </label>
-                            <p className="text-xs text-muted-foreground mb-2">
-                              {setting.description}
-                            </p>
-                          </div>
-                          {setting.key === "data_last_updated" ? (
-                            <Input
-                              type="datetime-local"
-                              value={editingSettings[setting.key] || ""}
-                              onChange={(e) => setEditingSettings(prev => ({ ...prev, [setting.key]: e.target.value }))}
-                              className="border-2"
-                            />
-                          ) : (
-                            <Textarea
-                              value={editingSettings[setting.key] || ""}
-                              onChange={(e) => setEditingSettings(prev => ({ ...prev, [setting.key]: e.target.value }))}
-                              rows={setting.key === "homepage_banner" ? 4 : 2}
-                              className="border-2 font-sans resize-none"
-                            />
-                          )}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-muted-foreground">
-                              Last updated: {formatDate(setting.updated_at)}
-                            </span>
-                            <Button
-                              onClick={() => handleUpdateSetting(setting.key)}
-                              disabled={updatingId === setting.key || editingSettings[setting.key] === setting.value}
-                              size="sm"
-                            >
-                              {updatingId === setting.key ? (
-                                <>
-                                  <RefreshCw className="w-3 h-3 mr-2 animate-spin" />
-                                  Saving...
-                                </>
-                              ) : (
-                                "Save Changes"
-                              )}
-                            </Button>
-                          </div>
-                          {index !== siteSettings.length - 1 && (
-                            <div className="border-t pt-6" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
           </div>
         </div>
       </main>
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{userToDelete?.display_name || userToDelete?.email}</strong>? 
-              This action cannot be undone and will permanently remove the user and all their data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteUser}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-            >
-              Delete User
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

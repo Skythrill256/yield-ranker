@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { ScrollToTop } from "@/components/ScrollToTop";
-import { DisclaimerModal } from "@/components/DisclaimerModal";
 import Index from "./pages/Index";
 import ETFDetail from "./pages/ETFDetail";
 import OurFocus from "./pages/OurFocus";
@@ -29,74 +27,67 @@ import DoNotSell from "./pages/DoNotSell";
 
 const queryClient = new QueryClient();
 
-const App = () => {
-  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ScrollToTop />
-          <AuthProvider>
-            <DisclaimerModal onAccept={() => setDisclaimerAccepted(true)} />
-            {disclaimerAccepted && (
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/etf/:symbol" element={<ETFDetail />} />
-                <Route path="/our-focus" element={<OurFocus />} />
-                <Route path="/focus" element={<Focus />} />
-                <Route path="/covered-call-etfs" element={<CoveredCallETFs />} />
-                <Route path="/plans" element={<Plans />} />
-                <Route path="/resources" element={<Resources />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/do-not-sell" element={<DoNotSell />} />
-                <Route path="/login" element={<Auth />} />
-                <Route path="/auth" element={<Navigate to="/login" replace />} />
-                <Route
-                  path="/profile"
-                  element={
-                    <RequireAuth>
-                      <Profile />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <RequireAuth>
-                      <Dashboard />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <RequireAuth>
-                      <AdminPanel />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <RequireAuth>
-                      <Settings />
-                    </RequireAuth>
-                  }
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            )}
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-};
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <ScrollToTop />
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/etf/:symbol" element={<ETFDetail />} />
+            <Route path="/our-focus" element={<OurFocus />} />
+            <Route path="/focus" element={<Focus />} />
+            <Route path="/covered-call-etfs" element={<CoveredCallETFs />} />
+            <Route path="/plans" element={<Plans />} />
+            <Route path="/resources" element={<Resources />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/do-not-sell" element={<DoNotSell />} />
+            <Route path="/login" element={<Auth />} />
+            <Route path="/auth" element={<Navigate to="/login" replace />} />
+            <Route
+              path="/profile"
+              element={
+                <RequireAuth>
+                  <Profile />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <RequireAuth>
+                  <Dashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <RequireAuth>
+                  <AdminPanel />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <RequireAuth>
+                  <Settings />
+                </RequireAuth>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
