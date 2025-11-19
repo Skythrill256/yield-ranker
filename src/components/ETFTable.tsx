@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { ETF } from "@/types/etf";
-import { fetchDividendHistory, DividendHistoryPoint } from "@/services/etfData";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { ArrowUpDown, ChevronDown, ChevronUp, Info, Star, LineChart, X, Lock, Sliders } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeToPremiumModal } from "./UpgradeToPremiumModal";
 import { PremiumLockIcon } from "./PremiumLockIcon";
@@ -33,7 +30,6 @@ export const ETFTable = ({
   favorites = new Set(),
   onToggleFavorite,
 }: ETFTableProps) => {
-  const navigate = useNavigate();
   const { profile } = useAuth();
   const [selectedSymbol, setSelectedSymbol] = useState<string>(
     etfs[0]?.symbol || ""
@@ -42,8 +38,6 @@ export const ETFTable = ({
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isExpanded, setIsExpanded] = useState(false);
   const [comparisonETFs, setComparisonETFs] = useState<string[]>([]);
-  const [showDividendHistory, setShowDividendHistory] = useState(false);
-  const [selectedETFForDividend, setSelectedETFForDividend] = useState<ETF | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   const isPremium = !!profile;
@@ -89,28 +83,6 @@ export const ETFTable = ({
     } else if (comparisonETFs.length < 5) {
       setComparisonETFs([...comparisonETFs, symbol]);
     }
-  };
-
-  const [dividendHistory, setDividendHistory] = useState<DividendHistoryPoint[]>([]);
-  const [isDividendLoading, setIsDividendLoading] = useState(false);
-  const [dividendError, setDividendError] = useState<string | null>(null);
-
-  const handleDividendClick = (etf: ETF) => {
-    setSelectedETFForDividend(etf);
-    setShowDividendHistory(true);
-    setDividendHistory([]);
-    setDividendError(null);
-    setIsDividendLoading(true);
-    fetchDividendHistory(etf.symbol)
-      .then((history) => {
-        setDividendHistory(history);
-      })
-      .catch(() => {
-        setDividendError("Dividend history is not available right now.");
-      })
-      .finally(() => {
-        setIsDividendLoading(false);
-      });
   };
 
   const handleSort = (field: SortField) => {
@@ -300,9 +272,8 @@ export const ETFTable = ({
                       }`}
                     />
                   </td>
-                  <td 
-                    onClick={() => navigate(`/etf/${etf.symbol}`)}
-                    className="py-1 px-1.5 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary group-hover:text-accent transition-colors text-xs cursor-pointer"
+                  <td
+                    className="py-1 px-1.5 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-foreground text-xs"
                   >
                     {etf.symbol}
                   </td>
@@ -329,12 +300,7 @@ export const ETFTable = ({
                     {etf.priceChange >= 0 ? '+' : ''}{etf.priceChange.toFixed(2)}
                   </td>
                   <td 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDividendClick(etf);
-                    }}
-                    className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-primary font-medium cursor-pointer hover:text-accent transition-colors hover:bg-slate-50 underline decoration-dotted"
-                    title="Click to view dividend history"
+                    className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-foreground font-medium"
                   >
                     {etf.dividend.toFixed(4)}
                   </td>
@@ -418,143 +384,6 @@ export const ETFTable = ({
               </>
             )}
           </Button>
-        </div>
-      )}
-
-      {showDividendHistory && selectedETFForDividend && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"
-          onClick={() => setShowDividendHistory(false)}
-        >
-          <Card
-            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-foreground">
-                    {selectedETFForDividend.symbol} Dividend History
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {selectedETFForDividend.name}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowDividendHistory(false)}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="mb-6 min-h-[320px] flex items-center justify-center">
-                {isDividendLoading ? (
-                  <p className="text-sm text-muted-foreground">
-                    Loading dividend history...
-                  </p>
-                ) : dividendError ? (
-                  <p className="text-sm text-red-600">{dividendError}</p>
-                ) : dividendHistory.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No dividend history is available for this symbol.
-                  </p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={dividendHistory}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#f1f5f9"
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="date"
-                        stroke="#94a3b8"
-                        fontSize={11}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="#94a3b8"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `$${value.toFixed(4)}`}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.98)",
-                          border: "none",
-                          borderRadius: "12px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                          padding: "12px 16px",
-                        }}
-                        formatter={(value: number) => [
-                          `$${value.toFixed(4)}`,
-                          "Dividend",
-                        ]}
-                        labelStyle={{
-                          color: "#64748b",
-                          fontSize: "12px",
-                          marginBottom: "4px",
-                        }}
-                      />
-                      <Bar
-                        dataKey="dividend"
-                        fill="#3b82f6"
-                        radius={[6, 6, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-
-              <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
-                <div className="overflow-x-auto max-h-80">
-                  <table className="w-full">
-                    <thead className="sticky top-0 bg-slate-100 border-b-2 border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-foreground">
-                          Payment Date
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-foreground">
-                          Dividend Per Share
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dividendHistory.map((item, index) => (
-                        <tr
-                          key={index}
-                          className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="px-4 py-3 text-sm text-muted-foreground">
-                            {item.date}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium text-foreground text-right tabular-nums">
-                            ${item.dividend.toFixed(4)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="mt-4 flex justify-end">
-                <Button
-                  onClick={() => setShowDividendHistory(false)}
-                  variant="outline"
-                  className="border-2"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </Card>
         </div>
       )}
 

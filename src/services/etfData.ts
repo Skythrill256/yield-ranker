@@ -25,7 +25,12 @@ type DatabaseETF = {
   total_return_3m: number | null;
   total_return_1m: number | null;
   total_return_1w: number | null;
-  spreadsheet_updated_at: string | null;
+  price_return_3y: number | null;
+  price_return_12m: number | null;
+  price_return_6m: number | null;
+  price_return_3m: number | null;
+  price_return_1m: number | null;
+  price_return_1w: number | null;
 };
 
 function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
@@ -60,12 +65,12 @@ function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
     totalReturn3Mo: dbEtf.total_return_3m ?? undefined,
     totalReturn1Mo: dbEtf.total_return_1m ?? undefined,
     totalReturn1Wk: dbEtf.total_return_1w ?? undefined,
-    priceReturn3Yr: undefined,
-    priceReturn12Mo: undefined,
-    priceReturn6Mo: undefined,
-    priceReturn3Mo: undefined,
-    priceReturn1Mo: undefined,
-    priceReturn1Wk: undefined,
+    priceReturn3Yr: dbEtf.price_return_3y ?? undefined,
+    priceReturn12Mo: dbEtf.price_return_12m ?? undefined,
+    priceReturn6Mo: dbEtf.price_return_6m ?? undefined,
+    priceReturn3Mo: dbEtf.price_return_3m ?? undefined,
+    priceReturn1Mo: dbEtf.price_return_1m ?? undefined,
+    priceReturn1Wk: dbEtf.price_return_1w ?? undefined,
   };
 }
 

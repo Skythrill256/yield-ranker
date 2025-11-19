@@ -6,7 +6,6 @@ import {
   fetchQuickUpdates,
   fetchComparisonData,
   generateChartData,
-  fetchDividendHistory,
   ChartType,
   ComparisonTimeframe,
 } from "@/services/etfData";
@@ -84,9 +83,6 @@ export default function Dashboard() {
   const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
   const [accountPanelExpanded, setAccountPanelExpanded] = useState(false);
   const [showRankingPanel, setShowRankingPanel] = useState(false);
-  const [showDividendHistory, setShowDividendHistory] = useState(false);
-  const [selectedETFForDividend, setSelectedETFForDividend] =
-    useState<ETF | null>(null);
   const [infoBanner, setInfoBanner] = useState(
     "The highest yielding dividend etf is GraniteShares YieldBOOST TSLA ETF (TSYY) with a dividend yield of 166.82%, followed by YieldMax SMCI Option Income Strategy ETF (SMCY) and YieldMax™ COIN Option Income Strategy ETF (CONY). Last updated Oct 31, 2025."
   );
@@ -352,47 +348,32 @@ export default function Dashboard() {
     setSortDirection("asc");
   }, [showTotalReturns, weights]);
 
+  useEffect(() => {
+    if (showRankingPanel) {
+      setYieldWeight(weights.yield);
+      setStdDevWeight(weights.stdDev);
+      setTotalReturnWeight(weights.totalReturn);
+      setTotalReturnTimeframe(weights.timeframe || "12mo");
+    }
+  }, [showRankingPanel, weights]);
+
   const handleYieldChange = (value: number[]) => {
     const newYield = value[0];
     setYieldWeight(newYield);
-    setWeights({
-      yield: newYield,
-      stdDev: stdDevWeight,
-      totalReturn: totalReturnWeight,
-      timeframe: totalReturnTimeframe,
-    });
   };
 
   const handleStdDevChange = (value: number[]) => {
     const newStdDev = value[0];
     setStdDevWeight(newStdDev);
-    setWeights({
-      yield: yieldWeight,
-      stdDev: newStdDev,
-      totalReturn: totalReturnWeight,
-      timeframe: totalReturnTimeframe,
-    });
   };
 
   const handleTotalReturnChange = (value: number[]) => {
     const newTotalReturn = value[0];
     setTotalReturnWeight(newTotalReturn);
-    setWeights({
-      yield: yieldWeight,
-      stdDev: stdDevWeight,
-      totalReturn: newTotalReturn,
-      timeframe: totalReturnTimeframe,
-    });
   };
 
   const handleTimeframeChange = (timeframe: "3mo" | "6mo" | "12mo") => {
     setTotalReturnTimeframe(timeframe);
-    setWeights({
-      yield: yieldWeight,
-      stdDev: stdDevWeight,
-      totalReturn: totalReturnWeight,
-      timeframe: timeframe,
-    });
   };
 
   const resetToDefaults = () => {
@@ -400,35 +381,21 @@ export default function Dashboard() {
     setStdDevWeight(30);
     setTotalReturnWeight(40);
     setTotalReturnTimeframe("12mo");
-    setWeights({ yield: 30, stdDev: 30, totalReturn: 40, timeframe: "12mo" });
   };
 
-  const [dividendHistory, setDividendHistory] = useState<
-    Array<{ date: string; dividend: number }>
-  >([]);
-  const [isDividendLoading, setIsDividendLoading] = useState(false);
-  const [dividendError, setDividendError] = useState<string | null>(null);
-
-  const handleDividendClick = (etf: ETF) => {
-    setSelectedETFForDividend(etf);
-    setShowDividendHistory(true);
-    setDividendHistory([]);
-    setDividendError(null);
-    setIsDividendLoading(true);
-    fetchDividendHistory(etf.symbol)
-      .then((history) => {
-        setDividendHistory(history);
-      })
-      .catch(() => {
-        setDividendError("Dividend history is not available right now.");
-      })
-      .finally(() => {
-        setIsDividendLoading(false);
-      });
-  };
-
-  const generateDividendHistory = () => {
-    return dividendHistory;
+  const applyRankings = () => {
+    if (!isValid) return;
+    if (!isPremium) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setWeights({
+      yield: yieldWeight,
+      stdDev: stdDevWeight,
+      totalReturn: totalReturnWeight,
+      timeframe: totalReturnTimeframe,
+    });
+    setShowRankingPanel(false);
   };
 
   const rankedETFs = rankETFs(etfData, weights);
@@ -2133,12 +2100,7 @@ export default function Dashboard() {
                                     {etf.priceChange.toFixed(2)}
                                   </td>
                                   <td
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDividendClick(etf);
-                                    }}
-                                    className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-primary font-medium cursor-pointer hover:text-accent transition-colors hover:bg-slate-50 underline decoration-dotted"
-                                    title="Click to view dividend history"
+                                    className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-foreground font-medium"
                                   >
                                     {etf.dividend.toFixed(4)}
                                   </td>
@@ -2291,7 +2253,7 @@ export default function Dashboard() {
                           <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
                             <div className="flex items-center justify-between">
                               <Label className="text-sm font-medium text-foreground">
-                                Dividend Volatility Index
+                                Dividend Volatility Index (DVI)
                               </Label>
                               <span className="text-2xl font-bold tabular-nums text-primary">
                                 {stdDevWeight}%
@@ -2393,13 +2355,7 @@ export default function Dashboard() {
                             Reset to Defaults
                           </Button>
                           <Button
-                            onClick={() => {
-                              if (!isPremium) {
-                                setShowUpgradeModal(true);
-                              } else {
-                                setShowRankingPanel(false);
-                              }
-                            }}
+                            onClick={applyRankings}
                             className="flex-1"
                             disabled={!isValid}
                           >
@@ -2412,164 +2368,6 @@ export default function Dashboard() {
                 )}
 
                 {/* Only use UpgradeToPremiumModal for upgrade prompts */}
-
-                {showDividendHistory && selectedETFForDividend && (
-                  <div
-                    className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4"
-                    onClick={() => setShowDividendHistory(false)}
-                  >
-                    <Card
-                      className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-2xl font-bold text-foreground">
-                              {selectedETFForDividend.symbol} Dividend History
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {selectedETFForDividend.name}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setShowDividendHistory(false)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-
-                        {isDividendLoading ? (
-                          <div className="flex items-center justify-center py-12">
-                            <div className="text-muted-foreground">
-                              Loading dividend history...
-                            </div>
-                          </div>
-                        ) : dividendError || dividendHistory.length === 0 ? (
-                          <div className="flex items-center justify-center py-16">
-                            <div className="w-full max-w-md">
-                              <Card className="p-8 border-2 border-slate-200 bg-slate-50">
-                                <div className="text-center space-y-3">
-                                  <h4 className="text-lg font-semibold text-foreground">
-                                    No Dividend Available
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground">
-                                    {dividendError
-                                      ? "Unable to fetch dividend history at this time."
-                                      : "No dividend history is available for this ETF."}
-                                  </p>
-                                </div>
-                              </Card>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="mb-6">
-                              <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={generateDividendHistory()}>
-                                  <CartesianGrid
-                                    strokeDasharray="3 3"
-                                    stroke="#f1f5f9"
-                                    vertical={false}
-                                  />
-                                  <XAxis
-                                    dataKey="date"
-                                    stroke="#94a3b8"
-                                    fontSize={11}
-                                    angle={-45}
-                                    textAnchor="end"
-                                    height={80}
-                                    tickLine={false}
-                                    axisLine={false}
-                                  />
-                                  <YAxis
-                                    stroke="#94a3b8"
-                                    fontSize={12}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickFormatter={(value) =>
-                                      `$${value.toFixed(4)}`
-                                    }
-                                  />
-                                  <Tooltip
-                                    contentStyle={{
-                                      backgroundColor:
-                                        "rgba(255, 255, 255, 0.98)",
-                                      border: "none",
-                                      borderRadius: "12px",
-                                      boxShadow:
-                                        "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                                      padding: "12px 16px",
-                                    }}
-                                    formatter={(value: number) => [
-                                      `$${value.toFixed(4)}`,
-                                      "Dividend",
-                                    ]}
-                                    labelStyle={{
-                                      color: "#64748b",
-                                      fontSize: "12px",
-                                      marginBottom: "4px",
-                                    }}
-                                  />
-                                  <Bar
-                                    dataKey="dividend"
-                                    fill="#3b82f6"
-                                    radius={[6, 6, 0, 0]}
-                                  />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-
-                            <div className="border-2 border-slate-200 rounded-lg overflow-hidden">
-                              <div className="overflow-x-auto max-h-80">
-                                <table className="w-full">
-                                  <thead className="sticky top-0 bg-slate-100 border-b-2 border-slate-200">
-                                    <tr>
-                                      <th className="px-4 py-3 text-left text-xs font-bold text-foreground">
-                                        Payment Date
-                                      </th>
-                                      <th className="px-4 py-3 text-right text-xs font-bold text-foreground">
-                                        Dividend Per Share
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {generateDividendHistory().map(
-                                      (item, index) => (
-                                        <tr
-                                          key={index}
-                                          className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
-                                        >
-                                          <td className="px-4 py-3 text-sm text-muted-foreground">
-                                            {item.date}
-                                          </td>
-                                          <td className="px-4 py-3 text-sm font-medium text-foreground text-right tabular-nums">
-                                            ${item.dividend.toFixed(4)}
-                                          </td>
-                                        </tr>
-                                      )
-                                    )}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </>
-                        )}
-
-                        <div className="mt-4 flex justify-end">
-                          <Button
-                            onClick={() => setShowDividendHistory(false)}
-                            variant="outline"
-                            className="border-2"
-                          >
-                            Close
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
-                )}
               </>
             )}
           </div>
