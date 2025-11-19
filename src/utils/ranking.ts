@@ -10,14 +10,18 @@ export const calculateWeightedRank = (
   
   const yields = allETFs.map(e => e.forwardYield).filter(v => !isNaN(v));
   const stdDevs = allETFs.map(e => e.standardDeviation).filter(v => !isNaN(v));
-  const returns = allETFs.map(e => e[returnField] || 0).filter(v => !isNaN(v));
+  const returns = allETFs
+    .map(e => e[returnField])
+    .filter((v): v is number => typeof v === "number" && !isNaN(v));
 
   const minYield = Math.min(...yields);
   const maxYield = Math.max(...yields);
   const minStdDev = Math.min(...stdDevs);
   const maxStdDev = Math.max(...stdDevs);
-  const minReturn = Math.min(...returns);
-  const maxReturn = Math.max(...returns);
+
+  const hasReturns = returns.length > 0;
+  const minReturn = hasReturns ? Math.min(...returns) : 0;
+  const maxReturn = hasReturns ? Math.max(...returns) : 0;
 
   const normalizeYield = (value: number) => {
     if (maxYield === minYield) return 0.5;
@@ -36,7 +40,9 @@ export const calculateWeightedRank = (
 
   const yieldScore = normalizeYield(etf.forwardYield) * (weights.yield / 100);
   const stdDevScore = normalizeStdDev(etf.standardDeviation) * (weights.stdDev / 100);
-  const returnScore = normalizeReturn(etf[returnField] || 0) * (weights.totalReturn / 100);
+  const rawReturn = etf[returnField];
+  const hasReturn = typeof rawReturn === "number" && !isNaN(rawReturn);
+  const returnScore = (hasReturn ? normalizeReturn(rawReturn) : 0) * (weights.totalReturn / 100);
 
   return yieldScore + stdDevScore + returnScore;
 };

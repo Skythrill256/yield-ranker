@@ -142,7 +142,7 @@ const Index = () => {
 
   const rankedETFs = rankETFs(etfData, weights);
 
-  const sortedETFs = isGuest 
+  const sortedETFs = isGuest
     ? [...rankedETFs].sort((a, b) => a.symbol.localeCompare(b.symbol))
     : rankedETFs;
 
