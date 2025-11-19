@@ -232,7 +232,7 @@ export default function Settings() {
                   className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5" />
+                    <Shield className="w-5 h-5" />
                     Admin Panel
                   </div>
                   {adminPanelExpanded ? (
@@ -244,18 +244,25 @@ export default function Settings() {
                 {adminPanelExpanded && (
                   <div className="pl-4 mt-1 space-y-1">
                     <button
-                      onClick={() => navigate("/admin?tab=users")}
+                      onClick={() => navigate("/admin/users")}
                       className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
                     >
                       <Users className="w-4 h-4" />
                       Users
                     </button>
                     <button
-                      onClick={() => navigate("/admin?tab=upload")}
+                      onClick={() => navigate("/admin/data")}
                       className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
                     >
                       <Upload className="w-4 h-4" />
                       Upload Data
+                    </button>
+                    <button
+                      onClick={() => navigate("/admin/settings")}
+                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
+                    >
+                      <SettingsIcon className="w-4 h-4" />
+                      Site Settings
                     </button>
                   </div>
                 )}

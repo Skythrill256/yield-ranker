@@ -159,15 +159,17 @@ const Index = () => {
               Maximizing Investment Value Through Dividend Income and Price Change with Advanced Screening and Custom Rankings
             </p>
             
-            <div className="pt-2 md:pt-4">
-              <Button
-                onClick={() => navigate("/login")}
-                size="lg"
-                className="bg-white hover:bg-gray-100 text-slate-900 px-6 py-5 md:px-8 md:py-6 text-base md:text-lg font-semibold shadow-2xl transition-all hover:scale-105"
-              >
-                Get Started Free
-              </Button>
-            </div>
+            {!user && (
+              <div className="pt-2 md:pt-4">
+                <Button
+                  onClick={() => navigate("/login")}
+                  size="lg"
+                  className="bg-white hover:bg-gray-100 text-slate-900 px-6 py-5 md:px-8 md:py-6 text-base md:text-lg font-semibold shadow-2xl transition-all hover:scale-105"
+                >
+                  Get Started Free
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 

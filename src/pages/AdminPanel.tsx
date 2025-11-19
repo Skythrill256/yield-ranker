@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
+import { getSiteSettings, updateSiteSetting, SiteSetting } from "@/services/admin";
 import {
   BarChart3,
   ChevronLeft,
@@ -22,6 +23,8 @@ import {
   ShieldCheck,
   Upload,
   Users,
+  Home,
+  Star,
 } from "lucide-react";
 
 const formatDate = (value: string) =>
@@ -36,6 +39,7 @@ const formatDate = (value: string) =>
 const AdminPanel = () => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -43,10 +47,15 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "etf-data">("users");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsValues, setSettingsValues] = useState<Record<string, string>>({});
+  
+  const activeTab = location.pathname === "/admin/data" ? "etf-data" : 
+                    location.pathname === "/admin/settings" ? "site-settings" : "users";
 
   const userMetadata =
     (user?.user_metadata as {
@@ -65,12 +74,6 @@ const AdminPanel = () => {
   const roleFromSession =
     profile?.role ?? userMetadata.role ?? appMetadata.role ?? "user";
   const isAdmin = roleFromSession === "admin";
-
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [isAdmin, navigate]);
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -91,10 +94,64 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
+    if (!isAdmin) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAdmin, navigate]);
+  
+  useEffect(() => {
+    if (isAdmin && location.pathname === "/admin") {
+      navigate("/admin/users", { replace: true });
+    }
+  }, [isAdmin, location.pathname, navigate]);
+
+  useEffect(() => {
     if (isAdmin) {
       fetchProfiles();
+      fetchSiteSettings();
     }
   }, [isAdmin]);
+  
+  const fetchSiteSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const data = await getSiteSettings();
+      setSiteSettings(data);
+      const values: Record<string, string> = {};
+      data.forEach((setting) => {
+        values[setting.key] = setting.value;
+      });
+      setSettingsValues(values);
+    } catch (error) {
+      console.error("Failed to load site settings:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to load settings",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+  
+  const handleSaveSettings = async () => {
+    try {
+      for (const [key, value] of Object.entries(settingsValues)) {
+        await updateSiteSetting(key, value);
+      }
+      toast({
+        title: "Settings saved",
+        description: "Site settings have been updated successfully",
+      });
+      await fetchSiteSettings();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to save settings",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
 
   const filteredProfiles = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
@@ -284,6 +341,18 @@ const AdminPanel = () => {
           }`}
         >
           <button
+            onClick={() => navigate("/")}
+            className={`w-full flex items-center ${
+              sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            title={sidebarCollapsed ? "Home" : ""}
+          >
+            <Home className="w-5 h-5" />
+            {!sidebarCollapsed && "Home"}
+          </button>
+          <button
             onClick={() => navigate("/dashboard")}
             className={`w-full flex items-center ${
               sidebarCollapsed
@@ -296,37 +365,73 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "Dashboard"}
           </button>
           <button
-            onClick={() => setActiveTab("users")}
+            onClick={() => navigate("/favorites")}
             className={`w-full flex items-center ${
               sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium ${
-              activeTab === "users"
-                ? "bg-primary text-white"
-                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            } transition-colors`}
-            title={sidebarCollapsed ? "Users" : ""}
+            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            title={sidebarCollapsed ? "Favorites" : ""}
           >
-            <Users className="w-5 h-5" />
-            {!sidebarCollapsed && "User Administration"}
+            <Star className="w-5 h-5" />
+            {!sidebarCollapsed && "Favorites"}
           </button>
-          <button
-            onClick={() => setActiveTab("etf-data")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium ${
-              activeTab === "etf-data"
-                ? "bg-primary text-white"
-                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            } transition-colors`}
-            title={sidebarCollapsed ? "ETF Data" : ""}
-          >
-            <Database className="w-5 h-5" />
-            {!sidebarCollapsed && "ETF Data Management"}
-          </button>
+          <div>
+            <button
+              className={`w-full flex items-center justify-between ${
+                sidebarCollapsed
+                  ? "justify-center px-0 py-2.5"
+                  : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium ${
+                location.pathname.startsWith("/admin")
+                  ? "bg-primary text-white"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+              } transition-colors`}
+              title={sidebarCollapsed ? "Admin Panel" : ""}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5" />
+                {!sidebarCollapsed && "Admin Panel"}
+              </div>
+            </button>
+            {!sidebarCollapsed && (
+              <div className="pl-4 mt-1 space-y-1">
+                <button
+                  onClick={() => navigate("/admin/users")}
+                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                    activeTab === "users"
+                      ? "bg-primary/10 text-primary"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+                  } transition-colors`}
+                >
+                  <Users className="w-4 h-4" />
+                  Users
+                </button>
+                <button
+                  onClick={() => navigate("/admin/data")}
+                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                    activeTab === "etf-data"
+                      ? "bg-primary/10 text-primary"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+                  } transition-colors`}
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Data
+                </button>
+                <button
+                  onClick={() => navigate("/admin/settings")}
+                  className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
+                    activeTab === "site-settings"
+                      ? "bg-primary/10 text-primary"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+                  } transition-colors`}
+                >
+                  <Settings className="w-4 h-4" />
+                  Site Settings
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => navigate("/settings")}
             className={`w-full flex items-center ${
@@ -481,6 +586,9 @@ const AdminPanel = () => {
                           Premium
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                          Last In
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                           Created
                         </th>
                         <th className="px-4 py-3" />
@@ -490,7 +598,7 @@ const AdminPanel = () => {
                       {loading ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="px-4 py-10 text-center text-sm text-muted-foreground"
                           >
                             Loading users...
@@ -499,10 +607,10 @@ const AdminPanel = () => {
                       ) : filteredProfiles.length === 0 ? (
                         <tr>
                           <td
-                            colSpan={6}
+                            colSpan={7}
                             className="px-4 py-10 text-center text-sm text-muted-foreground"
                           >
-                            No users found for “{searchQuery}”
+                            No users found for "{searchQuery}"
                           </td>
                         </tr>
                       ) : (
@@ -543,6 +651,9 @@ const AdminPanel = () => {
                                   }
                                   disabled={updatingId === premiumKey}
                                 />
+                              </td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">
+                                {profile.last_login ? formatDate(profile.last_login) : "—"}
                               </td>
                               <td className="px-4 py-3 text-sm text-muted-foreground">
                                 {formatDate(profile.created_at)}
@@ -642,6 +753,74 @@ const AdminPanel = () => {
                       <p>Row 2+: Data rows (one ETF per row)</p>
                     </div>
                   </div>
+                </div>
+              </Card>
+            )}
+            
+            {activeTab === "site-settings" && (
+              <Card className="border-2 border-slate-200">
+                <div className="p-6 space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground mb-2">
+                      Site Settings
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Manage homepage content and site-wide settings
+                    </p>
+                  </div>
+
+                  {settingsLoading ? (
+                    <div className="text-center py-8">
+                      <RefreshCw className="w-8 h-8 animate-spin mx-auto text-primary" />
+                      <p className="text-sm text-muted-foreground mt-2">Loading settings...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {siteSettings.map((setting) => (
+                        <div key={setting.key} className="space-y-2">
+                          <label className="block text-sm font-medium text-foreground">
+                            {setting.description || setting.key}
+                          </label>
+                          {setting.key === "data_last_updated" ? (
+                            <Input
+                              type="datetime-local"
+                              value={settingsValues[setting.key] || ""}
+                              onChange={(e) =>
+                                setSettingsValues((prev) => ({
+                                  ...prev,
+                                  [setting.key]: e.target.value,
+                                }))
+                              }
+                              className="border-2"
+                            />
+                          ) : (
+                            <Input
+                              value={settingsValues[setting.key] || ""}
+                              onChange={(e) =>
+                                setSettingsValues((prev) => ({
+                                  ...prev,
+                                  [setting.key]: e.target.value,
+                                }))
+                              }
+                              placeholder={`Enter ${setting.description || setting.key}`}
+                              className="border-2"
+                            />
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Last updated: {formatDate(setting.updated_at)}
+                            {setting.updated_by && ` by ${setting.updated_by}`}
+                          </p>
+                        </div>
+                      ))}
+
+                      <div className="flex justify-end pt-4 border-t">
+                        <Button onClick={handleSaveSettings} className="gap-2">
+                          <Upload className="w-4 h-4" />
+                          Save Settings
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Card>
             )}
