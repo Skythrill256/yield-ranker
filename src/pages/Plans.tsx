@@ -41,7 +41,7 @@ export default function Plans() {
         <div className="container max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
-              Our pricing is simple with no hidden fees
+              Choose your plan
             </h1>
             <p className="text-lg text-slate-600">
               All signed-up users automatically receive Premium access for FREE
