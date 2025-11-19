@@ -80,7 +80,7 @@ export default function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<ComparisonTimeframe>("1D");
   const [initialETFCount, setInitialETFCount] = useState(5);
-  const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
+  const [adminPanelExpanded, setAdminPanelExpanded] = useState(isAdmin);
   const [accountPanelExpanded, setAccountPanelExpanded] = useState(false);
   const [showRankingPanel, setShowRankingPanel] = useState(false);
   const [infoBanner, setInfoBanner] = useState(
@@ -167,6 +167,12 @@ export default function Dashboard() {
       setAdminLoading(false);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (adminSection === "users" && isAdmin) {
+      fetchAdminProfiles();
+    }
+  }, [adminSection, isAdmin, fetchAdminProfiles]);
 
 
   const filteredAdminProfiles = useMemo(() => {
@@ -355,20 +361,44 @@ export default function Dashboard() {
   const handleYieldChange = (value: number[]) => {
     const newYield = value[0];
     setYieldWeight(newYield);
+    setWeights({
+      yield: newYield,
+      stdDev: stdDevWeight,
+      totalReturn: totalReturnWeight,
+      timeframe: totalReturnTimeframe,
+    });
   };
 
   const handleStdDevChange = (value: number[]) => {
     const newStdDev = value[0];
     setStdDevWeight(newStdDev);
+    setWeights({
+      yield: yieldWeight,
+      stdDev: newStdDev,
+      totalReturn: totalReturnWeight,
+      timeframe: totalReturnTimeframe,
+    });
   };
 
   const handleTotalReturnChange = (value: number[]) => {
     const newTotalReturn = value[0];
     setTotalReturnWeight(newTotalReturn);
+    setWeights({
+      yield: yieldWeight,
+      stdDev: stdDevWeight,
+      totalReturn: newTotalReturn,
+      timeframe: totalReturnTimeframe,
+    });
   };
 
   const handleTimeframeChange = (timeframe: "3mo" | "6mo" | "12mo") => {
     setTotalReturnTimeframe(timeframe);
+    setWeights({
+      yield: yieldWeight,
+      stdDev: stdDevWeight,
+      totalReturn: totalReturnWeight,
+      timeframe,
+    });
   };
 
   const resetToDefaults = () => {
@@ -376,6 +406,7 @@ export default function Dashboard() {
     setStdDevWeight(30);
     setTotalReturnWeight(40);
     setTotalReturnTimeframe("12mo");
+    setWeights({ yield: 30, stdDev: 30, totalReturn: 40, timeframe: "12mo" });
   };
 
   const applyRankings = () => {
@@ -384,12 +415,6 @@ export default function Dashboard() {
       setShowUpgradeModal(true);
       return;
     }
-    setWeights({
-      yield: yieldWeight,
-      stdDev: stdDevWeight,
-      totalReturn: totalReturnWeight,
-      timeframe: totalReturnTimeframe,
-    });
     setShowRankingPanel(false);
   };
 
@@ -747,7 +772,9 @@ export default function Dashboard() {
                 <div>
                   <button
                     onClick={() => setAdminPanelExpanded(!adminPanelExpanded)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      adminSection ? 'bg-primary text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-foreground'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <Users className="w-5 h-5" />
@@ -762,15 +789,25 @@ export default function Dashboard() {
                   {adminPanelExpanded && (
                     <div className="pl-4 mt-1 space-y-1">
                       <button
-                        onClick={() => navigate("/admin?tab=users")}
-                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
+                        onClick={() => {
+                          setAdminSection("users");
+                          setShowFavoritesOnly(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          adminSection === "users" ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100 hover:text-foreground'
+                        }`}
                       >
                         <Users className="w-4 h-4" />
                         User Administration
                       </button>
                       <button
-                        onClick={() => navigate("/admin?tab=etf-data")}
-                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
+                        onClick={() => {
+                          setAdminSection("upload");
+                          setShowFavoritesOnly(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          adminSection === "upload" ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100 hover:text-foreground'
+                        }`}
                       >
                         <Upload className="w-4 h-4" />
                         ETF Data Management
@@ -780,8 +817,13 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <button
-                  onClick={() => navigate("/admin")}
-                  className="w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
+                  onClick={() => {
+                    setAdminPanelExpanded(true);
+                    setAdminSection("users");
+                  }}
+                  className={`w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    adminSection ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100 hover:text-foreground'
+                  }`}
                   title="Admin Panel"
                 >
                   <Users className="w-5 h-5" />
@@ -1477,7 +1519,7 @@ export default function Dashboard() {
                 <Menu className="h-6 w-6" />
               </Button>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                Dashboard
+                {adminSection ? "Admin Panel" : "Dashboard"}
               </h1>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
@@ -1503,7 +1545,7 @@ export default function Dashboard() {
 
         <div className="flex-1 overflow-hidden">
           <div className="h-full p-2 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3">
-                {infoBanner && (
+                {!adminSection && infoBanner && (
                   <div className="w-full max-w-[98%] mx-auto">
                     <Card className="p-3 border-2 border-primary/20 bg-primary/5">
                       <p className="text-lg text-foreground leading-relaxed">
@@ -1514,6 +1556,152 @@ export default function Dashboard() {
                 )}
                 <div className="flex-1 min-h-0 flex flex-col">
                   <div className="w-full max-w-[98%] mx-auto flex flex-col min-h-0 flex-1">
+                    {adminSection ? (
+                      <Card className="p-4 sm:p-6 border-2 border-slate-200">
+                        {adminSection === "users" && (
+                          <div className="space-y-6">
+                            <div>
+                              <h2 className="text-2xl font-bold text-foreground mb-2">User Administration</h2>
+                              <p className="text-muted-foreground">Manage user accounts and permissions</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <Card className="p-4 border-2">
+                                <div className="flex items-center gap-3">
+                                  <Users className="h-8 w-8 text-primary" />
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Total Users</p>
+                                    <p className="text-2xl font-bold">{totalUsers}</p>
+                                  </div>
+                                </div>
+                              </Card>
+                              <Card className="p-4 border-2">
+                                <div className="flex items-center gap-3">
+                                  <ShieldCheck className="h-8 w-8 text-orange-500" />
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Admins</p>
+                                    <p className="text-2xl font-bold">{adminCount}</p>
+                                  </div>
+                                </div>
+                              </Card>
+                              <Card className="p-4 border-2">
+                                <div className="flex items-center gap-3">
+                                  <Star className="h-8 w-8 text-yellow-500" />
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Premium</p>
+                                    <p className="text-2xl font-bold">{premiumCount}</p>
+                                  </div>
+                                </div>
+                              </Card>
+                              <Card className="p-4 border-2">
+                                <div className="flex items-center gap-3">
+                                  <Users className="h-8 w-8 text-slate-400" />
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Guests</p>
+                                    <p className="text-2xl font-bold">{guestCount}</p>
+                                  </div>
+                                </div>
+                              </Card>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="relative flex-1 max-w-md">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="Search users..."
+                                  value={adminSearchQuery}
+                                  onChange={(e) => setAdminSearchQuery(e.target.value)}
+                                  className="pl-10 border-2"
+                                />
+                              </div>
+                              <Button onClick={fetchAdminProfiles} disabled={adminLoading}>
+                                <RefreshCw className={`h-4 w-4 mr-2 ${adminLoading ? 'animate-spin' : ''}`} />
+                                Refresh
+                              </Button>
+                            </div>
+
+                            {adminLoading ? (
+                              <div className="flex items-center justify-center py-12">
+                                <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+                              </div>
+                            ) : (
+                              <div className="border-2 rounded-lg overflow-hidden">
+                                <table className="w-full">
+                                  <thead className="bg-slate-50 border-b-2">
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-sm font-semibold">User</th>
+                                      <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
+                                      <th className="px-4 py-3 text-center text-sm font-semibold">Role</th>
+                                      <th className="px-4 py-3 text-center text-sm font-semibold">Premium</th>
+                                      <th className="px-4 py-3 text-center text-sm font-semibold">Created</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {filteredAdminProfiles.map((profile) => (
+                                      <tr key={profile.id} className="border-b hover:bg-slate-50">
+                                        <td className="px-4 py-3">
+                                          <div className="font-medium">{profile.display_name || 'N/A'}</div>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-muted-foreground">{profile.email}</td>
+                                        <td className="px-4 py-3 text-center">
+                                          <Button
+                                            variant={profile.role === 'admin' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => handleAdminRoleToggle(profile)}
+                                            disabled={adminUpdatingId === `${profile.id}-role`}
+                                            className="min-w-[80px]"
+                                          >
+                                            {profile.role === 'admin' ? 'Admin' : 'User'}
+                                          </Button>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                          <Switch
+                                            checked={profile.is_premium}
+                                            onCheckedChange={(checked) => handleAdminPremiumToggle(profile, checked)}
+                                            disabled={adminUpdatingId === `${profile.id}-premium`}
+                                          />
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-sm text-muted-foreground">
+                                          {new Date(profile.created_at).toLocaleDateString()}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {adminSection === "upload" && (
+                          <div className="space-y-6">
+                            <div>
+                              <h2 className="text-2xl font-bold text-foreground mb-2">ETF Data Management</h2>
+                              <p className="text-muted-foreground">Upload Excel files to update ETF information</p>
+                            </div>
+
+                            <Card className="p-6 border-2 bg-slate-50">
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="dtr-file-input" className="text-base font-semibold">Upload DTR Excel File</Label>
+                                  <p className="text-sm text-muted-foreground mt-1">Select an Excel file (.xlsx) containing ETF data</p>
+                                </div>
+                                <Input
+                                  id="dtr-file-input"
+                                  type="file"
+                                  accept=".xlsx"
+                                  className="border-2"
+                                />
+                                <Button className="w-full sm:w-auto">
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Upload and Process
+                                </Button>
+                              </div>
+                            </Card>
+                          </div>
+                        )}
+                      </Card>
+                    ) : (
                     <Card className="p-2 sm:p-3 border-2 border-slate-200 flex-1 min-h-0 flex flex-col">
                       <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3 flex-shrink-0">
                         <div className="flex flex-col gap-1">
@@ -1872,8 +2060,7 @@ export default function Dashboard() {
                           )}
                       </div>
                     </Card>
-                  </div>
-                </div>
+                  )}
 
                 {showRankingPanel && isPremium && (
                   <div
@@ -2041,6 +2228,8 @@ export default function Dashboard() {
                 )}
 
                 {/* Only use UpgradeToPremiumModal for upgrade prompts */}
+                  </div>
+                </div>
           </div>
         </div>
       </main>

@@ -155,11 +155,11 @@ export const ETFTable = ({
   );
 
   return (
-    <div className="rounded-xl border border-border/50 shadow-card bg-card overflow-hidden">
+    <div className="rounded-lg sm:rounded-xl border-2 border-border/50 shadow-card bg-card overflow-hidden">
       <RadioGroup value={selectedSymbol} onValueChange={handleSelectionChange}>
-        <div className="max-h-[calc(100vh-200px)] overflow-auto">
-          <table className="w-full caption-bottom text-xs">
-          <thead className="sticky top-0 z-50 bg-slate-50 shadow-sm border-b border-slate-200">
+        <div className="max-h-[calc(100vh-150px)] sm:max-h-[calc(100vh-200px)] overflow-auto touch-auto">
+          <table className="w-full caption-bottom text-xs min-w-max">
+          <thead className="sticky top-0 z-50 bg-slate-50 shadow-sm border-b-2 border-slate-200">
             <tr className="bg-slate-50">
               <th colSpan={14} className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm border-r-2 border-slate-300">
                 ETF DETAILS

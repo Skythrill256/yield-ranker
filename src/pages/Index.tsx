@@ -143,20 +143,20 @@ const Index = () => {
       
       <section className="relative border-b overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5"></div>
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-10 sm:top-20 left-1/4 w-48 h-48 sm:w-96 sm:h-96 bg-primary/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 sm:bottom-20 right-1/4 w-48 h-48 sm:w-96 sm:h-96 bg-accent/10 rounded-full blur-3xl"></div>
         
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-32 relative">
-          <div className="max-w-5xl mx-auto text-center space-y-10">
-            <div className="space-y-6">
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05] flex flex-wrap md:flex-nowrap items-center justify-center gap-6 text-foreground">
+        <div className="container max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-12 sm:py-20 md:py-32 relative">
+          <div className="max-w-5xl mx-auto text-center space-y-6 sm:space-y-10">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1] sm:leading-[1.05] flex flex-wrap md:flex-nowrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 text-foreground px-2">
                 <span className="inline-block">Dividends</span>
                 <span className="inline-block">&amp;</span>
                 <span className="inline-block bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text text-transparent whitespace-nowrap">
                   Total Returns
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium px-4">
                 Maximizing Investment Value Through Dividend Income and Price Change with Advanced Screening and Custom Rankings
               </p>
             </div>
@@ -164,12 +164,12 @@ const Index = () => {
         </div>
       </section>
 
-      <main className="w-full max-w-[98%] mx-auto px-2 sm:px-3 py-8 md:py-12">
-        <div className="space-y-6">
+      <main className="w-full max-w-[98%] mx-auto px-2 sm:px-3 lg:px-4 py-6 sm:py-8 md:py-12">
+        <div className="space-y-4 sm:space-y-6">
           {infoBanner && (
             <div className="w-full">
-              <Card className="p-4 border-2 border-primary/20 bg-primary/5">
-                <p className="text-lg text-foreground leading-relaxed">
+              <Card className="p-3 sm:p-4 border-2 border-primary/20 bg-primary/5">
+                <p className="text-base sm:text-lg text-foreground leading-relaxed">
                   {infoBanner}
                 </p>
               </Card>
@@ -177,12 +177,12 @@ const Index = () => {
           )}
 
           <section className="w-full">
-            <div className="flex items-start justify-between gap-2 mb-6">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-2 mb-4 sm:mb-6">
+              <div className="flex flex-col gap-1 w-full sm:w-auto">
+                <h3 className="text-lg sm:text-xl font-bold text-foreground leading-tight">
                   Covered Call Option ETFs
                 </h3>
-                <p className="text-xs text-muted-foreground leading-tight">
+                <p className="text-xs sm:text-sm text-muted-foreground leading-tight">
                   Last updated:{" "}
                   {lastUpdated.toLocaleDateString("en-US", {
                     month: "numeric",
@@ -196,7 +196,7 @@ const Index = () => {
                   })}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                 {/* Customize Rankings */}
                 <Button
                   variant="outline"
@@ -208,10 +208,11 @@ const Index = () => {
                       setShowRankingPanel(true);
                     }
                   }}
-                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-9 rounded-md whitespace-nowrap"
+                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-9 sm:h-10 rounded-md whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4"
                 >
-                  <Sliders className="h-4 w-4 mr-2" />
-                  Customize Rankings
+                  <Sliders className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                  <span className="hidden sm:inline">Customize Rankings</span>
+                  <span className="sm:hidden">Rankings</span>
                 </Button>
                 {/* Favorites - Rightmost - Only show for premium users */}
                 {isPremium && (
@@ -219,14 +220,14 @@ const Index = () => {
                     variant={showFavoritesOnly ? "default" : "outline"}
                     size="sm"
                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`border-2 h-9 transition-colors whitespace-nowrap ${
+                    className={`border-2 h-9 sm:h-10 transition-colors whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4 ${
                       showFavoritesOnly
                         ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                         : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
                     }`}
                   >
                     <Star
-                      className={`h-4 w-4 mr-2 ${
+                      className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 ${
                         showFavoritesOnly
                           ? "fill-white"
                           : "fill-yellow-400"
@@ -239,24 +240,24 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+            <div className="bg-white border-2 border-slate-200 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 px-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                  <h3 className="text-xl font-bold text-foreground mb-2">
+                <div className="flex flex-col items-center justify-center py-12 sm:py-20 px-4">
+                  <Loader2 className="h-10 w-10 sm:h-12 sm:w-12 animate-spin text-primary mb-4" />
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 text-center">
                     Loading ETF Data
                   </h3>
-                  <p className="text-sm text-muted-foreground text-center max-w-md">
+                  <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-md">
                     Fetching latest prices and data from Finnhub...
                   </p>
                 </div>
               ) : etfData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 px-4">
-                  <div className="text-6xl mb-4">⚠️</div>
-                  <h3 className="text-xl font-bold text-foreground mb-2">
+                <div className="flex flex-col items-center justify-center py-12 sm:py-20 px-4">
+                  <div className="text-4xl sm:text-6xl mb-4">⚠️</div>
+                  <h3 className="text-lg sm:text-xl font-bold text-foreground mb-2 text-center">
                     No Data Available
                   </h3>
-                  <p className="text-sm text-muted-foreground text-center max-w-md">
+                  <p className="text-xs sm:text-sm text-muted-foreground text-center max-w-md">
                     Unable to fetch live ETF data. Please check your connection and try again.
                   </p>
                 </div>
@@ -275,33 +276,33 @@ const Index = () => {
         </div>
 
         {showRankingPanel && isPremium && (
-          <div className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-4" onClick={() => setShowRankingPanel(false)}>
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground">
+          <div className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-3 sm:p-4" onClick={() => setShowRankingPanel(false)}>
+            <Card className="w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg sm:text-xl font-bold text-foreground">
                       Customize Rankings
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                       Personalize your ETF rankings by adjusting the importance of each metric
                     </p>
                   </div>
                   <button
                     onClick={() => setShowRankingPanel(false)}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
                   >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-foreground">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="space-y-2 sm:space-y-3 p-3 sm:p-4 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs sm:text-sm font-medium text-foreground">
                         Yield Weight
                       </Label>
-                      <span className="text-2xl font-bold tabular-nums text-primary">
+                      <span className="text-xl sm:text-2xl font-bold tabular-nums text-primary">
                         {yieldWeight}%
                       </span>
                     </div>
@@ -315,12 +316,12 @@ const Index = () => {
                     />
                   </div>
 
-                  <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-foreground">
+                  <div className="space-y-2 sm:space-y-3 p-3 sm:p-4 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs sm:text-sm font-medium text-foreground">
                         Dividend Volatility Index
                       </Label>
-                      <span className="text-2xl font-bold tabular-nums text-primary">
+                      <span className="text-xl sm:text-2xl font-bold tabular-nums text-primary">
                         {stdDevWeight}%
                       </span>
                     </div>
@@ -334,12 +335,12 @@ const Index = () => {
                     />
                   </div>
 
-                  <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium text-foreground">
+                  <div className="space-y-2 sm:space-y-3 p-3 sm:p-4 rounded-lg bg-slate-50 border border-slate-200">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label className="text-xs sm:text-sm font-medium text-foreground">
                         Total Return
                       </Label>
-                      <span className="text-2xl font-bold tabular-nums text-primary">
+                      <span className="text-xl sm:text-2xl font-bold tabular-nums text-primary">
                         {totalReturnWeight}%
                       </span>
                     </div>
@@ -351,10 +352,10 @@ const Index = () => {
                       step={5}
                       className="w-full"
                     />
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-1.5 sm:gap-2 mt-2">
                       <button
                         onClick={() => handleTimeframeChange('3mo')}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                        className={`flex-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold rounded-md sm:rounded-lg transition-colors ${
                           totalReturnTimeframe === '3mo'
                             ? 'bg-primary text-white'
                             : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
@@ -364,7 +365,7 @@ const Index = () => {
                       </button>
                       <button
                         onClick={() => handleTimeframeChange('6mo')}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                        className={`flex-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold rounded-md sm:rounded-lg transition-colors ${
                           totalReturnTimeframe === '6mo'
                             ? 'bg-primary text-white'
                             : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
@@ -374,7 +375,7 @@ const Index = () => {
                       </button>
                       <button
                         onClick={() => handleTimeframeChange('12mo')}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                        className={`flex-1 px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold rounded-md sm:rounded-lg transition-colors ${
                           totalReturnTimeframe === '12mo'
                             ? 'bg-primary text-white'
                             : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
@@ -385,24 +386,24 @@ const Index = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-white">
-                    <span className="text-base font-semibold text-muted-foreground">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 p-3 sm:p-4 border-2 rounded-lg bg-white">
+                    <span className="text-sm sm:text-base font-semibold text-muted-foreground">
                       Total Weight
                     </span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <span
-                        className={`text-3xl font-bold tabular-nums ${
+                        className={`text-2xl sm:text-3xl font-bold tabular-nums ${
                           isValid ? "text-primary" : "text-destructive"
                         }`}
                       >
                         {totalWeight}%
                       </span>
                       {isValid ? (
-                        <span className="text-sm px-3 py-1.5 rounded-full bg-green-100 text-green-700 font-medium border border-green-300">
+                        <span className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-green-100 text-green-700 font-medium border border-green-300">
                           Valid
                         </span>
                       ) : (
-                        <span className="text-sm px-3 py-1.5 rounded-full bg-red-100 text-red-700 font-medium border border-red-300">
+                        <span className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-red-100 text-red-700 font-medium border border-red-300">
                           Not Valid
                         </span>
                       )}
@@ -410,13 +411,13 @@ const Index = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 pt-4 border-t">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-3 sm:pt-4 border-t">
                   <Button
                     variant="outline"
                     onClick={resetToDefaults}
-                    className="flex-1 border-2"
+                    className="flex-1 border-2 text-sm sm:text-base h-10 sm:h-auto"
                   >
-                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2" />
                     Reset to Defaults
                   </Button>
                   <Button
@@ -427,7 +428,7 @@ const Index = () => {
                         setShowRankingPanel(false);
                       }
                     }}
-                    className="flex-1"
+                    className="flex-1 text-sm sm:text-base h-10 sm:h-auto"
                     disabled={!isValid}
                   >
                     Apply Rankings

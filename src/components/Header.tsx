@@ -47,8 +47,8 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-md shadow-sm">
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex h-20 items-center justify-between gap-6">
+      <div className="container max-w-[95%] mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="flex h-24 items-center justify-between gap-3 sm:gap-4 lg:gap-6">
           <NavLink
             to="/"
             className="group flex-shrink-0 transition-transform hover:scale-[1.02]"
@@ -57,51 +57,51 @@ export const Header = () => {
           </NavLink>
 
           {/* Center Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-xl mx-6">
+          <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8">
             <SearchDropdown />
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-2">
+          <nav className="hidden lg:flex items-center gap-1 xl:gap-2 flex-shrink-0">
             <Button
               variant="ghost"
-              className="px-4 py-2 text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              className="px-3 xl:px-4 py-2 text-sm xl:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md whitespace-nowrap"
               onClick={() => go("/focus")}
             >
               My Focus
             </Button>
             <Button
               variant="ghost"
-              className="px-4 py-2 text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              className="px-3 xl:px-4 py-2 text-sm xl:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md whitespace-nowrap"
               onClick={() => go("/covered-call-etfs")}
             >
-              Covered Call Option ETFs
+              CC Option ETFs
             </Button>
             <Button
               variant="ghost"
-              className="px-4 py-2 text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              className="px-3 xl:px-4 py-2 text-sm xl:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md whitespace-nowrap"
               onClick={() => go("/plans")}
             >
               Plans
             </Button>
             <Button
               variant="ghost"
-              className="px-4 py-2 text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              className="px-3 xl:px-4 py-2 text-sm xl:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md whitespace-nowrap"
               onClick={() => go("/resources")}
             >
               Resources
             </Button>
             <Button
               variant="ghost"
-              className="px-4 py-2 text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              className="px-3 xl:px-4 py-2 text-sm xl:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md whitespace-nowrap"
               onClick={() => go("/contact")}
             >
-              Contact Us
+              Contact
             </Button>
             {!isAuthenticated ? (
               <Button
                 variant="default"
-                className="px-4 py-2 text-base font-medium bg-primary text-white hover:bg-primary/90 transition-colors rounded-md"
+                className="px-3 xl:px-4 py-2 text-sm xl:text-base font-medium bg-primary text-white hover:bg-primary/90 transition-colors rounded-md whitespace-nowrap"
                 onClick={() => go("/login")}
               >
                 Login / Register
@@ -111,13 +111,13 @@ export const Header = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="px-3 py-2 h-auto text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md border border-transparent hover:border-slate-200"
+                    className="px-2 xl:px-3 py-2 h-auto text-sm xl:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md border border-transparent hover:border-slate-200"
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                    <div className="flex items-center gap-1 xl:gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-foreground">Account</span>
+                      <span className="text-foreground hidden xl:inline">Account</span>
                       <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     </div>
                   </Button>
@@ -154,7 +154,7 @@ export const Header = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden h-12 w-12 hover:bg-slate-100 transition-colors text-foreground"
+            className="lg:hidden h-12 w-12 hover:bg-slate-100 transition-colors text-foreground flex-shrink-0"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -165,15 +165,15 @@ export const Header = () => {
           </Button>
         </div>
 
-        {/* Mobile Search */}
-        <div className="md:hidden pb-4">
+        {/* Mobile/Tablet Search */}
+        <div className="lg:hidden pb-4 px-3">
           <SearchDropdown />
         </div>
       </div>
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-background">
+        <div className="lg:hidden border-t bg-background">
           <nav className="container flex flex-col py-2">
             <Button
               variant="ghost"
@@ -187,7 +187,7 @@ export const Header = () => {
               className="justify-start px-4 py-2.5 text-base font-medium text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/covered-call-etfs")}
             >
-              Covered Call Option ETFs
+              CC Option ETFs
             </Button>
             <Button
               variant="ghost"
