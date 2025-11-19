@@ -746,51 +746,6 @@ export default function Dashboard() {
                 </span>
               )}
             </button>
-            {isAdmin &&
-              (!sidebarCollapsed ? (
-                <div>
-                  <button
-                    onClick={() => setAdminPanelExpanded(!adminPanelExpanded)}
-                    className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Users className="w-5 h-5" />
-                      Admin Panel
-                    </div>
-                    {adminPanelExpanded ? (
-                      <ChevronDown className="w-4 h-4" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" />
-                    )}
-                  </button>
-                  {adminPanelExpanded && (
-                    <div className="pl-4 mt-1 space-y-1">
-                      <button
-                        onClick={() => navigate("/admin?tab=users")}
-                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                      >
-                        <Users className="w-4 h-4" />
-                        Users
-                      </button>
-                      <button
-                        onClick={() => navigate("/admin?tab=upload")}
-                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                      >
-                        <Upload className="w-4 h-4" />
-                        Upload Data
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={() => navigate("/admin")}
-                  className="w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors"
-                  title="Admin Panel"
-                >
-                  <Users className="w-5 h-5" />
-                </button>
-              ))}
             <button
               onClick={() => navigate("/settings")}
               className={`w-full flex items-center ${
@@ -2080,9 +2035,7 @@ export default function Dashboard() {
                                     {etf.priceChange >= 0 ? "+" : ""}
                                     {etf.priceChange.toFixed(2)}
                                   </td>
-                                  <td
-                                    className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-foreground font-medium"
-                                  >
+                                  <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-foreground font-medium">
                                     {etf.dividend.toFixed(4)}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">

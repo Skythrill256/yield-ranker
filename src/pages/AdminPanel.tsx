@@ -51,13 +51,17 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "etf-data" | "site-settings">("users");
+  const [activeTab, setActiveTab] = useState<
+    "users" | "etf-data" | "site-settings"
+  >("users");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
   const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsValues, setSettingsValues] = useState<Record<string, string>>({});
+  const [settingsValues, setSettingsValues] = useState<Record<string, string>>(
+    {}
+  );
 
   const userMetadata =
     (user?.user_metadata as {
@@ -134,8 +138,7 @@ const AdminPanel = () => {
       toast({
         variant: "destructive",
         title: "Failed to load settings",
-        description:
-          error instanceof Error ? error.message : "Unknown error",
+        description: error instanceof Error ? error.message : "Unknown error",
       });
     } finally {
       setSettingsLoading(false);
@@ -156,8 +159,7 @@ const AdminPanel = () => {
       toast({
         variant: "destructive",
         title: "Failed to save settings",
-        description:
-          error instanceof Error ? error.message : "Unknown error",
+        description: error instanceof Error ? error.message : "Unknown error",
       });
     }
   };
@@ -178,10 +180,15 @@ const AdminPanel = () => {
   }, [profiles, searchQuery]);
 
   const totalUsers = profiles.length;
-  const adminCount = profiles.filter((profile) => profile.role === "admin")
-    .length;
-  const guestCount = profiles.filter((profile) => !profile.is_premium && profile.role !== "admin").length;
-  const premiumCount = profiles.filter((profile) => profile.is_premium && profile.role !== "admin").length;
+  const adminCount = profiles.filter(
+    (profile) => profile.role === "admin"
+  ).length;
+  const guestCount = profiles.filter(
+    (profile) => !profile.is_premium && profile.role !== "admin"
+  ).length;
+  const premiumCount = profiles.filter(
+    (profile) => profile.is_premium && profile.role !== "admin"
+  ).length;
 
   const updateLocalProfile = (next: ProfileRow) => {
     setProfiles((prev) =>
@@ -286,7 +293,9 @@ const AdminPanel = () => {
         description: result.message,
       });
       setUploadFile(null);
-      const fileInput = document.getElementById("dtr-file-input") as HTMLInputElement;
+      const fileInput = document.getElementById(
+        "dtr-file-input"
+      ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed";
@@ -466,9 +475,7 @@ const AdminPanel = () => {
                 <span className="text-sm font-semibold text-foreground">
                   {displayName}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  Admin
-                </span>
+                <span className="text-xs text-muted-foreground">Admin</span>
               </div>
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold">
                 {displayName.charAt(0).toUpperCase()}
@@ -480,187 +487,214 @@ const AdminPanel = () => {
           <div className="p-4 sm:p-6 lg:p-8 space-y-6">
             {activeTab === "users" && (
               <>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="p-5 border-2 border-slate-200">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground font-medium">
-                    Total users
-                  </span>
-                  <Users className="w-5 h-5 text-slate-500" />
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Card className="p-5 border-2 border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Total users
+                      </span>
+                      <Users className="w-5 h-5 text-slate-500" />
+                    </div>
+                    <p className="text-3xl font-bold text-foreground">
+                      {totalUsers}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {adminCount} admins, {premiumCount} premium, {guestCount}{" "}
+                      guests
+                    </p>
+                  </Card>
+                  <Card className="p-5 border-2 border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Admins
+                      </span>
+                      <ShieldCheck className="w-5 h-5 text-primary" />
+                    </div>
+                    <p className="text-3xl font-bold text-foreground">
+                      {adminCount}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Full system access
+                    </p>
+                  </Card>
+                  <Card className="p-5 border-2 border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Premium users
+                      </span>
+                      <ShieldCheck className="w-5 h-5 text-green-600" />
+                    </div>
+                    <p className="text-3xl font-bold text-foreground">
+                      {premiumCount}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {guestCount} guests remaining
+                    </p>
+                  </Card>
                 </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {totalUsers}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {adminCount} admins, {premiumCount} premium, {guestCount} guests
-                </p>
-              </Card>
-              <Card className="p-5 border-2 border-slate-200">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground font-medium">
-                    Admins
-                  </span>
-                  <ShieldCheck className="w-5 h-5 text-primary" />
-                </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {adminCount}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Full system access
-                </p>
-              </Card>
-              <Card className="p-5 border-2 border-slate-200">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-muted-foreground font-medium">
-                    Premium users
-                  </span>
-                  <ShieldCheck className="w-5 h-5 text-green-600" />
-                </div>
-                <p className="text-3xl font-bold text-foreground">
-                  {premiumCount}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {guestCount} guests remaining
-                </p>
-              </Card>
-            </div>
-            <Card className="border-2 border-slate-200">
-              <div className="p-6 space-y-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="relative w-full sm:max-w-xs">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search by name, email, or role"
-                      className="pl-10 h-10 border-2"
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={fetchProfiles}
-                    disabled={loading}
-                    className="h-10 border-2"
-                  >
-                    <RefreshCw
-                      className={`w-4 h-4 mr-2 ${
-                        loading ? "animate-spin" : ""
-                      }`}
-                    />
-                    Refresh
-                  </Button>
-                </div>
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                  <table className="min-w-full divide-y divide-slate-200 bg-white">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Role
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Premium
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Last In
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                          Created
-                        </th>
-                        <th className="px-4 py-3" />
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {loading ? (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-4 py-10 text-center text-sm text-muted-foreground"
-                          >
-                            Loading users...
-                          </td>
-                        </tr>
-                      ) : filteredProfiles.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-4 py-10 text-center text-sm text-muted-foreground"
-                          >
-                            No users found for “{searchQuery}”
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredProfiles.map((profile) => {
-                          const roleKey = `${profile.id}-role`;
-                          const premiumKey = `${profile.id}-premium`;
-                          return (
-                            <tr
-                              key={profile.id}
-                              className="hover:bg-slate-50 transition-colors"
-                            >
-                              <td className="px-4 py-3 text-sm font-medium text-foreground">
-                                {profile.display_name || "—"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground">
-                                {profile.email}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-foreground">
-                                <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                                  profile.role === "admin"
-                                    ? "border-primary/30 bg-primary/10 text-primary"
-                                    : profile.is_premium
-                                    ? "border-green-300 bg-green-50 text-green-700"
-                                    : "border-slate-300 bg-slate-50 text-slate-700"
-                                }`}>
-                                  {profile.role === "admin"
-                                    ? "Admin"
-                                    : profile.is_premium
-                                    ? "Premium"
-                                    : "Guest"}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-foreground">
-                                <Switch
-                                  checked={profile.is_premium}
-                                  onCheckedChange={(checked) =>
-                                    handlePremiumToggle(profile, checked)
-                                  }
-                                  disabled={updatingId === premiumKey}
-                                />
-                              </td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground">
-                                {profile.last_login ? formatDate(profile.last_login) : "—"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-muted-foreground">
-                                {formatDate(profile.created_at)}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleRoleToggle(profile)}
-                                  disabled={updatingId === roleKey}
-                                  className="border-2"
-                                >
-                                  {profile.role === "admin"
-                                    ? "Remove admin"
-                                    : "Make admin"}
-                                </Button>
+                <Card className="border-2 border-slate-200">
+                  <div className="p-6 space-y-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="relative w-full sm:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <Input
+                          value={searchQuery}
+                          onChange={(event) =>
+                            setSearchQuery(event.target.value)
+                          }
+                          placeholder="Search by name, email, or role"
+                          className="pl-10 h-10 border-2"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const emails = profiles
+                              .map((p) => p.email)
+                              .join(", ");
+                            if (!emails) return;
+                            navigator.clipboard.writeText(emails);
+                            toast({
+                              title: "Emails copied",
+                              description: `${profiles.length} email addresses copied to clipboard`,
+                            });
+                          }}
+                          disabled={loading || profiles.length === 0}
+                          className="h-10 border-2"
+                        >
+                          Copy Emails
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={fetchProfiles}
+                          disabled={loading}
+                          className="h-10 border-2"
+                        >
+                          <RefreshCw
+                            className={`w-4 h-4 mr-2 ${
+                              loading ? "animate-spin" : ""
+                            }`}
+                          />
+                          Refresh
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="min-w-full divide-y divide-slate-200 bg-white">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                              Email
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                              Role
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                              Premium
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                              Last In
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                              Created
+                            </th>
+                            <th className="px-4 py-3" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {loading ? (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="px-4 py-10 text-center text-sm text-muted-foreground"
+                              >
+                                Loading users...
                               </td>
                             </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </Card>
+                          ) : filteredProfiles.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={7}
+                                className="px-4 py-10 text-center text-sm text-muted-foreground"
+                              >
+                                No users found for “{searchQuery}”
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredProfiles.map((profile) => {
+                              const roleKey = `${profile.id}-role`;
+                              const premiumKey = `${profile.id}-premium`;
+                              return (
+                                <tr
+                                  key={profile.id}
+                                  className="hover:bg-slate-50 transition-colors"
+                                >
+                                  <td className="px-4 py-3 text-sm font-medium text-foreground">
+                                    {profile.display_name || "—"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {profile.email}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-foreground">
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                                        profile.role === "admin"
+                                          ? "border-primary/30 bg-primary/10 text-primary"
+                                          : profile.is_premium
+                                          ? "border-green-300 bg-green-50 text-green-700"
+                                          : "border-slate-300 bg-slate-50 text-slate-700"
+                                      }`}
+                                    >
+                                      {profile.role === "admin"
+                                        ? "Admin"
+                                        : profile.is_premium
+                                        ? "Premium"
+                                        : "Guest"}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-foreground">
+                                    <Switch
+                                      checked={profile.is_premium}
+                                      onCheckedChange={(checked) =>
+                                        handlePremiumToggle(profile, checked)
+                                      }
+                                      disabled={updatingId === premiumKey}
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {profile.last_login
+                                      ? formatDate(profile.last_login)
+                                      : "—"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {formatDate(profile.created_at)}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-right">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleRoleToggle(profile)}
+                                      disabled={updatingId === roleKey}
+                                      className="border-2"
+                                    >
+                                      {profile.role === "admin"
+                                        ? "Remove admin"
+                                        : "Make admin"}
+                                    </Button>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </Card>
               </>
             )}
 
@@ -672,15 +706,19 @@ const AdminPanel = () => {
                       Upload DTR Spreadsheet
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to update all ETF data in the system.
-                      The file should have a Sheet1 with the standard DTR format.
+                      Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
+                      update all ETF data in the system. The file should have a
+                      Sheet1 with the standard DTR format.
                     </p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                       <div className="flex-1">
-                        <label htmlFor="dtr-file-input" className="block text-sm font-medium text-foreground mb-2">
+                        <label
+                          htmlFor="dtr-file-input"
+                          className="block text-sm font-medium text-foreground mb-2"
+                        >
                           Select Excel File
                         </label>
                         <Input
@@ -716,8 +754,20 @@ const AdminPanel = () => {
                     </div>
 
                     {uploadStatus && (
-                      <Card className={`p-4 ${uploadStatus.startsWith("Error") ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
-                        <p className={`text-sm font-medium ${uploadStatus.startsWith("Error") ? "text-red-800" : "text-green-800"}`}>
+                      <Card
+                        className={`p-4 ${
+                          uploadStatus.startsWith("Error")
+                            ? "bg-red-50 border-red-200"
+                            : "bg-green-50 border-green-200"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm font-medium ${
+                            uploadStatus.startsWith("Error")
+                              ? "text-red-800"
+                              : "text-green-800"
+                          }`}
+                        >
                           {uploadStatus}
                         </p>
                       </Card>
@@ -730,7 +780,13 @@ const AdminPanel = () => {
                     </h3>
                     <div className="bg-slate-50 p-4 rounded-lg text-xs text-slate-700 space-y-2 font-mono">
                       <p>Sheet Name: Sheet1</p>
-                      <p>Row 1 (Headers): Favorites | SYMBOL | Issuer | DESC | Pay Day | IPO PRICE | Price | Price Change | Dividend | # Pmts | Annual Div | Forward Yield | Dividend Volatility Index | Weighted Rank | 3 YR Annlzd | 12 Month | 6 Month | 3 Month | 1 Month | 1 Week</p>
+                      <p>
+                        Row 1 (Headers): Favorites | SYMBOL | Issuer | DESC |
+                        Pay Day | IPO PRICE | Price | Price Change | Dividend |
+                        # Pmts | Annual Div | Forward Yield | Dividend
+                        Volatility Index | Weighted Rank | 3 YR Annlzd | 12
+                        Month | 6 Month | 3 Month | 1 Month | 1 Week
+                      </p>
                       <p>Row 2+: Data rows (one ETF per row)</p>
                     </div>
                   </div>
@@ -817,4 +873,3 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
-
