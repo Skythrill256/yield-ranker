@@ -1751,23 +1751,23 @@ export default function Dashboard() {
                             Customize Rankings
                           </Button>
                           {/* Total Returns / Price Returns Toggle - Connected style with border */}
-                          <div className="inline-flex items-center h-9 flex-1 min-w-[200px] max-w-[280px] border-2 border-slate-300 rounded-md overflow-hidden">
+                          <div className="inline-flex items-center h-10 flex-1 min-w-[220px] max-w-[300px] border-2 border-primary/30 rounded-lg overflow-hidden shadow-sm">
                             <button
                               onClick={() => setShowTotalReturns(true)}
-                              className={`flex-1 px-3 py-2 text-xs font-semibold transition-all duration-200 ${
+                              className={`flex-1 px-4 py-2 text-sm font-bold transition-all duration-200 ${
                                 showTotalReturns
-                                  ? "bg-primary text-white shadow-sm"
-                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white"
+                                  ? "bg-primary text-white shadow-md"
+                                  : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 bg-white"
                               }`}
                             >
                               Total Returns
                             </button>
                             <button
                               onClick={() => setShowTotalReturns(false)}
-                              className={`flex-1 px-3 py-2 text-xs font-semibold transition-all duration-200 ${
+                              className={`flex-1 px-4 py-2 text-sm font-bold transition-all duration-200 ${
                                 !showTotalReturns
-                                  ? "bg-primary text-white shadow-sm"
-                                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white"
+                                  ? "bg-primary text-white shadow-md"
+                                  : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 bg-white"
                               }`}
                             >
                               Price Returns
@@ -1951,8 +1951,7 @@ export default function Dashboard() {
                                     />
                                   </td>
                                   <td
-                                    onClick={() => handleETFClick(etf)}
-                                    className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary group-hover:text-accent transition-colors text-xs cursor-pointer"
+                                    className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary text-xs"
                                   >
                                     {etf.symbol}
                                   </td>

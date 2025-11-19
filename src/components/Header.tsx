@@ -47,7 +47,7 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-md shadow-sm">
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="w-full px-6 sm:px-8 lg:px-12">
         <div className="flex h-20 items-center justify-between gap-6">
           <NavLink
             to="/"
@@ -171,7 +171,7 @@ export const Header = () => {
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t bg-background">
-          <nav className="container flex flex-col py-2">
+          <nav className="w-full px-6 flex flex-col py-2">
             <Button
               variant="ghost"
               className="justify-start px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-100 rounded-md"
