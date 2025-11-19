@@ -80,7 +80,7 @@ export default function Dashboard() {
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<ComparisonTimeframe>("1D");
   const [initialETFCount, setInitialETFCount] = useState(5);
-  const [adminPanelExpanded, setAdminPanelExpanded] = useState(isAdmin);
+  const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
   const [accountPanelExpanded, setAccountPanelExpanded] = useState(false);
   const [showRankingPanel, setShowRankingPanel] = useState(false);
   const [infoBanner, setInfoBanner] = useState(
@@ -105,6 +105,12 @@ export default function Dashboard() {
   const isAdmin = profile?.role === "admin";
   const isPremium = !!profile;
   const isGuest = !profile;
+
+  useEffect(() => {
+    if (isAdmin) {
+      setAdminPanelExpanded(true);
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     const loadETFData = async () => {
