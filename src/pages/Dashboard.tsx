@@ -1750,29 +1750,6 @@ export default function Dashboard() {
                             <Sliders className="h-4 w-4 mr-2" />
                             Customize Rankings
                           </Button>
-                          {/* Total Returns / Price Returns Toggle - Connected style with border */}
-                          <div className="inline-flex items-center h-10 flex-1 min-w-[220px] max-w-[300px] border-2 border-primary/30 rounded-lg overflow-hidden shadow-sm">
-                            <button
-                              onClick={() => setShowTotalReturns(true)}
-                              className={`flex-1 px-4 py-2 text-sm font-bold transition-all duration-200 ${
-                                showTotalReturns
-                                  ? "bg-primary text-white shadow-md"
-                                  : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 bg-white"
-                              }`}
-                            >
-                              Total Returns
-                            </button>
-                            <button
-                              onClick={() => setShowTotalReturns(false)}
-                              className={`flex-1 px-4 py-2 text-sm font-bold transition-all duration-200 ${
-                                !showTotalReturns
-                                  ? "bg-primary text-white shadow-md"
-                                  : "text-slate-700 hover:text-slate-900 hover:bg-slate-50 bg-white"
-                              }`}
-                            >
-                              Price Returns
-                            </button>
-                          </div>
                           {/* Favorites - Rightmost */}
                           <Button
                             variant={showFavoritesOnly ? "default" : "outline"}
@@ -1814,9 +1791,7 @@ export default function Dashboard() {
                                   colSpan={returnColumns.length}
                                   className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm"
                                 >
-                                  {showTotalReturns
-                                    ? "TOTAL RETURNS"
-                                    : "PRICE RETURNS"}
+                                  TOTAL RETURNS
                                 </th>
                               </tr>
                               <tr className="bg-slate-50">
@@ -1950,9 +1925,7 @@ export default function Dashboard() {
                                       }`}
                                     />
                                   </td>
-                                  <td
-                                    className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary text-xs"
-                                  >
+                                  <td className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 font-bold text-primary text-xs">
                                     {etf.symbol}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground uppercase font-medium">

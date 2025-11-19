@@ -313,29 +313,6 @@ const Index = () => {
                   <Sliders className="h-4 w-4 mr-2" />
                   Customize Rankings
                 </Button>
-                {/* Total Returns / Price Returns Toggle - Connected style with border */}
-                <div className="inline-flex items-center h-9 flex-1 min-w-[200px] max-w-[280px] border-2 border-slate-300 rounded-md overflow-hidden">
-                  <button
-                    onClick={() => setReturnView("total")}
-                    className={`flex-1 px-3 py-2 text-xs font-semibold transition-all duration-200 ${
-                      returnView === "total"
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white"
-                    }`}
-                  >
-                    Total Returns
-                  </button>
-                  <button
-                    onClick={() => setReturnView("price")}
-                    className={`flex-1 px-3 py-2 text-xs font-semibold transition-all duration-200 ${
-                      returnView === "price"
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white"
-                    }`}
-                  >
-                    Price Returns
-                  </button>
-                </div>
                 {/* Favorites - Rightmost - Only show for premium users */}
                 {isPremium && (
                   <Button
