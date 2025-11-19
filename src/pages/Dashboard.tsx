@@ -360,20 +360,44 @@ export default function Dashboard() {
   const handleYieldChange = (value: number[]) => {
     const newYield = value[0];
     setYieldWeight(newYield);
+    setWeights({
+      yield: newYield,
+      stdDev: stdDevWeight,
+      totalReturn: totalReturnWeight,
+      timeframe: totalReturnTimeframe,
+    });
   };
 
   const handleStdDevChange = (value: number[]) => {
     const newStdDev = value[0];
     setStdDevWeight(newStdDev);
+    setWeights({
+      yield: yieldWeight,
+      stdDev: newStdDev,
+      totalReturn: totalReturnWeight,
+      timeframe: totalReturnTimeframe,
+    });
   };
 
   const handleTotalReturnChange = (value: number[]) => {
     const newTotalReturn = value[0];
     setTotalReturnWeight(newTotalReturn);
+    setWeights({
+      yield: yieldWeight,
+      stdDev: stdDevWeight,
+      totalReturn: newTotalReturn,
+      timeframe: totalReturnTimeframe,
+    });
   };
 
   const handleTimeframeChange = (timeframe: "3mo" | "6mo" | "12mo") => {
     setTotalReturnTimeframe(timeframe);
+    setWeights({
+      yield: yieldWeight,
+      stdDev: stdDevWeight,
+      totalReturn: totalReturnWeight,
+      timeframe: timeframe,
+    });
   };
 
   const resetToDefaults = () => {
@@ -381,6 +405,12 @@ export default function Dashboard() {
     setStdDevWeight(30);
     setTotalReturnWeight(40);
     setTotalReturnTimeframe("12mo");
+    setWeights({
+      yield: 30,
+      stdDev: 30,
+      totalReturn: 40,
+      timeframe: "12mo",
+    });
   };
 
   const applyRankings = () => {
