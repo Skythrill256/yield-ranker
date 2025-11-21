@@ -25,16 +25,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null);
       return;
     }
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id,email,role,is_premium,display_name,created_at,updated_at,preferences')
-      .eq('id', userId)
-      .single();
-    if (error) {
-      setProfile(null);
-      return;
+    // Retry logic to handle race conditions on mobile/slow connections
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id,email,role,is_premium,display_name,created_at,updated_at,preferences')
+        .eq('id', userId)
+        .single();
+      
+      if (!error && data) {
+        setProfile(data as ProfileRow);
+        return;
+      }
+      
+      attempts++;
+      if (attempts < maxAttempts) {
+        // Wait 500ms before retrying
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
-    setProfile(data as ProfileRow);
+    
+    // If all retries failed, set null
+    setProfile(null);
   };
 
   useEffect(() => {

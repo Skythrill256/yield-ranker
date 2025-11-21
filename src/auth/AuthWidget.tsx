@@ -37,7 +37,17 @@ export const AuthWidget = ({ onSuccess, onModeChange }: AuthWidgetProps) => {
         onSuccess?.();
         return;
       }
-      const result = await signUpEmail(email, password, displayName || undefined);
+      // Require display name for registration
+      if (!displayName || !displayName.trim()) {
+        toast({
+          variant: 'destructive',
+          title: 'Name required',
+          description: 'Please enter your name to create an account.',
+        });
+        setLoading(false);
+        return;
+      }
+      const result = await signUpEmail(email, password, displayName.trim());
       if (result.session) {
         onSuccess?.();
         toast({ title: 'Account created' });
@@ -97,7 +107,7 @@ export const AuthWidget = ({ onSuccess, onModeChange }: AuthWidgetProps) => {
         {mode === 'register' && (
           <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium text-foreground">
-              Name
+              Name <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
@@ -105,6 +115,7 @@ export const AuthWidget = ({ onSuccess, onModeChange }: AuthWidgetProps) => {
               placeholder="Your name"
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
+              required
               className="h-11 rounded-lg border-2 focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>

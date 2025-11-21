@@ -428,17 +428,7 @@ const Index = () => {
                   Covered Call Option ETFs
                 </h3>
                 <p className="text-xs text-muted-foreground leading-tight">
-                  EOD - Last updated:{" "}
-                  {lastUpdated.toLocaleDateString("en-US", {
-                    month: "numeric",
-                    day: "numeric",
-                    year: "numeric",
-                  })}{" "}
-                  {lastUpdated.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
+                  End of Day (EOD) Data
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">

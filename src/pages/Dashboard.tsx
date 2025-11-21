@@ -456,14 +456,20 @@ export default function Dashboard() {
             .eq("id", user.id)
             .single();
           if (data?.preferences) {
-            const prefs = data.preferences as { ranking_weights?: RankingWeights; ranking_presets?: RankingPreset[] };
+            const prefs = data.preferences as {
+              ranking_weights?: RankingWeights;
+              ranking_presets?: RankingPreset[];
+            };
             const savedWeights = prefs.ranking_weights;
             if (savedWeights) {
               setWeights(savedWeights);
               setYieldWeight(savedWeights.yield);
               setStdDevWeight(savedWeights.stdDev);
               setTotalReturnWeight(savedWeights.totalReturn);
-              if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+              if (
+                savedWeights.timeframe === "3mo" ||
+                savedWeights.timeframe === "6mo"
+              ) {
                 setTotalReturnTimeframe(savedWeights.timeframe);
               }
             }
@@ -494,14 +500,19 @@ export default function Dashboard() {
               .eq("id", user.id)
               .single();
             if (data?.preferences) {
-              const prefs = data.preferences as { ranking_weights?: RankingWeights };
+              const prefs = data.preferences as {
+                ranking_weights?: RankingWeights;
+              };
               const savedWeights = prefs.ranking_weights;
               if (savedWeights) {
                 setWeights(savedWeights);
                 setYieldWeight(savedWeights.yield);
                 setStdDevWeight(savedWeights.stdDev);
                 setTotalReturnWeight(savedWeights.totalReturn);
-                if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+                if (
+                  savedWeights.timeframe === "3mo" ||
+                  savedWeights.timeframe === "6mo"
+                ) {
                   setTotalReturnTimeframe(savedWeights.timeframe);
                 }
               }
@@ -1941,6 +1952,9 @@ export default function Dashboard() {
                               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                                 Created
                               </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                Last In
+                              </th>
                               <th className="px-4 py-3" />
                             </tr>
                           </thead>
@@ -2010,6 +2024,17 @@ export default function Dashboard() {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                       }).format(new Date(row.created_at))}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {row.last_login
+                                        ? new Intl.DateTimeFormat("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          }).format(new Date(row.last_login))
+                                        : "Never"}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-right">
                                       <Button
@@ -2087,17 +2112,7 @@ export default function Dashboard() {
                             Covered Call Option ETFs
                           </h3>
                           <span className="text-xs text-muted-foreground leading-tight">
-                            EOD - Last updated:{" "}
-                            {new Date().toLocaleDateString("en-US", {
-                              month: "numeric",
-                              day: "numeric",
-                              year: "numeric",
-                            })}{" "}
-                            {new Date().toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
+                            End of Day (EOD) Data
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 pt-0.5">
