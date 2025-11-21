@@ -56,8 +56,8 @@ const Index = () => {
   const [rankingPresets, setRankingPresets] = useState<RankingPreset[]>([]);
   const [showPresetSaveDialog, setShowPresetSaveDialog] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
+  const [lastDataUpdate, setLastDataUpdate] = useState<string | null>(null);
   const { toast } = useToast();
-  const lastUpdated = new Date();
 
   useEffect(() => {
     const loadData = async () => {
@@ -73,7 +73,22 @@ const Index = () => {
           return true;
         });
         setEtfData(deduplicated);
-        // We fetch the last updated info but don't display it on the user-facing page
+        
+        // Format the last updated timestamp
+        if (result.lastUpdatedTimestamp) {
+          const date = new Date(result.lastUpdatedTimestamp);
+          const formatted = date.toLocaleString("en-US", {
+            month: "numeric",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+          setLastDataUpdate(formatted);
+        } else if (result.lastUpdated) {
+          setLastDataUpdate(result.lastUpdated);
+        }
       } catch (error) {
         console.error("[Index] Error fetching ETF data:", error);
       } finally {
@@ -429,7 +444,7 @@ const Index = () => {
                   Covered Call Option ETFs
                 </h3>
                 <p className="text-xs text-muted-foreground leading-tight">
-                  End of Day (EOD) Data
+                  {lastDataUpdate ? `EOD - ${lastDataUpdate}` : "End of Day (EOD) Data"}
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">

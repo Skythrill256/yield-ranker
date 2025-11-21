@@ -134,23 +134,23 @@ export default function Dashboard() {
         return true;
       });
       setEtfData(deduplicated);
-      
+
       // Format the last updated timestamp
       if (result.lastUpdatedTimestamp) {
         const date = new Date(result.lastUpdatedTimestamp);
-        const formatted = date.toLocaleString('en-US', {
-          month: 'numeric',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
+        const formatted = date.toLocaleString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
         });
         setLastDataUpdate(formatted);
       } else if (result.lastUpdated) {
         setLastDataUpdate(result.lastUpdated);
       }
-      
+
       setIsLoadingData(false);
     };
 
@@ -1950,27 +1950,63 @@ export default function Dashboard() {
                             variant="outline"
                             onClick={() => {
                               const csv = [
-                                ["Name", "Email", "Role", "Premium", "Created", "Last In"].join(","),
-                                ...filteredAdminProfiles.map((row) => [
-                                  row.display_name || "",
-                                  row.email,
-                                  row.role,
-                                  row.is_premium ? "Yes" : "No",
-                                  new Date(row.created_at).toLocaleString("en-US"),
-                                  row.last_login
-                                    ? new Date(row.last_login).toLocaleString("en-US")
-                                    : "Never",
-                                ].join(",")),
+                                [
+                                  "Name",
+                                  "Email",
+                                  "Role",
+                                  "Premium",
+                                  "Created",
+                                  "Last In",
+                                ].join(","),
+                                ...filteredAdminProfiles.map((row) => {
+                                  let createdDate = "";
+                                  let lastLoginDate = "Never";
+                                  
+                                  try {
+                                    const created = new Date(row.created_at);
+                                    if (!isNaN(created.getTime())) {
+                                      createdDate = created.toLocaleString("en-US");
+                                    }
+                                  } catch (error) {
+                                    console.error("Error formatting created_at:", error);
+                                  }
+                                  
+                                  if (row.last_login) {
+                                    try {
+                                      const lastLogin = new Date(row.last_login);
+                                      if (!isNaN(lastLogin.getTime())) {
+                                        lastLoginDate = lastLogin.toLocaleString("en-US");
+                                      }
+                                    } catch (error) {
+                                      console.error("Error formatting last_login:", error);
+                                    }
+                                  }
+                                  
+                                  return [
+                                    row.display_name || "",
+                                    row.email,
+                                    row.role,
+                                    row.is_premium ? "Yes" : "No",
+                                    createdDate,
+                                    lastLoginDate,
+                                  ].join(",");
+                                }),
                               ].join("\n");
-                              const blob = new Blob([csv], { type: "text/csv" });
+                              const blob = new Blob([csv], {
+                                type: "text/csv",
+                              });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;
-                              a.download = `users-${new Date().toISOString().split("T")[0]}.csv`;
+                              a.download = `users-${
+                                new Date().toISOString().split("T")[0]
+                              }.csv`;
                               a.click();
                               URL.revokeObjectURL(url);
                             }}
-                            disabled={adminLoading || filteredAdminProfiles.length === 0}
+                            disabled={
+                              adminLoading || filteredAdminProfiles.length === 0
+                            }
                             className="h-10 border-2"
                           >
                             <Upload className="w-4 h-4 mr-2" />
@@ -2086,14 +2122,25 @@ export default function Dashboard() {
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground">
                                       {row.last_login
-                                        ? new Intl.DateTimeFormat("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                            year: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          }).format(new Date(row.last_login))
-                                        : "Never"}
+                                        ? (() => {
+                                            try {
+                                              const date = new Date(row.last_login);
+                                              if (isNaN(date.getTime())) {
+                                                return "—";
+                                              }
+                                              return new Intl.DateTimeFormat("en-US", {
+                                                month: "short",
+                                                day: "numeric",
+                                                year: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                              }).format(date);
+                                            } catch (error) {
+                                              console.error("Error formatting last_login:", error, row.last_login);
+                                              return "—";
+                                            }
+                                          })()
+                                        : "—"}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-right">
                                       <Button
@@ -2171,7 +2218,7 @@ export default function Dashboard() {
                             Covered Call Option ETFs
                           </h3>
                           <span className="text-xs text-muted-foreground leading-tight">
-                            End of Day (EOD) Data
+                            {lastDataUpdate ? `EOD - ${lastDataUpdate}` : "End of Day (EOD) Data"}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 pt-0.5">
