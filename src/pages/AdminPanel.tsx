@@ -197,12 +197,11 @@ const AdminPanel = () => {
   const adminCount = profiles.filter(
     (profile) => profile.role === "admin"
   ).length;
-  const guestCount = profiles.filter(
-    (profile) => !profile.is_premium && profile.role !== "admin"
-  ).length;
+  // All signed-up users are Premium - no guests
   const premiumCount = profiles.filter(
-    (profile) => profile.is_premium && profile.role !== "admin"
+    (profile) => profile.role !== "admin"
   ).length;
+  const guestCount = 0; // No guests - all users are Premium
 
   const updateLocalProfile = (next: ProfileRow) => {
     setProfiles((prev) =>
@@ -211,11 +210,14 @@ const AdminPanel = () => {
   };
 
   const handleRoleToggle = async (profile: ProfileRow) => {
-    const nextRole = profile.role === "admin" ? "user" : "admin";
+    const nextRole = profile.role === "admin" ? "premium" : "admin";
     const key = `${profile.id}-role`;
     setUpdatingId(key);
     try {
-      const updated = await updateProfile(profile.id, { role: nextRole });
+      const updated = await updateProfile(profile.id, { 
+        role: nextRole,
+        is_premium: nextRole === "admin" ? true : true // Always true for both admin and premium
+      });
       updateLocalProfile(updated);
       toast({
         title:
@@ -243,8 +245,10 @@ const AdminPanel = () => {
     const key = `${profile.id}-premium`;
     setUpdatingId(key);
     try {
+      // All non-admin users are always premium - this toggle is for legacy support
       const updated = await updateProfile(profile.id, {
-        is_premium: isPremium,
+        is_premium: true,
+        role: profile.role === "admin" ? "admin" : "premium"
       });
       updateLocalProfile(updated);
       toast({
@@ -513,8 +517,7 @@ const AdminPanel = () => {
                       {totalUsers}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {adminCount} admins, {premiumCount} premium, {guestCount}{" "}
-                      guests
+                      {adminCount} admins, {premiumCount} premium users
                     </p>
                   </Card>
                   <Card className="p-5 border-2 border-slate-200">
@@ -542,7 +545,7 @@ const AdminPanel = () => {
                       {premiumCount}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {guestCount} guests remaining
+                      All signed-up users
                     </p>
                   </Card>
                 </div>
@@ -564,20 +567,77 @@ const AdminPanel = () => {
                         <Button
                           variant="outline"
                           onClick={() => {
-                            const emails = profiles
-                              .map((p) => p.email)
-                              .join(", ");
-                            if (!emails) return;
-                            navigator.clipboard.writeText(emails);
+                            if (profiles.length === 0) return;
+                            
+                            // Helper function to escape CSV values
+                            const escapeCSV = (value: string | null | undefined): string => {
+                              const stringValue = String(value || "");
+                              if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                                return `"${stringValue.replace(/"/g, '""')}"`;
+                              }
+                              return stringValue;
+                            };
+                            
+                            // Helper function to split name into first and last name
+                            const splitName = (fullName: string | null | undefined): { firstName: string; lastName: string } => {
+                              if (!fullName) return { firstName: "", lastName: "" };
+                              const parts = fullName.trim().split(/\s+/);
+                              if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+                              const lastName = parts.pop() || "";
+                              const firstName = parts.join(" ");
+                              return { firstName, lastName };
+                            };
+                            
+                            // Mailchimp-friendly CSV format: Email Address, First Name, Last Name, Tags, Role, Signup Date
+                            const headers = ["Email Address", "First Name", "Last Name", "Tags", "Role", "Signup Date"];
+                            const csvRows = [headers.join(",")];
+                            
+                            // Add each profile as a row
+                            profiles.forEach((p) => {
+                              const { firstName, lastName } = splitName(p.display_name);
+                              const role = p.role === "admin" ? "Admin" : "Premium";
+                              const tags = p.role === "admin" ? "Admin" : "Premium User";
+                              const signupDate = p.created_at ? new Date(p.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                              }) : "";
+                              
+                              const row = [
+                                escapeCSV(p.email),
+                                escapeCSV(firstName),
+                                escapeCSV(lastName),
+                                escapeCSV(tags),
+                                escapeCSV(role),
+                                escapeCSV(signupDate)
+                              ];
+                              
+                              csvRows.push(row.join(","));
+                            });
+                            
+                            // Create blob and download
+                            const csvContent = csvRows.join("\n");
+                            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                            const link = document.createElement("a");
+                            const url = URL.createObjectURL(blob);
+                            const dateStr = new Date().toISOString().split('T')[0];
+                            link.setAttribute("href", url);
+                            link.setAttribute("download", `mailchimp_users_export_${dateStr}.csv`);
+                            link.style.visibility = "hidden";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                            
                             toast({
-                              title: "Emails copied",
-                              description: `${profiles.length} email addresses copied to clipboard`,
+                              title: "CSV Downloaded",
+                              description: `Exported ${profiles.length} users to CSV file. Ready for Mailchimp import!`,
                             });
                           }}
                           disabled={loading || profiles.length === 0}
                           className="h-10 border-2"
                         >
-                          Copy Emails
+                          Download Emails CSV
                         </Button>
                         <Button
                           variant="outline"
@@ -658,16 +718,10 @@ const AdminPanel = () => {
                                       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                                         profile.role === "admin"
                                           ? "border-primary/30 bg-primary/10 text-primary"
-                                          : profile.is_premium
-                                          ? "border-green-300 bg-green-50 text-green-700"
-                                          : "border-slate-300 bg-slate-50 text-slate-700"
+                                          : "border-green-300 bg-green-50 text-green-700"
                                       }`}
                                     >
-                                      {profile.role === "admin"
-                                        ? "Admin"
-                                        : profile.is_premium
-                                        ? "Premium"
-                                        : "Guest"}
+                                      {profile.role === "admin" ? "Admin" : "Premium"}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-foreground">

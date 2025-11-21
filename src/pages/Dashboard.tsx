@@ -54,6 +54,15 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
 import {
+  saveRankingWeights,
+  loadRankingWeights,
+  saveRankingPreset,
+  loadRankingPresets,
+  deleteRankingPreset,
+  RankingPreset,
+} from "@/services/preferences";
+import { supabase } from "@/lib/supabase";
+import {
   AreaChart,
   Area,
   LineChart,
@@ -93,12 +102,16 @@ export default function Dashboard() {
   const [adminSection, setAdminSection] = useState<"users" | "upload" | null>(
     null
   );
+  const [rankingPresets, setRankingPresets] = useState<RankingPreset[]>([]);
+  const [showPresetSaveDialog, setShowPresetSaveDialog] = useState(false);
+  const [newPresetName, setNewPresetName] = useState("");
   const [adminProfiles, setAdminProfiles] = useState<ProfileRow[]>([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminSearchQuery, setAdminSearchQuery] = useState("");
   const [adminUpdatingId, setAdminUpdatingId] = useState<string | null>(null);
   const [etfData, setEtfData] = useState<ETF[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [chartHeight, setChartHeight] = useState(300);
 
   const isAdmin = profile?.role === "admin";
   const isPremium = !!profile;
@@ -137,31 +150,8 @@ export default function Dashboard() {
     loadSiteSettings();
   }, []);
 
-  useEffect(() => {
-    if (!etfData.length) return;
-    const symbols = etfData.map((e) => e.symbol);
-    const tick = async () => {
-      try {
-        const updates = await fetchQuickUpdates(symbols);
-        setEtfData((prev) => {
-          const updated = prev.map((etf) => {
-            const u = updates[etf.symbol];
-            if (!u || u.price == null) return etf;
-            return {
-              ...etf,
-              price: u.price,
-              priceChange: u.priceChange ?? etf.priceChange,
-            };
-          });
-          return updated;
-        });
-      } catch (_e) {
-        // ignore quick update errors
-      }
-    };
-    const interval = setInterval(tick, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // Removed quick-update polling: once ETF data is loaded from our database,
+  // keep it stable instead of continuously sweeping/refreshing prices.
 
   const fetchAdminProfiles = useCallback(async () => {
     setAdminLoading(true);
@@ -202,12 +192,9 @@ export default function Dashboard() {
 
   const totalUsers = adminProfiles.length;
   const adminCount = adminProfiles.filter((p) => p.role === "admin").length;
-  const premiumCount = adminProfiles.filter(
-    (p) => p.is_premium && p.role !== "admin"
-  ).length;
-  const guestCount = adminProfiles.filter(
-    (p) => !p.is_premium && p.role !== "admin"
-  ).length;
+  // All signed-up users are Premium - no guests
+  const premiumCount = adminProfiles.filter((p) => p.role !== "admin").length;
+  const guestCount = 0; // No guests - all users are Premium
 
   const handleAdminRoleToggle = async (row: ProfileRow) => {
     const nextRole = row.role === "admin" ? "user" : "admin";
@@ -328,6 +315,40 @@ export default function Dashboard() {
     window.addEventListener("resize", calculateInitialCount);
     return () => window.removeEventListener("resize", calculateInitialCount);
   }, []);
+
+  // Calculate chart height for mobile landscape/portrait
+  useEffect(() => {
+    const calculateChartHeight = () => {
+      const height = window.innerHeight;
+      const width = window.innerWidth;
+      const isLandscape = width > height;
+
+      // Mobile landscape (horizontal)
+      if (width < 1024 && isLandscape && height < 600) {
+        setChartHeight(Math.min(250, height * 0.4));
+      }
+      // Mobile portrait or larger screens
+      else if (width < 640) {
+        setChartHeight(280);
+      }
+      // Tablet
+      else if (width < 1024) {
+        setChartHeight(350);
+      }
+      // Desktop
+      else {
+        setChartHeight(400);
+      }
+    };
+
+    calculateChartHeight();
+    window.addEventListener("resize", calculateChartHeight);
+    window.addEventListener("orientationchange", calculateChartHeight);
+    return () => {
+      window.removeEventListener("resize", calculateChartHeight);
+      window.removeEventListener("orientationchange", calculateChartHeight);
+    };
+  }, []);
   const [sortField, setSortField] = useState<keyof ETF | null>("weightedRank");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -350,16 +371,53 @@ export default function Dashboard() {
   const [stdDevWeight, setStdDevWeight] = useState(30);
   const [totalReturnWeight, setTotalReturnWeight] = useState(40);
   const [totalReturnTimeframe, setTotalReturnTimeframe] = useState<
-    "3mo" | "6mo"
-  >("6mo");
+    "3mo" | "6mo" | "12mo"
+  >("12mo");
 
   const totalWeight = yieldWeight + stdDevWeight + totalReturnWeight;
   const isValid = totalWeight === 100;
 
+  // Load saved ranking weights and presets from profile
   useEffect(() => {
-    setSortField("weightedRank");
-    setSortDirection("asc");
-  }, [showTotalReturns, weights]);
+    console.log("🔍 Profile loaded:", profile);
+    console.log("🔍 Profile preferences:", profile?.preferences);
+
+    if (!profile?.preferences) {
+      console.log("⚠️ No preferences found in profile, using defaults");
+      return;
+    }
+
+    const savedWeights = profile.preferences.ranking_weights as
+      | RankingWeights
+      | undefined;
+
+    if (savedWeights) {
+      console.log("✅ Loading saved weights from profile:", savedWeights);
+      setWeights(savedWeights);
+      setYieldWeight(savedWeights.yield);
+      setStdDevWeight(savedWeights.stdDev);
+      setTotalReturnWeight(savedWeights.totalReturn);
+      if (
+        savedWeights.timeframe === "3mo" ||
+        savedWeights.timeframe === "6mo" ||
+        savedWeights.timeframe === "12mo"
+      ) {
+        setTotalReturnTimeframe(savedWeights.timeframe);
+        console.log("✅ Set timeframe to:", savedWeights.timeframe);
+      }
+    } else {
+      console.log("⚠️ No ranking_weights in preferences, using defaults");
+    }
+
+    // Load presets
+    const savedPresets = profile.preferences.ranking_presets as
+      | RankingPreset[]
+      | undefined;
+    if (savedPresets) {
+      setRankingPresets(savedPresets);
+      console.log("✅ Loaded presets:", savedPresets);
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (showRankingPanel) {
@@ -403,7 +461,7 @@ export default function Dashboard() {
     });
   };
 
-  const handleTimeframeChange = (timeframe: "3mo" | "6mo") => {
+  const handleTimeframeChange = (timeframe: "3mo" | "6mo" | "12mo") => {
     setTotalReturnTimeframe(timeframe);
     setWeights({
       yield: yieldWeight,
@@ -413,32 +471,193 @@ export default function Dashboard() {
     });
   };
 
-  const resetToDefaults = () => {
-    setYieldWeight(30);
-    setStdDevWeight(30);
-    setTotalReturnWeight(40);
-    setTotalReturnTimeframe("12mo");
-    setWeights({
+  const resetToDefaults = async () => {
+    const defaultWeights: RankingWeights = {
       yield: 30,
       stdDev: 30,
       totalReturn: 40,
       timeframe: "12mo",
-    });
+    };
+
+    setYieldWeight(30);
+    setStdDevWeight(30);
+    setTotalReturnWeight(40);
+    setTotalReturnTimeframe("12mo");
+    setWeights(defaultWeights);
+
+    // Save defaults to database
+    if (user?.id && isPremium) {
+      try {
+        await saveRankingWeights(user.id, defaultWeights);
+        console.log("Reset to defaults and saved:", defaultWeights);
+        toast({
+          title: "Reset to defaults",
+          description: "Rankings reset and saved successfully",
+        });
+      } catch (error) {
+        console.error("Failed to save default weights:", error);
+      }
+    }
   };
 
-  const applyRankings = () => {
-    if (!isValid) return;
+  const applyRankings = async () => {
+    if (!isValid) {
+      console.log(
+        "❌ Cannot apply: weights are not valid (total:",
+        totalWeight,
+        ")"
+      );
+      toast({
+        variant: "destructive",
+        title: "Invalid weights",
+        description: `Total must equal 100% (currently ${totalWeight}%)`,
+      });
+      return;
+    }
+
     if (!isPremium) {
       setShowUpgradeModal(true);
       return;
     }
-    setWeights({
+
+    if (!user?.id) {
+      console.error("❌ Cannot save: user ID is missing");
+      toast({
+        variant: "destructive",
+        title: "Not logged in",
+        description: "Please log in to save your preferences",
+      });
+      return;
+    }
+
+    const newWeights: RankingWeights = {
       yield: yieldWeight,
       stdDev: stdDevWeight,
       totalReturn: totalReturnWeight,
       timeframe: totalReturnTimeframe,
-    });
+    };
+
+    console.log("🎯 Applying rankings with weights:", newWeights);
+    console.log("🎯 User ID:", user.id);
+
+    // Apply immediately for instant feedback
+    setWeights(newWeights);
     setShowRankingPanel(false);
+
+    // Save weights to database
+    try {
+      console.log("💾 Attempting to save weights to database...");
+      await saveRankingWeights(user.id, newWeights);
+      console.log("✅ Saved weights successfully:", newWeights);
+
+      toast({
+        title: "Rankings saved ✓",
+        description: "Your custom weights will be remembered across sessions",
+      });
+
+      // Force a profile reload to get the updated preferences
+      // This ensures the profile state is updated
+      if (profile) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("preferences")
+          .eq("id", user.id)
+          .single();
+        if (data) {
+          console.log("🔄 Reloaded preferences from DB:", data.preferences);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Failed to save weights:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to save",
+        description: `Error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+    }
+  };
+
+  const handleSavePreset = async () => {
+    if (!newPresetName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Invalid name",
+        description: "Please enter a preset name",
+      });
+      return;
+    }
+
+    if (!isValid) {
+      toast({
+        variant: "destructive",
+        title: "Invalid weights",
+        description: "Total weight must equal 100%",
+      });
+      return;
+    }
+
+    if (!user?.id) return;
+
+    const newWeights: RankingWeights = {
+      yield: yieldWeight,
+      stdDev: stdDevWeight,
+      totalReturn: totalReturnWeight,
+      timeframe: totalReturnTimeframe,
+    };
+
+    try {
+      await saveRankingPreset(user.id, newPresetName.trim(), newWeights);
+      const updatedPresets = await loadRankingPresets(user.id);
+      setRankingPresets(updatedPresets);
+      setNewPresetName("");
+      setShowPresetSaveDialog(false);
+      toast({
+        title: "Preset saved",
+        description: `"${newPresetName.trim()}" has been saved successfully.`,
+      });
+    } catch (error) {
+      console.error("❌ Failed to save preset:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to save preset",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  };
+
+  const handleLoadPreset = (preset: RankingPreset) => {
+    setYieldWeight(preset.weights.yield);
+    setStdDevWeight(preset.weights.stdDev);
+    setTotalReturnWeight(preset.weights.totalReturn);
+    setTotalReturnTimeframe(preset.weights.timeframe || "12mo");
+    setWeights(preset.weights);
+    toast({
+      title: "Preset loaded",
+      description: `"${preset.name}" has been loaded.`,
+    });
+  };
+
+  const handleDeletePreset = async (presetName: string) => {
+    if (!user?.id) return;
+
+    try {
+      await deleteRankingPreset(user.id, presetName);
+      const updatedPresets = await loadRankingPresets(user.id);
+      setRankingPresets(updatedPresets);
+      toast({
+        title: "Preset deleted",
+        description: `"${presetName}" has been deleted.`,
+      });
+    } catch (error) {
+      console.error("❌ Failed to delete preset:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to delete preset",
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   };
 
   const rankedETFs = rankETFs(etfData, weights);
@@ -892,9 +1111,9 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <Card className="p-4 sm:p-6 border-2 border-slate-200">
+              <Card className="p-4 sm:p-6 border-2 border-slate-200 overflow-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h2 className="text-lg sm:text-xl font-semibold mb-2">
                       {selectedETF.symbol}{" "}
                       {chartType === "price" ? "Price" : "Total Return"} Chart
@@ -931,7 +1150,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                   </div>
-                  <div className="flex gap-1 flex-wrap">
+                  <div className="flex gap-0.5 sm:gap-1 flex-wrap overflow-x-auto max-w-full">
                     {timeframes.map((tf: ComparisonTimeframe) => (
                       <Button
                         key={tf}
@@ -940,7 +1159,7 @@ export default function Dashboard() {
                         }
                         size="sm"
                         onClick={() => setSelectedTimeframe(tf)}
-                        className={`h-7 sm:h-8 px-2 sm:px-3 text-xs ${
+                        className={`h-6 sm:h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs whitespace-nowrap ${
                           selectedTimeframe !== tf
                             ? "border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors"
                             : ""
@@ -1095,11 +1314,7 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <ResponsiveContainer
-                  width="100%"
-                  height={300}
-                  className="sm:h-[400px]"
-                >
+                <ResponsiveContainer width="100%" height={chartHeight}>
                   {comparisonETFs.length > 0 ? (
                     <LineChart data={chartData}>
                       <CartesianGrid
@@ -1110,13 +1325,16 @@ export default function Dashboard() {
                       <XAxis
                         dataKey="time"
                         stroke="#94a3b8"
-                        fontSize={12}
+                        fontSize={chartHeight < 280 ? 9 : 12}
                         tickLine={false}
                         axisLine={false}
+                        angle={chartHeight < 280 ? -45 : 0}
+                        textAnchor={chartHeight < 280 ? "end" : "middle"}
+                        height={chartHeight < 280 ? 50 : 30}
                       />
                       <YAxis
                         stroke="#94a3b8"
-                        fontSize={12}
+                        fontSize={chartHeight < 280 ? 9 : 12}
                         domain={
                           chartType === "totalReturn"
                             ? [minChartValue, maxChartValue]
@@ -1129,6 +1347,7 @@ export default function Dashboard() {
                             ? `${value.toFixed(1)}%`
                             : `$${value.toFixed(2)}`
                         }
+                        width={chartHeight < 280 ? 40 : 60}
                       />
                       <Tooltip
                         contentStyle={{
@@ -1205,13 +1424,16 @@ export default function Dashboard() {
                       <XAxis
                         dataKey="time"
                         stroke="#94a3b8"
-                        fontSize={12}
+                        fontSize={chartHeight < 280 ? 9 : 12}
                         tickLine={false}
                         axisLine={false}
+                        angle={chartHeight < 280 ? -45 : 0}
+                        textAnchor={chartHeight < 280 ? "end" : "middle"}
+                        height={chartHeight < 280 ? 50 : 30}
                       />
                       <YAxis
                         stroke="#94a3b8"
-                        fontSize={12}
+                        fontSize={chartHeight < 280 ? 9 : 12}
                         domain={
                           chartType === "totalReturn"
                             ? [minChartValue, maxChartValue]
@@ -1224,6 +1446,7 @@ export default function Dashboard() {
                             ? `${value.toFixed(1)}%`
                             : `$${value.toFixed(2)}`
                         }
+                        width={chartHeight < 280 ? 40 : 60}
                       />
                       <Tooltip
                         contentStyle={{
@@ -1486,7 +1709,7 @@ export default function Dashboard() {
                     {displayName}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {isAdmin ? "Admin" : isPremium ? "Premium" : "Guest"}
+                    {isAdmin ? "Admin" : "Premium"}
                   </p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold">
@@ -1517,8 +1740,7 @@ export default function Dashboard() {
                         {totalUsers}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {adminCount} admins, {premiumCount} premium,{" "}
-                        {guestCount} guests
+                        {adminCount} admins, {premiumCount} premium users
                       </p>
                     </Card>
                     <Card className="p-5 border-2 border-slate-200">
@@ -1546,7 +1768,7 @@ export default function Dashboard() {
                         {premiumCount}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {guestCount} guests remaining
+                        All signed-up users
                       </p>
                     </Card>
                   </div>
@@ -1641,16 +1863,12 @@ export default function Dashboard() {
                                         className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                                           row.role === "admin"
                                             ? "border-primary/30 bg-primary/10 text-primary"
-                                            : row.is_premium
-                                            ? "border-green-300 bg-green-50 text-green-700"
-                                            : "border-slate-300 bg-slate-50 text-slate-700"
+                                            : "border-green-300 bg-green-50 text-green-700"
                                         }`}
                                       >
                                         {row.role === "admin"
                                           ? "Admin"
-                                          : row.is_premium
-                                          ? "Premium"
-                                          : "Guest"}
+                                          : "Premium"}
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-foreground">
@@ -1834,7 +2052,10 @@ export default function Dashboard() {
                                 </th>
                               </tr>
                               <tr className="bg-slate-50">
-                                <th className="h-6 px-1 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200" title="Click to add to Favorites">
+                                <th
+                                  className="h-6 px-1 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200"
+                                  title="Click to add to Favorites"
+                                >
                                   <Star className="h-3.5 w-3.5 mx-auto text-slate-600" />
                                 </th>
                                 <th className="h-6 px-1 text-left sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs">
@@ -2117,7 +2338,8 @@ export default function Dashboard() {
                             </h3>
                             <p className="text-sm text-muted-foreground mt-1">
                               Personalize your ETF rankings by adjusting the
-                              importance of each metric
+                              importance of each metric. Your preferences will
+                              be saved automatically.
                             </p>
                           </div>
                           <button
@@ -2127,6 +2349,46 @@ export default function Dashboard() {
                             <X className="h-5 w-5" />
                           </button>
                         </div>
+
+                        {/* Presets Section */}
+                        {rankingPresets.length > 0 && (
+                          <div className="space-y-3">
+                            <Label className="text-sm font-semibold text-foreground">
+                              Saved Presets
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {rankingPresets.map((preset) => (
+                                <div
+                                  key={preset.name}
+                                  className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-white hover:border-primary hover:bg-primary/5 transition-all"
+                                >
+                                  <button
+                                    onClick={() => handleLoadPreset(preset)}
+                                    className="flex-1 text-left"
+                                  >
+                                    <p className="text-sm font-semibold text-foreground truncate">
+                                      {preset.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Y:{preset.weights.yield}% D:
+                                      {preset.weights.stdDev}% R:
+                                      {preset.weights.totalReturn}%
+                                    </p>
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleDeletePreset(preset.name)
+                                    }
+                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-all"
+                                    title="Delete preset"
+                                  >
+                                    <X className="h-4 w-4 text-red-600" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="space-y-6">
                           <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
@@ -2205,6 +2467,16 @@ export default function Dashboard() {
                               >
                                 6 Mo
                               </button>
+                              <button
+                                onClick={() => handleTimeframeChange("12mo")}
+                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                                  totalReturnTimeframe === "12mo"
+                                    ? "bg-primary text-white"
+                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                                }`}
+                              >
+                                12 Mo
+                              </button>
                             </div>
                           </div>
 
@@ -2233,22 +2505,78 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 pt-4 border-t">
-                          <Button
-                            variant="outline"
-                            onClick={resetToDefaults}
-                            className="flex-1 border-2"
-                          >
-                            <RotateCcw className="h-4 w-4 mr-2" />
-                            Reset to Defaults
-                          </Button>
-                          <Button
-                            onClick={applyRankings}
-                            className="flex-1"
-                            disabled={!isValid}
-                          >
-                            Apply Rankings
-                          </Button>
+                        <div className="space-y-3 pt-4 border-t">
+                          {/* Save Preset Dialog */}
+                          {showPresetSaveDialog ? (
+                            <div className="p-4 rounded-lg border-2 border-primary bg-primary/5 space-y-3">
+                              <Label className="text-sm font-semibold text-foreground">
+                                Save Current Settings as Preset
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={newPresetName}
+                                  onChange={(e) =>
+                                    setNewPresetName(e.target.value)
+                                  }
+                                  placeholder="Enter preset name..."
+                                  className="flex-1 border-2"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleSavePreset();
+                                    if (e.key === "Escape") {
+                                      setShowPresetSaveDialog(false);
+                                      setNewPresetName("");
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                                <Button
+                                  onClick={handleSavePreset}
+                                  size="sm"
+                                  disabled={!newPresetName.trim() || !isValid}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setShowPresetSaveDialog(false);
+                                    setNewPresetName("");
+                                  }}
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              onClick={() => setShowPresetSaveDialog(true)}
+                              className="w-full border-2 border-dashed border-primary text-primary hover:bg-primary/10"
+                              disabled={!isValid}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Save as Preset
+                            </Button>
+                          )}
+
+                          <div className="flex items-center gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={resetToDefaults}
+                              className="flex-1 border-2"
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Reset to Defaults
+                            </Button>
+                            <Button
+                              onClick={applyRankings}
+                              className="flex-1"
+                              disabled={!isValid}
+                            >
+                              Apply Rankings
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </Card>

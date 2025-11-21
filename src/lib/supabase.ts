@@ -59,6 +59,7 @@ export type Profile = {
   display_name?: string;
   created_at: string;
   updated_at: string;
+  preferences?: Record<string, any>;
 };
 
 export type FavoriteList = {

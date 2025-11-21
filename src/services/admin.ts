@@ -3,12 +3,13 @@ import { supabase } from "@/lib/supabase";
 export type ProfileRow = {
   id: string;
   email: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "premium" | "guest";
   is_premium: boolean;
   display_name: string | null;
   created_at: string;
   updated_at: string;
   last_login: string | null;
+  preferences?: Record<string, any>;
 };
 
 export type SiteSetting = {

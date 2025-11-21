@@ -80,10 +80,8 @@ const Index = () => {
 
     loadData();
     loadSiteSettings();
-
-    const interval = setInterval(loadData, 30000);
-
-    return () => clearInterval(interval);
+    // Removed auto-refresh interval: once data is loaded from our database,
+    // keep it stable for a clean, non-jittery experience.
   }, []);
 
   const totalWeight = yieldWeight + stdDevWeight + totalReturnWeight;
