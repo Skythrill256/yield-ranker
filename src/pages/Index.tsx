@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { ETFTable } from "@/components/ETFTable";
 import { fetchETFData } from "@/services/etfData";
@@ -11,11 +11,12 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { RotateCcw, X, Star, Lock, Sliders, Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
+import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -28,6 +29,7 @@ import {
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile } = useAuth();
   const isPremium = !!profile;
   const isGuest = !profile;
@@ -97,8 +99,8 @@ const Index = () => {
     // keep it stable for a clean, non-jittery experience.
   }, []);
 
-  // Load weights and presets from profile
-  useEffect(() => {
+  // Function to load weights from profile
+  const loadWeightsFromProfile = useCallback(() => {
     if (!profile?.preferences) return;
 
     const savedWeights = profile.preferences.ranking_weights as RankingWeights | undefined;
@@ -117,6 +119,89 @@ const Index = () => {
       setRankingPresets(savedPresets);
     }
   }, [profile]);
+
+  // Load weights and presets from profile
+  useEffect(() => {
+    loadWeightsFromProfile();
+  }, [profile, loadWeightsFromProfile]);
+
+  // Reload weights when navigating to this page
+  useEffect(() => {
+    if (user?.id && location.pathname === "/") {
+      const reloadWeights = async () => {
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("preferences")
+            .eq("id", user.id)
+            .single();
+          if (data?.preferences) {
+            const prefs = data.preferences as { ranking_weights?: RankingWeights; ranking_presets?: RankingPreset[] };
+            const savedWeights = prefs.ranking_weights;
+            if (savedWeights) {
+              setWeights(savedWeights);
+              setYieldWeight(savedWeights.yield);
+              setStdDevWeight(savedWeights.stdDev);
+              setTotalReturnWeight(savedWeights.totalReturn);
+              if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+                setTotalReturnTimeframe(savedWeights.timeframe);
+              }
+            }
+            const savedPresets = prefs.ranking_presets;
+            if (savedPresets) {
+              setRankingPresets(savedPresets);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to reload weights on navigation:", error);
+        }
+      };
+      reloadWeights();
+    }
+  }, [location.pathname, user?.id]);
+
+  // Reload weights when page becomes visible (handles navigation between pages)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && user?.id) {
+        // Reload profile from database to get latest weights
+        const reloadProfile = async () => {
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("preferences")
+              .eq("id", user.id)
+              .single();
+            if (data?.preferences) {
+              const prefs = data.preferences as { ranking_weights?: RankingWeights; ranking_presets?: RankingPreset[] };
+              const savedWeights = prefs.ranking_weights;
+              if (savedWeights) {
+                setWeights(savedWeights);
+                setYieldWeight(savedWeights.yield);
+                setStdDevWeight(savedWeights.stdDev);
+                setTotalReturnWeight(savedWeights.totalReturn);
+                if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+                  setTotalReturnTimeframe(savedWeights.timeframe);
+                }
+              }
+              const savedPresets = prefs.ranking_presets;
+              if (savedPresets) {
+                setRankingPresets(savedPresets);
+              }
+            }
+          } catch (error) {
+            console.error("Failed to reload profile:", error);
+          }
+        };
+        reloadProfile();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [user?.id]);
 
   const totalWeight = yieldWeight + stdDevWeight + totalReturnWeight;
   const isValid = totalWeight === 100;

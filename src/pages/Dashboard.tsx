@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   fetchETFData,
   fetchQuickUpdates,
@@ -379,11 +379,8 @@ export default function Dashboard() {
   const totalWeight = yieldWeight + stdDevWeight + totalReturnWeight;
   const isValid = totalWeight === 100;
 
-  // Load saved ranking weights and presets from profile
-  useEffect(() => {
-    console.log("🔍 Profile loaded:", profile);
-    console.log("🔍 Profile preferences:", profile?.preferences);
-
+  // Function to load weights from profile
+  const loadWeightsFromProfile = useCallback(() => {
     if (!profile?.preferences) {
       console.log("⚠️ No preferences found in profile, using defaults");
       return;
@@ -435,11 +432,93 @@ export default function Dashboard() {
       }
       console.log("✅ Loaded chart settings:", chartSettings);
     }
+  }, [profile]);
+
+  // Load saved ranking weights and presets from profile
+  useEffect(() => {
+    console.log("🔍 Profile loaded:", profile);
+    console.log("🔍 Profile preferences:", profile?.preferences);
+    loadWeightsFromProfile();
     // Mark initial load as complete after a short delay to allow state to settle
     setTimeout(() => {
       isInitialChartLoad.current = false;
     }, 500);
-  }, [profile]);
+  }, [profile, loadWeightsFromProfile]);
+
+  // Reload weights when navigating to dashboard
+  useEffect(() => {
+    if (user?.id && location.pathname.includes("dashboard")) {
+      const reloadWeights = async () => {
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("preferences")
+            .eq("id", user.id)
+            .single();
+          if (data?.preferences) {
+            const prefs = data.preferences as { ranking_weights?: RankingWeights; ranking_presets?: RankingPreset[] };
+            const savedWeights = prefs.ranking_weights;
+            if (savedWeights) {
+              setWeights(savedWeights);
+              setYieldWeight(savedWeights.yield);
+              setStdDevWeight(savedWeights.stdDev);
+              setTotalReturnWeight(savedWeights.totalReturn);
+              if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+                setTotalReturnTimeframe(savedWeights.timeframe);
+              }
+            }
+            const savedPresets = prefs.ranking_presets;
+            if (savedPresets) {
+              setRankingPresets(savedPresets);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to reload weights on navigation:", error);
+        }
+      };
+      reloadWeights();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, user?.id]);
+
+  // Reload weights when page becomes visible (handles navigation between pages)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && user?.id) {
+        // Reload profile from database to get latest weights
+        const reloadProfile = async () => {
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("preferences")
+              .eq("id", user.id)
+              .single();
+            if (data?.preferences) {
+              const prefs = data.preferences as { ranking_weights?: RankingWeights };
+              const savedWeights = prefs.ranking_weights;
+              if (savedWeights) {
+                setWeights(savedWeights);
+                setYieldWeight(savedWeights.yield);
+                setStdDevWeight(savedWeights.stdDev);
+                setTotalReturnWeight(savedWeights.totalReturn);
+                if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+                  setTotalReturnTimeframe(savedWeights.timeframe);
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Failed to reload profile:", error);
+          }
+        };
+        reloadProfile();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (showRankingPanel) {
@@ -2378,8 +2457,8 @@ export default function Dashboard() {
                               Customize Rankings
                             </h3>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Personalize your ETF rankings by adjusting the importance
-                              of each metric
+                              Personalize your ETF rankings by adjusting the
+                              importance of each metric
                             </p>
                           </div>
                           <button
