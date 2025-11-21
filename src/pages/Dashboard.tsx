@@ -2378,9 +2378,8 @@ export default function Dashboard() {
                               Customize Rankings
                             </h3>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Personalize your ETF rankings by adjusting the
-                              importance of each metric. Your preferences will
-                              be saved automatically.
+                              Personalize your ETF rankings by adjusting the importance
+                              of each metric
                             </p>
                           </div>
                           <button
