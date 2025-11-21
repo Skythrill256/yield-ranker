@@ -52,8 +52,21 @@ export const updateProfile = async (
 };
 
 export const trackUserLogin = async (): Promise<void> => {
-  const { error } = await supabase.rpc("track_user_login");
-  if (error) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.id) {
+      return;
+    }
+    
+    const { error } = await supabase
+      .from("profiles")
+      .update({ last_login: new Date().toISOString() })
+      .eq("id", user.id);
+    
+    if (error) {
+      console.error("Failed to track login:", error);
+    }
+  } catch (error) {
     console.error("Failed to track login:", error);
   }
 };

@@ -1961,27 +1961,37 @@ export default function Dashboard() {
                                 ...filteredAdminProfiles.map((row) => {
                                   let createdDate = "";
                                   let lastLoginDate = "Never";
-                                  
+
                                   try {
                                     const created = new Date(row.created_at);
                                     if (!isNaN(created.getTime())) {
-                                      createdDate = created.toLocaleString("en-US");
+                                      createdDate =
+                                        created.toLocaleString("en-US");
                                     }
                                   } catch (error) {
-                                    console.error("Error formatting created_at:", error);
+                                    console.error(
+                                      "Error formatting created_at:",
+                                      error
+                                    );
                                   }
-                                  
+
                                   if (row.last_login) {
                                     try {
-                                      const lastLogin = new Date(row.last_login);
+                                      const lastLogin = new Date(
+                                        row.last_login
+                                      );
                                       if (!isNaN(lastLogin.getTime())) {
-                                        lastLoginDate = lastLogin.toLocaleString("en-US");
+                                        lastLoginDate =
+                                          lastLogin.toLocaleString("en-US");
                                       }
                                     } catch (error) {
-                                      console.error("Error formatting last_login:", error);
+                                      console.error(
+                                        "Error formatting last_login:",
+                                        error
+                                      );
                                     }
                                   }
-                                  
+
                                   return [
                                     row.display_name || "",
                                     row.email,
@@ -2124,19 +2134,28 @@ export default function Dashboard() {
                                       {row.last_login
                                         ? (() => {
                                             try {
-                                              const date = new Date(row.last_login);
+                                              const date = new Date(
+                                                row.last_login
+                                              );
                                               if (isNaN(date.getTime())) {
                                                 return "—";
                                               }
-                                              return new Intl.DateTimeFormat("en-US", {
-                                                month: "short",
-                                                day: "numeric",
-                                                year: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                              }).format(date);
+                                              return new Intl.DateTimeFormat(
+                                                "en-US",
+                                                {
+                                                  month: "short",
+                                                  day: "numeric",
+                                                  year: "numeric",
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                                }
+                                              ).format(date);
                                             } catch (error) {
-                                              console.error("Error formatting last_login:", error, row.last_login);
+                                              console.error(
+                                                "Error formatting last_login:",
+                                                error,
+                                                row.last_login
+                                              );
                                               return "—";
                                             }
                                           })()
@@ -2218,7 +2237,9 @@ export default function Dashboard() {
                             Covered Call Option ETFs
                           </h3>
                           <span className="text-xs text-muted-foreground leading-tight">
-                            {lastDataUpdate ? `EOD - ${lastDataUpdate}` : "End of Day (EOD) Data"}
+                            {lastDataUpdate
+                              ? `EOD - ${lastDataUpdate}`
+                              : "End of Day (EOD) Data"}
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 pt-0.5">
