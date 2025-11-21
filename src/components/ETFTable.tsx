@@ -4,6 +4,7 @@ import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { ArrowUpDown, ChevronDown, ChevronUp, Info, Star, LineChart, X, Lock, Sliders } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeToPremiumModal } from "./UpgradeToPremiumModal";
 import { PremiumLockIcon } from "./PremiumLockIcon";
@@ -164,8 +165,17 @@ export const ETFTable = ({
               </th>
             </tr>
             <tr className="bg-slate-50">
-              <th className="h-7 px-1.5 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200" title="Click to add to Favorites">
-                <Star className="h-3.5 w-3.5 mx-auto text-slate-600" />
+              <th className="h-7 px-1.5 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center">
+                      <Info className="h-3.5 w-3.5 mx-auto text-slate-600 hover:text-primary transition-colors cursor-help" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[200px]">
+                    <p className="text-center">Click the star icon in any row to add ETFs to your favorites</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-left sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs">
                 <SortButton field="symbol">Symbol</SortButton>

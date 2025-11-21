@@ -200,3 +200,4 @@ SELECT preferences FROM profiles WHERE id = auth.uid();
 
 The frontend code already handles everything through Supabase's auto-generated API.
 
+

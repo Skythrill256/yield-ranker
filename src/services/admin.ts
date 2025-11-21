@@ -105,6 +105,35 @@ export const updateSiteSetting = async (
   return data as SiteSetting;
 };
 
+export const deleteProfile = async (id: string): Promise<void> => {
+  // Delete from profiles table
+  // Note: This will remove the user from the application even if auth user remains
+  // For complete deletion, you may need a backend function with admin privileges
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", id);
+  
+  if (profileError) {
+    throw profileError;
+  }
+  
+  // Attempt to delete from auth if admin API is available
+  // This may not work in all Supabase setups (client-side limitation)
+  try {
+    // @ts-ignore - admin API may not be available in client SDK
+    if (supabase.auth.admin && typeof supabase.auth.admin.deleteUser === 'function') {
+      const { error: authError } = await supabase.auth.admin.deleteUser(id);
+      if (authError) {
+        console.warn("Auth user deletion failed (profile was deleted):", authError);
+      }
+    }
+  } catch (error) {
+    // Admin API not available - that's okay, profile is deleted
+    console.warn("Auth admin API not available - profile deleted from database");
+  }
+};
+
 
 
 

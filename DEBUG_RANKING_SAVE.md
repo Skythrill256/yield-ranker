@@ -153,3 +153,4 @@ If you have a separate backend, give them:
 
 But since you're using Supabase, you shouldn't need a separate backend! The frontend should work directly with Supabase.
 
+

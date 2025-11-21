@@ -147,3 +147,4 @@ Both update together instantly ✓
 
 That's it! Rankings will now be saved and consistent everywhere. 🎉
 
+

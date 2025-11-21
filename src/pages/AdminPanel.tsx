@@ -10,12 +10,14 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   listProfiles,
   updateProfile,
+  deleteProfile,
   ProfileRow,
   getSiteSettings,
   updateSiteSetting,
   SiteSetting,
 } from "@/services/admin";
 import {
+  ArrowUpDown,
   BarChart3,
   ChevronLeft,
   Database,
@@ -27,6 +29,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Trash2,
   Upload,
   Users,
 } from "lucide-react";
@@ -62,6 +65,9 @@ const AdminPanel = () => {
   const [settingsValues, setSettingsValues] = useState<Record<string, string>>(
     {}
   );
+  const [sortField, setSortField] = useState<keyof ProfileRow | null>("created_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const userMetadata =
     (user?.user_metadata as {
@@ -178,20 +184,57 @@ const AdminPanel = () => {
     }
   };
 
-  const filteredProfiles = useMemo(() => {
+  const filteredAndSortedProfiles = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
-    if (!term) {
-      return profiles;
+    let filtered = profiles;
+    
+    if (term) {
+      filtered = profiles.filter((profile) => {
+        const name = profile.display_name ?? "";
+        return (
+          name.toLowerCase().includes(term) ||
+          profile.email.toLowerCase().includes(term) ||
+          profile.role.toLowerCase().includes(term)
+        );
+      });
     }
-    return profiles.filter((profile) => {
-      const name = profile.display_name ?? "";
-      return (
-        name.toLowerCase().includes(term) ||
-        profile.email.toLowerCase().includes(term) ||
-        profile.role.toLowerCase().includes(term)
-      );
-    });
-  }, [profiles, searchQuery]);
+
+    // Apply sorting
+    if (sortField) {
+      return [...filtered].sort((a, b) => {
+        const aValue = a[sortField];
+        const bValue = b[sortField];
+
+        // Handle null/undefined values - push them to the end
+        if (aValue === undefined || aValue === null) {
+          if (bValue === undefined || bValue === null) return 0;
+          return 1;
+        }
+        if (bValue === undefined || bValue === null) return -1;
+
+        // Handle different data types properly
+        let comparison: number;
+        
+        // Check if this is a date field (created_at, updated_at, last_login)
+        if (sortField === 'created_at' || sortField === 'updated_at' || sortField === 'last_login') {
+          const aDate = new Date(aValue as string).getTime();
+          const bDate = new Date(bValue as string).getTime();
+          comparison = aDate - bDate;
+        } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+          comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+          comparison = aValue - bValue;
+        } else {
+          // Convert to string for mixed types or fallback
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  }, [profiles, searchQuery, sortField, sortDirection]);
 
   const totalUsers = profiles.length;
   const adminCount = profiles.filter(
@@ -264,6 +307,52 @@ const AdminPanel = () => {
       });
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleSort = (field: keyof ProfileRow) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  const handleDeleteUser = async (profile: ProfileRow) => {
+    // Prevent deleting yourself
+    if (profile.id === user?.id) {
+      toast({
+        variant: "destructive",
+        title: "Cannot delete own account",
+        description: "You cannot delete your own account.",
+      });
+      return;
+    }
+
+    // Confirmation dialog
+    if (!confirm(`Are you sure you want to delete ${profile.display_name || profile.email}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(profile.id);
+    try {
+      await deleteProfile(profile.id);
+      setProfiles((prev) => prev.filter((p) => p.id !== profile.id));
+      toast({
+        title: "User deleted",
+        description: `${profile.display_name || profile.email} has been deleted.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to delete user";
+      toast({
+        variant: "destructive",
+        title: "Delete failed",
+        description: message,
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -659,22 +748,62 @@ const AdminPanel = () => {
                         <thead className="bg-slate-50">
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                              Name
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                onClick={() => handleSort("display_name")}
+                              >
+                                Name
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              </Button>
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                              Email
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                onClick={() => handleSort("email")}
+                              >
+                                Email
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              </Button>
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                              Role
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                onClick={() => handleSort("role")}
+                              >
+                                Role
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              </Button>
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                               Premium
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                              Last In
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                onClick={() => handleSort("last_login")}
+                              >
+                                Last In
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              </Button>
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                              Created
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                onClick={() => handleSort("created_at")}
+                              >
+                                Created
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                              </Button>
                             </th>
                             <th className="px-4 py-3" />
                           </tr>
@@ -683,23 +812,23 @@ const AdminPanel = () => {
                           {loading ? (
                             <tr>
                               <td
-                                colSpan={7}
+                                colSpan={8}
                                 className="px-4 py-10 text-center text-sm text-muted-foreground"
                               >
                                 Loading users...
                               </td>
                             </tr>
-                          ) : filteredProfiles.length === 0 ? (
+                          ) : filteredAndSortedProfiles.length === 0 ? (
                             <tr>
                               <td
-                                colSpan={7}
+                                colSpan={8}
                                 className="px-4 py-10 text-center text-sm text-muted-foreground"
                               >
-                                No users found for “{searchQuery}”
+                                No users found for "{searchQuery}"
                               </td>
                             </tr>
                           ) : (
-                            filteredProfiles.map((profile) => {
+                            filteredAndSortedProfiles.map((profile) => {
                               const roleKey = `${profile.id}-role`;
                               const premiumKey = `${profile.id}-premium`;
                               return (
@@ -742,17 +871,32 @@ const AdminPanel = () => {
                                     {formatDate(profile.created_at)}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-right">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleRoleToggle(profile)}
-                                      disabled={updatingId === roleKey}
-                                      className="border-2"
-                                    >
-                                      {profile.role === "admin"
-                                        ? "Remove admin"
-                                        : "Make admin"}
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleRoleToggle(profile)}
+                                        disabled={updatingId === roleKey}
+                                        className="border-2"
+                                      >
+                                        {profile.role === "admin"
+                                          ? "Remove admin"
+                                          : "Make admin"}
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleDeleteUser(profile)}
+                                        disabled={deletingId === profile.id || profile.id === user?.id}
+                                        className="border-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      >
+                                        {deletingId === profile.id ? (
+                                          <RefreshCw className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </div>
                                   </td>
                                 </tr>
                               );

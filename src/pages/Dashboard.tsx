@@ -53,6 +53,7 @@ import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
 import {
   saveRankingWeights,
@@ -2314,11 +2315,17 @@ export default function Dashboard() {
                                 </th>
                               </tr>
                               <tr className="bg-slate-50">
-                                <th
-                                  className="h-6 px-1 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200"
-                                  title="Click to add to Favorites"
-                                >
-                                  <Star className="h-3.5 w-3.5 mx-auto text-slate-600" />
+                                <th className="h-6 px-1 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
+                                  <UITooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="flex items-center justify-center">
+                                        <Info className="h-3.5 w-3.5 mx-auto text-slate-600 hover:text-primary transition-colors cursor-help" />
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[200px]">
+                                      <p className="text-center">Click the star icon in any row to add ETFs to your favorites</p>
+                                    </TooltipContent>
+                                  </UITooltip>
                                 </th>
                                 <th className="h-6 px-1 text-left sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs">
                                   <SortButton field="symbol">Symbol</SortButton>
@@ -2614,7 +2621,7 @@ export default function Dashboard() {
                         {/* Presets Section */}
                         {rankingPresets.length > 0 && (
                           <div className="space-y-3">
-                            <Label className="text-sm font-semibold text-foreground">
+                            <Label className="text-base font-semibold text-foreground">
                               Saved Presets
                             </Label>
                             <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
@@ -2622,7 +2629,7 @@ export default function Dashboard() {
                                 {rankingPresets.map((preset) => (
                                   <div
                                     key={preset.name}
-                                    className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-white hover:border-primary hover:bg-primary/5 transition-all"
+                                    className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-blue-50 hover:border-primary hover:bg-primary/5 transition-all"
                                   >
                                     <button
                                       onClick={() => handleLoadPreset(preset)}
@@ -2657,7 +2664,7 @@ export default function Dashboard() {
                           <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
                             <div className="flex items-center justify-between">
                               <Label className="text-sm font-medium text-foreground">
-                                Yield Weight
+                                Yield
                               </Label>
                               <span className="text-2xl font-bold tabular-nums text-primary">
                                 {yieldWeight}%

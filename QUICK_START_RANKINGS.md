@@ -51,3 +51,4 @@ The **critical fix** was adding `preferences` to the AuthContext query. Without 
 
 That's it! Rankings now persist across sessions. 🚀
 
+

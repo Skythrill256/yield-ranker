@@ -555,7 +555,7 @@ const Index = () => {
                 {/* Presets Section */}
                 {rankingPresets.length > 0 && (
                   <div className="space-y-3">
-                    <Label className="text-sm font-semibold text-foreground">
+                    <Label className="text-base font-semibold text-foreground">
                       Saved Presets
                     </Label>
                     <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
@@ -563,7 +563,7 @@ const Index = () => {
                         {rankingPresets.map((preset) => (
                           <div
                             key={preset.name}
-                            className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-white hover:border-primary hover:bg-primary/5 transition-all"
+                            className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-blue-50 hover:border-primary hover:bg-primary/5 transition-all"
                           >
                             <button
                               onClick={() => handleLoadPreset(preset)}
@@ -596,7 +596,7 @@ const Index = () => {
                   <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium text-foreground">
-                        Yield Weight
+                        Yield
                       </Label>
                       <span className="text-2xl font-bold tabular-nums text-primary">
                         {yieldWeight}%
