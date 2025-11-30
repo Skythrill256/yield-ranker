@@ -73,7 +73,7 @@ export interface RankingWeights {
   yield: number;
   volatility: number;       // Using dividend CV%
   totalReturn: number;
-  timeframe?: "3mo" | "6mo";
+  timeframe?: "3mo" | "6mo" | "12mo";
 }
 
 // Type for dividend history records (for the Dividend History page)

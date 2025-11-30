@@ -6,45 +6,72 @@ export const calculateWeightedRank = (
   weights: RankingWeights
 ): number => {
   const timeframe = weights.timeframe || "12mo";
-  const returnField = timeframe === "3mo" ? "totalReturn3Mo" : timeframe === "6mo" ? "totalReturn6Mo" : "totalReturn12Mo";
+  const returnField = timeframe === "3mo" 
+    ? "trDrip3Mo" 
+    : timeframe === "6mo" 
+    ? "trDrip6Mo" 
+    : "trDrip12Mo";
   
-  const yields = allETFs.map(e => e.forwardYield).filter(v => !isNaN(v));
-  const stdDevs = allETFs.map(e => e.standardDeviation).filter(v => !isNaN(v));
+  const yields = allETFs
+    .map(e => e.forwardYield)
+    .filter((v): v is number => v !== null && v !== undefined && !isNaN(v) && v > 0);
+  
+  const volatilityValues = allETFs
+    .map(e => e.dividendCVPercent ?? e.standardDeviation ?? null)
+    .filter((v): v is number => v !== null && v !== undefined && !isNaN(v) && v >= 0);
+  
   const returns = allETFs
-    .map(e => e[returnField])
-    .filter((v): v is number => typeof v === "number" && !isNaN(v));
+    .map(e => {
+      if (returnField === "trDrip3Mo") return e.trDrip3Mo ?? e.totalReturn3Mo ?? null;
+      if (returnField === "trDrip6Mo") return e.trDrip6Mo ?? e.totalReturn6Mo ?? null;
+      if (returnField === "trDrip12Mo") return e.trDrip12Mo ?? e.totalReturn12Mo ?? null;
+      return null;
+    })
+    .filter((v): v is number => v !== null && v !== undefined && !isNaN(v));
 
-  const minYield = Math.min(...yields);
-  const maxYield = Math.max(...yields);
-  const minStdDev = Math.min(...stdDevs);
-  const maxStdDev = Math.max(...stdDevs);
+  if (yields.length === 0 && volatilityValues.length === 0 && returns.length === 0) {
+    return 0;
+  }
 
-  const hasReturns = returns.length > 0;
-  const minReturn = hasReturns ? Math.min(...returns) : 0;
-  const maxReturn = hasReturns ? Math.max(...returns) : 0;
+  const minYield = yields.length > 0 ? Math.min(...yields) : 0;
+  const maxYield = yields.length > 0 ? Math.max(...yields) : 1;
+  const minVol = volatilityValues.length > 0 ? Math.min(...volatilityValues) : 0;
+  const maxVol = volatilityValues.length > 0 ? Math.max(...volatilityValues) : 1;
+  const minReturn = returns.length > 0 ? Math.min(...returns) : 0;
+  const maxReturn = returns.length > 0 ? Math.max(...returns) : 1;
 
-  const normalizeYield = (value: number) => {
+  const normalizeYield = (value: number | null) => {
+    if (value === null || value === undefined || isNaN(value) || value <= 0) return 0;
     if (maxYield === minYield) return 0.5;
     return (value - minYield) / (maxYield - minYield);
   };
 
-  const normalizeStdDev = (value: number) => {
-    if (maxStdDev === minStdDev) return 0.5;
-    return (maxStdDev - value) / (maxStdDev - minStdDev);
+  const normalizeVolatility = (value: number | null) => {
+    const volValue = value ?? null;
+    if (volValue === null || isNaN(volValue) || volValue < 0) return 0.5;
+    if (maxVol === minVol) return 0.5;
+    return (maxVol - volValue) / (maxVol - minVol);
   };
 
-  const normalizeReturn = (value: number) => {
+  const normalizeReturn = (value: number | null) => {
+    if (value === null || value === undefined || isNaN(value)) return 0;
     if (maxReturn === minReturn) return 0.5;
     return (value - minReturn) / (maxReturn - minReturn);
   };
 
-  const yieldScore = normalizeYield(etf.forwardYield) * (weights.yield / 100);
-  const stdDevScore = normalizeStdDev(etf.standardDeviation) * (weights.stdDev / 100);
-  const rawReturn = etf[returnField];
-  const hasReturn = typeof rawReturn === "number" && !isNaN(rawReturn);
-  const returnScore = (hasReturn ? normalizeReturn(rawReturn) : 0) * (weights.totalReturn / 100);
+  const yieldValue = etf.forwardYield ?? 0;
+  const volatilityValue = etf.dividendCVPercent ?? etf.standardDeviation ?? null;
+  const returnValue = returnField === "trDrip3Mo" 
+    ? (etf.trDrip3Mo ?? etf.totalReturn3Mo ?? null)
+    : returnField === "trDrip6Mo"
+    ? (etf.trDrip6Mo ?? etf.totalReturn6Mo ?? null)
+    : (etf.trDrip12Mo ?? etf.totalReturn12Mo ?? null);
 
-  return yieldScore + stdDevScore + returnScore;
+  const yieldScore = normalizeYield(yieldValue) * (weights.yield / 100);
+  const volatilityScore = normalizeVolatility(volatilityValue) * (weights.volatility / 100);
+  const returnScore = normalizeReturn(returnValue) * (weights.totalReturn / 100);
+
+  return yieldScore + volatilityScore + returnScore;
 };
 
 export const rankETFs = (etfs: ETF[], weights: RankingWeights): ETF[] => {

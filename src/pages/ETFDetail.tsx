@@ -506,7 +506,12 @@ const ETFDetail = () => {
                         tickLine={false}
                         axisLine={false}
                         interval="preserveStartEnd"
-                        tickFormatter={(value) => value}
+                        tickFormatter={(value, index, ticks) => {
+                          // Deduplicate: only show label if different from previous
+                          if (index === 0 || index === ticks.length - 1) return value;
+                          const prevLabel = ticks[index - 1]?.value;
+                          return value === prevLabel ? '' : value;
+                        }}
                       />
                       <YAxis 
                         stroke="#94a3b8" 
@@ -573,7 +578,12 @@ const ETFDetail = () => {
                         tickLine={false}
                         axisLine={false}
                         interval="preserveStartEnd"
-                        tickFormatter={(value) => value}
+                        tickFormatter={(value, index, ticks) => {
+                          // Deduplicate: only show label if different from previous
+                          if (index === 0 || index === ticks.length - 1) return value;
+                          const prevLabel = ticks[index - 1]?.value;
+                          return value === prevLabel ? '' : value;
+                        }}
                       />
                       <YAxis 
                         stroke="#94a3b8" 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { ETFTable } from "@/components/ETFTable";
 import { fetchETFData, fetchETFDataWithMetadata } from "@/services/etfData";
@@ -38,14 +38,14 @@ const Index = () => {
     yield: 30,
     volatility: 30,
     totalReturn: 40,
-    timeframe: "6mo",
+    timeframe: "12mo",
   });
   const [yieldWeight, setYieldWeight] = useState(30);
-  const [volatilityWeight, setVolatilityWeight] = useState(30);
+  const [volatilityWeight, setVolatilityWeight] = useState<number>(30);
   const [totalReturnWeight, setTotalReturnWeight] = useState(40);
   const [totalReturnTimeframe, setTotalReturnTimeframe] = useState<
-    "3mo" | "6mo"
-  >("6mo");
+    "3mo" | "6mo" | "12mo"
+  >("12mo");
   const [showRankingPanel, setShowRankingPanel] = useState(false);
   const [returnView, setReturnView] = useState<"total" | "price">("total");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -123,7 +123,7 @@ const Index = () => {
     if (savedWeights) {
       setWeights(savedWeights);
       setYieldWeight(savedWeights.yield);
-      setVolatilityWeight(savedWeights.volatility);
+      setVolatilityWeight(savedWeights.volatility ?? savedWeights.stdDev ?? 30);
       setTotalReturnWeight(savedWeights.totalReturn);
       if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
         setTotalReturnTimeframe(savedWeights.timeframe);
@@ -157,9 +157,9 @@ const Index = () => {
             if (savedWeights) {
               setWeights(savedWeights);
               setYieldWeight(savedWeights.yield);
-              setVolatilityWeight(savedWeights.volatility);
+              setVolatilityWeight(savedWeights.volatility ?? savedWeights.stdDev ?? 30);
               setTotalReturnWeight(savedWeights.totalReturn);
-              if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
+              if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo" || savedWeights.timeframe === "12mo") {
                 setTotalReturnTimeframe(savedWeights.timeframe);
               }
             }
@@ -194,7 +194,7 @@ const Index = () => {
               if (savedWeights) {
                 setWeights(savedWeights);
                 setYieldWeight(savedWeights.yield);
-                setVolatilityWeight(savedWeights.volatility);
+                setVolatilityWeight(savedWeights.volatility ?? savedWeights.stdDev ?? 30);
                 setTotalReturnWeight(savedWeights.totalReturn);
                 if (savedWeights.timeframe === "3mo" || savedWeights.timeframe === "6mo") {
                   setTotalReturnTimeframe(savedWeights.timeframe);
@@ -219,8 +219,8 @@ const Index = () => {
     };
   }, [user?.id]);
 
-  const totalWeight = yieldWeight + volatilityWeight + totalReturnWeight;
-  const isValid = totalWeight === 100;
+  const totalWeight = (yieldWeight ?? 0) + (volatilityWeight ?? 0) + (totalReturnWeight ?? 0);
+  const isValid = !isNaN(totalWeight) && totalWeight === 100;
 
   const handleYieldChange = (value: number[]) => {
     const newYield = value[0];
@@ -234,7 +234,7 @@ const Index = () => {
   };
 
   const handleStdDevChange = (value: number[]) => {
-    const newStdDev = value[0];
+    const newStdDev = (value[0] ?? 30) || 30;
     setVolatilityWeight(newStdDev);
     setWeights({
       yield: yieldWeight,
@@ -255,7 +255,7 @@ const Index = () => {
     });
   };
 
-  const handleTimeframeChange = (timeframe: "3mo" | "6mo") => {
+  const handleTimeframeChange = (timeframe: "3mo" | "6mo" | "12mo") => {
     setTotalReturnTimeframe(timeframe);
     setWeights({
       yield: yieldWeight,
@@ -269,8 +269,8 @@ const Index = () => {
     setYieldWeight(30);
     setVolatilityWeight(30);
     setTotalReturnWeight(40);
-    setTotalReturnTimeframe("6mo");
-    setWeights({ yield: 30, volatility: 30, totalReturn: 40, timeframe: "6mo" });
+    setTotalReturnTimeframe("12mo");
+    setWeights({ yield: 30, volatility: 30, totalReturn: 40, timeframe: "12mo" });
   };
 
   const handleSavePreset = async () => {
@@ -323,7 +323,7 @@ const Index = () => {
 
   const handleLoadPreset = (preset: RankingPreset) => {
     setYieldWeight(preset.weights.yield);
-    setVolatilityWeight(preset.weights.volatility);
+    setVolatilityWeight(preset.weights.volatility ?? preset.weights.stdDev ?? 30);
     setTotalReturnWeight(preset.weights.totalReturn);
     setTotalReturnTimeframe(preset.weights.timeframe || "6mo");
     setWeights(preset.weights);
@@ -390,7 +390,9 @@ const Index = () => {
     }
   };
 
-  const rankedETFs = rankETFs(etfData, weights);
+  const rankedETFs = useMemo(() => {
+    return rankETFs(etfData, weights);
+  }, [etfData, weights]);
 
   const sortedETFs = isGuest
     ? [...rankedETFs].sort((a, b) => a.symbol.localeCompare(b.symbol))
@@ -585,7 +587,7 @@ const Index = () => {
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
                                 Y:{preset.weights.yield}% D:
-                                {preset.weights.volatility}% R:
+                                {preset.weights.volatility ?? preset.weights.stdDev ?? 0}% R:
                                 {preset.weights.totalReturn}%
                               </p>
                             </button>
@@ -629,11 +631,11 @@ const Index = () => {
                         Dividend Volatility Index
                       </Label>
                       <span className="text-2xl font-bold tabular-nums text-primary">
-                        {volatilityWeight}%
+                        {volatilityWeight ?? 0}%
                       </span>
                     </div>
                     <Slider
-                      value={[volatilityWeight]}
+                      value={[volatilityWeight ?? 0]}
                       onValueChange={handleStdDevChange}
                       min={0}
                       max={100}
@@ -680,6 +682,16 @@ const Index = () => {
                       >
                         6 Mo
                       </button>
+                      <button
+                        onClick={() => handleTimeframeChange("12mo")}
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                          totalReturnTimeframe === "12mo"
+                            ? "bg-primary text-white"
+                            : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        12 Mo
+                      </button>
                     </div>
                   </div>
 
@@ -693,7 +705,7 @@ const Index = () => {
                           isValid ? "text-primary" : "text-destructive"
                         }`}
                       >
-                        {totalWeight}%
+                        {isNaN(totalWeight) ? 0 : totalWeight}%
                       </span>
                       {isValid ? (
                         <span className="text-sm px-3 py-1.5 rounded-full bg-green-100 text-green-700 font-medium border border-green-300">

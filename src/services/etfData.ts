@@ -370,40 +370,60 @@ export const generateChartData = (
   // Sort by timestamp to ensure proper date order
   result.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
   
-  // For timeframes longer than 1 day, reduce data points for cleaner monthly display
-  // But always preserve first and last points for proper chart alignment
-  if (comparison.timeframe !== "1D" && result.length > 50) {
-    const reduced: any[] = [];
-    const maxPoints = 20; // Show ~20 points max
-    const interval = Math.max(1, Math.floor(result.length / maxPoints));
+  // For timeframes longer than 1 day, deduplicate months and show monthly intervals
+  if (comparison.timeframe !== "1D" && result.length > 0) {
+    const deduplicated: any[] = [];
+    const seenMonths = new Set<string>();
     
+    // Always include first point
     if (result.length > 0) {
-      // Always include first point
-      reduced.push(result[0]);
-      
-      // Include points at intervals, but skip if too close to first/last
-      for (let i = interval; i < result.length - interval; i += interval) {
-        // Only add if not duplicate of first/last month
-        const date = new Date((result[i].timestamp as number) * 1000);
-        const firstDate = new Date((result[0].timestamp as number) * 1000);
-        const lastDate = new Date((result[result.length - 1].timestamp as number) * 1000);
-        
-        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-        const firstMonthKey = `${firstDate.getFullYear()}-${firstDate.getMonth()}`;
-        const lastMonthKey = `${lastDate.getFullYear()}-${lastDate.getMonth()}`;
-        
-        if (monthKey !== firstMonthKey && monthKey !== lastMonthKey) {
-          reduced.push(result[i]);
-        }
-      }
-      
-      // Always include last point
-      if (result.length > 1 && result[result.length - 1].timestamp !== result[0].timestamp) {
-        reduced.push(result[result.length - 1]);
-      }
-      
-      return reduced.length > 0 ? reduced : result;
+      deduplicated.push(result[0]);
+      const firstDate = new Date((result[0].timestamp as number) * 1000);
+      seenMonths.add(`${firstDate.getFullYear()}-${firstDate.getMonth()}`);
     }
+    
+    // Process middle points - only include one per month
+    for (let i = 1; i < result.length - 1; i++) {
+      const date = new Date((result[i].timestamp as number) * 1000);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      
+      // Only add if we haven't seen this month yet
+      if (!seenMonths.has(monthKey)) {
+        // Find the last data point of this month to use
+        let lastInMonth = result[i];
+        for (let j = i + 1; j < result.length - 1; j++) {
+          const nextDate = new Date((result[j].timestamp as number) * 1000);
+          const nextMonthKey = `${nextDate.getFullYear()}-${nextDate.getMonth()}`;
+          if (nextMonthKey === monthKey) {
+            lastInMonth = result[j];
+          } else {
+            break;
+          }
+        }
+        deduplicated.push(lastInMonth);
+        seenMonths.add(monthKey);
+      }
+    }
+    
+    // Always include last point if different from first
+    if (result.length > 1) {
+      const lastDate = new Date((result[result.length - 1].timestamp as number) * 1000);
+      const lastMonthKey = `${lastDate.getFullYear()}-${lastDate.getMonth()}`;
+      const firstDate = new Date((result[0].timestamp as number) * 1000);
+      const firstMonthKey = `${firstDate.getFullYear()}-${firstDate.getMonth()}`;
+      
+      if (lastMonthKey !== firstMonthKey) {
+        // Update time label to match the last data point
+        const lastPoint = { ...result[result.length - 1] };
+        lastPoint.time = lastDate.toLocaleDateString(undefined, {
+          month: "short",
+          year: "numeric",
+        });
+        deduplicated.push(lastPoint);
+      }
+    }
+    
+    return deduplicated.length > 0 ? deduplicated : result;
   }
   
   return result;

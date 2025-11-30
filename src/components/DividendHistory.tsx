@@ -157,10 +157,29 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     ? ((yearlyDividends[0].total - yearlyDividends[1].total) / yearlyDividends[1].total) * 100
     : null;
 
+  // Filter records by time range for table
+  const getFilteredTableRecords = useMemo(() => {
+    if (!dividendData?.dividends) return [];
+    
+    const now = new Date();
+    const cutoffDate = new Date();
+    
+    switch (timeRange) {
+      case '1Y': cutoffDate.setFullYear(now.getFullYear() - 1); break;
+      case '3Y': cutoffDate.setFullYear(now.getFullYear() - 3); break;
+      case '5Y': cutoffDate.setFullYear(now.getFullYear() - 5); break;
+      case '10Y': cutoffDate.setFullYear(now.getFullYear() - 10); break;
+      case '20Y': cutoffDate.setFullYear(now.getFullYear() - 20); break;
+      case 'ALL': return dividendData.dividends;
+    }
+    
+    return dividendData.dividends.filter(d => new Date(d.exDate) >= cutoffDate);
+  }, [dividendData, timeRange]);
+
   // Records to display in table
   const displayedRecords = showAllRecords 
-    ? dividendData.dividends 
-    : dividendData.dividends.slice(0, 12);
+    ? getFilteredTableRecords
+    : getFilteredTableRecords.slice(0, 12);
 
   return (
     <Card className="p-6">

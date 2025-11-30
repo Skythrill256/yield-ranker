@@ -102,6 +102,7 @@ export default function Dashboard() {
   const [comparisonETFs, setComparisonETFs] = useState<string[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showComparisonSelector, setShowComparisonSelector] = useState(false);
+  const [comparisonSearchQuery, setComparisonSearchQuery] = useState("");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [adminSection, setAdminSection] = useState<"users" | "upload" | null>(
     null
@@ -386,19 +387,19 @@ export default function Dashboard() {
 
   const [weights, setWeights] = useState<RankingWeights>({
     yield: 30,
-    stdDev: 30,
+    volatility: 30,
     totalReturn: 40,
-    timeframe: "6mo",
+    timeframe: "12mo",
   });
   const [yieldWeight, setYieldWeight] = useState(30);
-  const [stdDevWeight, setStdDevWeight] = useState(30);
+  const [volatilityWeight, setVolatilityWeight] = useState<number>(30);
   const [totalReturnWeight, setTotalReturnWeight] = useState(40);
   const [totalReturnTimeframe, setTotalReturnTimeframe] = useState<
-    "3mo" | "6mo"
-  >("6mo");
+    "3mo" | "6mo" | "12mo"
+  >("12mo");
 
-  const totalWeight = yieldWeight + stdDevWeight + totalReturnWeight;
-  const isValid = totalWeight === 100;
+  const totalWeight = (yieldWeight ?? 0) + (volatilityWeight ?? 0) + (totalReturnWeight ?? 0);
+  const isValid = !isNaN(totalWeight) && totalWeight === 100;
 
   // Function to load weights from profile
   const loadWeightsFromProfile = useCallback(() => {
@@ -415,7 +416,7 @@ export default function Dashboard() {
       console.log("✅ Loading saved weights from profile:", savedWeights);
       setWeights(savedWeights);
       setYieldWeight(savedWeights.yield);
-      setStdDevWeight(savedWeights.stdDev);
+      setVolatilityWeight(savedWeights.volatility ?? savedWeights.stdDev ?? 30);
       setTotalReturnWeight(savedWeights.totalReturn);
       if (
         savedWeights.timeframe === "3mo" ||
@@ -485,7 +486,7 @@ export default function Dashboard() {
             if (savedWeights) {
               setWeights(savedWeights);
               setYieldWeight(savedWeights.yield);
-              setStdDevWeight(savedWeights.stdDev);
+              setVolatilityWeight(savedWeights.volatility ?? savedWeights.stdDev ?? 30);
               setTotalReturnWeight(savedWeights.totalReturn);
               if (
                 savedWeights.timeframe === "3mo" ||
@@ -528,7 +529,7 @@ export default function Dashboard() {
               if (savedWeights) {
                 setWeights(savedWeights);
                 setYieldWeight(savedWeights.yield);
-                setStdDevWeight(savedWeights.stdDev);
+                setVolatilityWeight(savedWeights.volatility ?? savedWeights.stdDev ?? 30);
                 setTotalReturnWeight(savedWeights.totalReturn);
                 if (
                   savedWeights.timeframe === "3mo" ||
@@ -555,7 +556,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (showRankingPanel) {
       setYieldWeight(weights.yield);
-      setStdDevWeight(weights.stdDev);
+      setVolatilityWeight(
+        (weights.volatility ?? weights.stdDev ?? 30) || 30
+      );
       setTotalReturnWeight(weights.totalReturn);
       setTotalReturnTimeframe(weights.timeframe || "6mo");
     }
@@ -590,18 +593,18 @@ export default function Dashboard() {
     setYieldWeight(newYield);
     setWeights({
       yield: newYield,
-      stdDev: stdDevWeight,
+      volatility: volatilityWeight,
       totalReturn: totalReturnWeight,
       timeframe: totalReturnTimeframe,
     });
   };
 
   const handleStdDevChange = (value: number[]) => {
-    const newStdDev = value[0];
-    setStdDevWeight(newStdDev);
+    const newVolatility = (value[0] ?? 30) || 30;
+    setVolatilityWeight(newVolatility);
     setWeights({
       yield: yieldWeight,
-      stdDev: newStdDev,
+      volatility: newVolatility,
       totalReturn: totalReturnWeight,
       timeframe: totalReturnTimeframe,
     });
@@ -612,17 +615,17 @@ export default function Dashboard() {
     setTotalReturnWeight(newTotalReturn);
     setWeights({
       yield: yieldWeight,
-      stdDev: stdDevWeight,
+      volatility: volatilityWeight,
       totalReturn: newTotalReturn,
       timeframe: totalReturnTimeframe,
     });
   };
 
-  const handleTimeframeChange = (timeframe: "3mo" | "6mo") => {
+  const handleTimeframeChange = (timeframe: "3mo" | "6mo" | "12mo") => {
     setTotalReturnTimeframe(timeframe);
     setWeights({
       yield: yieldWeight,
-      stdDev: stdDevWeight,
+      volatility: volatilityWeight,
       totalReturn: totalReturnWeight,
       timeframe: timeframe,
     });
@@ -631,15 +634,15 @@ export default function Dashboard() {
   const resetToDefaults = async () => {
     const defaultWeights: RankingWeights = {
       yield: 30,
-      stdDev: 30,
+      volatility: 30,
       totalReturn: 40,
-      timeframe: "6mo",
+      timeframe: "12mo",
     };
 
     setYieldWeight(30);
-    setStdDevWeight(30);
+    setVolatilityWeight(30);
     setTotalReturnWeight(40);
-    setTotalReturnTimeframe("6mo");
+    setTotalReturnTimeframe("12mo");
     setWeights(defaultWeights);
 
     // Save defaults to database
@@ -689,7 +692,7 @@ export default function Dashboard() {
 
     const newWeights: RankingWeights = {
       yield: yieldWeight,
-      stdDev: stdDevWeight,
+      volatility: volatilityWeight,
       totalReturn: totalReturnWeight,
       timeframe: totalReturnTimeframe,
     };
@@ -754,7 +757,7 @@ export default function Dashboard() {
 
     const newWeights: RankingWeights = {
       yield: yieldWeight,
-      stdDev: stdDevWeight,
+      volatility: volatilityWeight,
       totalReturn: totalReturnWeight,
       timeframe: totalReturnTimeframe,
     };
@@ -781,7 +784,9 @@ export default function Dashboard() {
 
   const handleLoadPreset = (preset: RankingPreset) => {
     setYieldWeight(preset.weights.yield);
-    setStdDevWeight(preset.weights.stdDev);
+    setVolatilityWeight(
+      (preset.weights.volatility ?? preset.weights.stdDev ?? 30) || 30
+    );
     setTotalReturnWeight(preset.weights.totalReturn);
     setTotalReturnTimeframe(preset.weights.timeframe || "6mo");
     setWeights(preset.weights);
@@ -812,7 +817,9 @@ export default function Dashboard() {
     }
   };
 
-  const rankedETFs = rankETFs(etfData, weights);
+  const rankedETFs = useMemo(() => {
+    return rankETFs(etfData, weights);
+  }, [etfData, weights]);
 
   const filteredETFs = rankedETFs.filter((etf) => {
     if (searchQuery.trim() === "") return true;
@@ -823,19 +830,23 @@ export default function Dashboard() {
     );
   });
 
-  // Sort ETFs
-  const sortedETFs = [...filteredETFs].sort((a, b) => {
-    if (!sortField) return 0;
+  // Sort ETFs - preserve ranking order by default, allow manual sorting
+  const sortedETFs = useMemo(() => {
+    if (!sortField || sortField === "weightedRank") {
+      return filteredETFs;
+    }
+    
+    return [...filteredETFs].sort((a, b) => {
+      const aValue = a[sortField];
+      const bValue = b[sortField];
 
-    const aValue = a[sortField];
-    const bValue = b[sortField];
+      if (aValue === undefined || aValue === null) return 1;
+      if (bValue === undefined || bValue === null) return -1;
 
-    if (aValue === undefined || aValue === null) return 1;
-    if (bValue === undefined || bValue === null) return -1;
-
-    const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
+      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [filteredETFs, sortField, sortDirection]);
 
   const favoritesFilteredETFs = showFavoritesOnly
     ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
@@ -1268,19 +1279,9 @@ export default function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <h2 className="text-lg sm:text-xl font-semibold mb-2">
                       {selectedETF.symbol}{" "}
-                      {chartType === "price" ? "Price" : "Total Return"} Chart
+                      {chartType === "price" ? "Price Return" : "Total Return"} Chart
                     </h2>
                     <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => setChartType("price")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                          chartType === "price"
-                            ? "bg-primary text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        Price Return Chart
-                      </button>
                       <button
                         onClick={() => setChartType("totalReturn")}
                         className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
@@ -1290,6 +1291,16 @@ export default function Dashboard() {
                         }`}
                       >
                         Total Return Chart
+                      </button>
+                      <button
+                        onClick={() => setChartType("price")}
+                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                          chartType === "price"
+                            ? "bg-primary text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        Price Return Chart
                       </button>
                       <button
                         onClick={() =>
@@ -1374,49 +1385,92 @@ export default function Dashboard() {
                 )}
 
                 {showComparisonSelector && (
-                  <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-lg max-h-64 overflow-y-auto">
+                  <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-lg relative">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-sm">
-                        Select ETFs to Compare
-                      </h3>
+                      <h3 className="font-semibold text-sm">Search ETFs to Compare</h3>
                       <button
-                        onClick={() => setShowComparisonSelector(false)}
+                        onClick={() => {
+                          setShowComparisonSelector(false);
+                          setComparisonSearchQuery("");
+                        }}
                         className="hover:bg-slate-200 rounded-full p-1"
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {rankedETFs
-                        .filter((etf) => etf.symbol !== selectedETF.symbol)
-                        .sort((a, b) => a.symbol.localeCompare(b.symbol))
-                        .slice(0, 20)
-                        .map((etf, idx) => {
-                          const isSelected = comparisonETFs.includes(
-                            etf.symbol
-                          );
-                          const isDisabled =
-                            !isSelected && comparisonETFs.length >= 5;
-                          return (
-                            <button
-                              key={`${etf.symbol}-${idx}`}
-                              onClick={() =>
-                                !isDisabled && toggleComparison(etf.symbol)
-                              }
-                              disabled={isDisabled}
-                              className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
-                                isSelected
-                                  ? "bg-primary text-white"
-                                  : isDisabled
-                                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
-                                  : "bg-white border-2 border-slate-300 hover:border-primary hover:bg-slate-100"
-                              }`}
-                            >
-                              {etf.symbol}
-                            </button>
-                          );
-                        })}
+                    {/* Search Bar - Similar to home page */}
+                    <div className="relative mb-4 z-10">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
+                      <Input
+                        type="text"
+                        placeholder="Search ETFs..."
+                        value={comparisonSearchQuery}
+                        onChange={(e) => setComparisonSearchQuery(e.target.value)}
+                        onFocus={() => {}}
+                        className="pl-10 pr-10 h-12 bg-background border-2 border-border focus:border-primary text-base rounded-xl"
+                      />
+                      {comparisonSearchQuery && (
+                        <button
+                          onClick={() => setComparisonSearchQuery("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      )}
                     </div>
+                    {/* ETF List with Search - Dropdown style */}
+                    {comparisonSearchQuery && (
+                      <div className="absolute top-full left-4 right-4 mt-2 z-[9999] bg-background border-2 border-border rounded-xl shadow-2xl overflow-hidden">
+                        <div className="max-h-96 overflow-y-auto">
+                          {rankedETFs
+                            .filter((e) => {
+                              const searchLower = comparisonSearchQuery.toLowerCase();
+                              return e.symbol !== selectedETF.symbol &&
+                                (e.symbol.toLowerCase().includes(searchLower) ||
+                                 (e.name && e.name.toLowerCase().includes(searchLower)));
+                            })
+                            .slice(0, 10)
+                            .map((e) => {
+                              const isSelected = comparisonETFs.includes(e.symbol);
+                              const isDisabled = !isSelected && comparisonETFs.length >= 5;
+                              return (
+                                <button
+                                  key={e.symbol}
+                                  onClick={() => {
+                                    if (!isDisabled) {
+                                      toggleComparison(e.symbol);
+                                      setComparisonSearchQuery("");
+                                    }
+                                  }}
+                                  disabled={isDisabled}
+                                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0 ${
+                                    isDisabled ? "opacity-50 cursor-not-allowed" : ""
+                                  }`}
+                                >
+                                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                    <TrendingUp className="w-5 h-5 text-primary" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-bold text-base text-foreground">{e.symbol}</div>
+                                    <div className="text-sm text-muted-foreground truncate">{e.name}</div>
+                                  </div>
+                                  <div className="text-right text-sm flex-shrink-0">
+                                    <div className="font-bold text-foreground">${e.price.toFixed(2)}</div>
+                                    <div className={`font-semibold ${e.totalReturn1Mo && e.totalReturn1Mo >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                      {e.totalReturn1Mo ? `${e.totalReturn1Mo > 0 ? "+" : ""}${e.totalReturn1Mo.toFixed(2)}%` : "N/A"}
+                                    </div>
+                                  </div>
+                                  {isSelected && (
+                                    <div className="text-primary">
+                                      <X className="h-5 w-5" />
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1483,6 +1537,13 @@ export default function Dashboard() {
                         angle={chartHeight < 280 ? -45 : 0}
                         textAnchor={chartHeight < 280 ? "end" : "middle"}
                         height={chartHeight < 280 ? 50 : 30}
+                        interval="preserveStartEnd"
+                        tickFormatter={(value, index, ticks) => {
+                          // Deduplicate: only show label if different from previous
+                          if (index === 0 || index === ticks.length - 1) return value;
+                          const prevLabel = ticks[index - 1]?.value;
+                          return value === prevLabel ? '' : value;
+                        }}
                       />
                       <YAxis
                         stroke="#94a3b8"
@@ -1582,6 +1643,13 @@ export default function Dashboard() {
                         angle={chartHeight < 280 ? -45 : 0}
                         textAnchor={chartHeight < 280 ? "end" : "middle"}
                         height={chartHeight < 280 ? 50 : 30}
+                        interval="preserveStartEnd"
+                        tickFormatter={(value, index, ticks) => {
+                          // Deduplicate: only show label if different from previous
+                          if (index === 0 || index === ticks.length - 1) return value;
+                          const prevLabel = ticks[index - 1]?.value;
+                          return value === prevLabel ? '' : value;
+                        }}
                       />
                       <YAxis
                         stroke="#94a3b8"
@@ -2676,7 +2744,7 @@ export default function Dashboard() {
                                       </p>
                                       <p className="text-xs text-muted-foreground truncate">
                                         Y:{preset.weights.yield}% D:
-                                        {preset.weights.stdDev}% R:
+                                        {preset.weights.volatility ?? preset.weights.stdDev ?? 30}% R:
                                         {preset.weights.totalReturn}%
                                       </p>
                                     </button>
@@ -2722,11 +2790,11 @@ export default function Dashboard() {
                                 Dividend Volatility Index (DVI)
                               </Label>
                               <span className="text-2xl font-bold tabular-nums text-primary">
-                                {stdDevWeight}%
+                                {volatilityWeight ?? 0}%
                               </span>
                             </div>
                             <Slider
-                              value={[stdDevWeight]}
+                              value={[volatilityWeight ?? 0]}
                               onValueChange={handleStdDevChange}
                               min={0}
                               max={100}
@@ -2773,6 +2841,16 @@ export default function Dashboard() {
                               >
                                 6 Mo
                               </button>
+                              <button
+                                onClick={() => handleTimeframeChange("12mo")}
+                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                                  totalReturnTimeframe === "12mo"
+                                    ? "bg-primary text-white"
+                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                                }`}
+                              >
+                                12 Mo
+                              </button>
                             </div>
                           </div>
 
@@ -2786,7 +2864,7 @@ export default function Dashboard() {
                                   isValid ? "text-primary" : "text-destructive"
                                 }`}
                               >
-                                {totalWeight}%
+                                {isNaN(totalWeight) ? 0 : totalWeight}%
                               </span>
                               {isValid ? (
                                 <span className="text-sm px-3 py-1.5 rounded-full bg-green-100 text-green-700 font-medium border border-green-300">
