@@ -50,19 +50,60 @@ interface DividendVolatilityResult {
 }
 
 /**
- * Calculate frequency-proof dividend volatility using rolling 365-day annualized series.
- * This method automatically adjusts for frequency changes (monthly→weekly, etc.)
- * and is immune to split artifacts.
- * 
- * Steps:
- * 1. Filter to regular dividends only (type contains "regular" or is null)
- * 2. Use split-adjusted amount (adj_amount or div_cash)
- * 3. Build rolling 365D sum series (annualized dividend as of each date)
- * 4. Compute SD and CV on this series
+ * Detect payment frequency based on days between consecutive payments
+ */
+function detectFrequency(
+  dividends: { date: Date; amount: number }[],
+  index: number
+): 'weekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual' {
+  if (index === 0 && dividends.length === 1) return 'quarterly';
+  
+  if (index < dividends.length - 1) {
+    const daysBetween = (dividends[index + 1].date.getTime() - dividends[index].date.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysBetween <= 10) return 'weekly';
+    if (daysBetween <= 35) return 'monthly';
+    if (daysBetween <= 95) return 'quarterly';
+    if (daysBetween <= 185) return 'semi-annual';
+    return 'annual';
+  }
+  
+  if (index > 0) {
+    const daysBetween = (dividends[index].date.getTime() - dividends[index - 1].date.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysBetween <= 10) return 'weekly';
+    if (daysBetween <= 35) return 'monthly';
+    if (daysBetween <= 95) return 'quarterly';
+    if (daysBetween <= 185) return 'semi-annual';
+    return 'annual';
+  }
+  
+  return 'quarterly';
+}
+
+/**
+ * Get annualization factor based on payment frequency
+ */
+function getAnnualizationFactor(frequency: 'weekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual'): number {
+  switch (frequency) {
+    case 'weekly': return 52;
+    case 'monthly': return 12;
+    case 'quarterly': return 4;
+    case 'semi-annual': return 2;
+    case 'annual': return 1;
+    default: return 4;
+  }
+}
+
+/**
+ * Calculate frequency-proof dividend volatility using annualized adjusted dividends.
+ * Implements the formula from Rich Hill's email:
+ * 1. Filter out special dividends
+ * 2. Annualize each payment by frequency (Weekly=52, Monthly=12, Quarterly=4, Semi-Annual=2)
+ * 3. Trim high/low outliers (10% from each end)
+ * 4. Calculate Mean, SD, and CV from trimmed annualized series
  */
 function calculateDividendVolatility(
   dividends: DividendRecord[],
-  lookbackYears: number = 3
+  periodInMonths: 6 | 12 = 12
 ): DividendVolatilityResult {
   const nullResult: DividendVolatilityResult = {
     annualDividend: null,
@@ -75,11 +116,11 @@ function calculateDividendVolatility(
 
   if (dividends.length < 4) return nullResult;
 
-  // 1. Filter to regular dividends only
+  // 1. Filter to regular dividends only (exclude special dividends)
   const regularDivs = dividends.filter(d => {
     if (!d.div_type) return true; // null type = regular
     const dtype = d.div_type.toLowerCase();
-    return dtype.includes('regular') || dtype === 'cash' || dtype === '';
+    return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
   });
 
   if (regularDivs.length < 4) return nullResult;
@@ -95,51 +136,40 @@ function calculateDividendVolatility(
     amount: d.adj_amount ?? d.div_cash,
   }));
 
-  // 3. Build rolling 365D annualized series
-  // For each date, sum all dividends in the prior 365 days
-  const annualizedSeries: { date: Date; value: number }[] = [];
+  // 3. Filter to period (6 or 12 months)
+  const now = new Date();
+  const cutoffDate = new Date(now);
+  cutoffDate.setMonth(now.getMonth() - periodInMonths);
   
-  for (let i = 0; i < series.length; i++) {
-    const currentDate = series[i].date;
-    const cutoffDate = new Date(currentDate);
-    cutoffDate.setDate(cutoffDate.getDate() - 365);
-    
-    // Sum all dividends from cutoffDate to currentDate (inclusive)
-    let sum = 0;
-    let count = 0;
-    for (let j = 0; j <= i; j++) {
-      if (series[j].date >= cutoffDate && series[j].date <= currentDate) {
-        sum += series[j].amount;
-        count++;
-      }
-    }
-    
-    // Only include if we have enough data points (min ~4 payments for quarterly)
-    if (count >= 4) {
-      annualizedSeries.push({ date: currentDate, value: sum });
-    }
+  const recentDividends = series.filter(d => d.date >= cutoffDate);
+  
+  if (recentDividends.length < 4) return nullResult;
+
+  // 4. Detect frequency and annualize each payment
+  const annualizedDividends: number[] = [];
+  for (let i = 0; i < recentDividends.length; i++) {
+    const frequency = detectFrequency(recentDividends, i);
+    const factor = getAnnualizationFactor(frequency);
+    const aad = recentDividends[i].amount * factor;
+    annualizedDividends.push(aad);
   }
 
-  if (annualizedSeries.length < 12) return nullResult;
+  // 5. Trim high/low outliers (10% from each end)
+  const sortedAmounts = [...annualizedDividends].sort((a, b) => a - b);
+  const trimCount = Math.max(1, Math.floor(sortedAmounts.length * 0.1));
+  const trimmedAmounts = sortedAmounts.slice(trimCount, sortedAmounts.length - trimCount);
+  
+  if (trimmedAmounts.length < 3) return nullResult;
 
-  // 4. Apply lookback window (e.g., last 3 years)
-  const lookbackCutoff = new Date();
-  lookbackCutoff.setFullYear(lookbackCutoff.getFullYear() - lookbackYears);
-  
-  const filteredSeries = annualizedSeries.filter(s => s.date >= lookbackCutoff);
-  
-  if (filteredSeries.length < 12) return nullResult;
-
-  const values = filteredSeries.map(s => s.value);
-  
-  // 5. Compute statistics
-  const mean = calculateMean(values);
-  const sd = calculateStdDev(values);
+  // 6. Calculate statistics on trimmed annualized dividends
+  const n = trimmedAmounts.length;
+  const mean = calculateMean(trimmedAmounts);
+  const sd = calculateStdDev(trimmedAmounts);
   const cv = mean > 0.0001 ? sd / mean : null;
   const cvPercent = cv !== null ? cv * 100 : null;
   
-  // Current annualized dividend is the latest value in the series
-  const currentAnnualDiv = values[values.length - 1];
+  // Annual dividend is the mean of trimmed annualized dividends
+  const annualDividend = mean;
   
   // Generate volatility index label
   let volatilityIndex: string | null = null;
@@ -152,12 +182,12 @@ function calculateDividendVolatility(
   }
 
   return {
-    annualDividend: currentAnnualDiv,
+    annualDividend,
     dividendSD: sd,
     dividendCV: cv,
     dividendCVPercent: cvPercent,
     volatilityIndex,
-    dataPoints: filteredSeries.length,
+    dataPoints: trimmedAmounts.length,
   };
 }
 
@@ -286,25 +316,38 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     dividends = await getDividendHistory(upperTicker);
   }
   
-  // Calculate frequency-proof dividend volatility
-  const volMetrics = calculateDividendVolatility(dividends, 3);
+  // Calculate frequency-proof dividend volatility using 12-month period
+  const volMetrics = calculateDividendVolatility(dividends, 12);
+  
+  // Get regular dividends for last dividend and payment count
+  const regularDivs = dividends.filter(d => {
+    if (!d.div_type) return true;
+    const dtype = d.div_type.toLowerCase();
+    return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
+  });
+  
+  // Sort by date descending to get most recent
+  const sortedRegular = [...regularDivs].sort(
+    (a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
+  );
   
   let lastDividend: number | null = null;
-  if (dividends.length > 0) {
-    // Get the latest regular dividend
-    const regularDivs = dividends.filter(d => {
-      if (!d.div_type) return true;
-      const dtype = d.div_type.toLowerCase();
-      return dtype.includes('regular') || dtype === 'cash' || dtype === '';
-    });
-    if (regularDivs.length > 0) {
-      lastDividend = regularDivs[0].div_cash;
-    }
+  if (sortedRegular.length > 0) {
+    lastDividend = sortedRegular[0].adj_amount ?? sortedRegular[0].div_cash;
   }
   
-  // Use the rolling 365D annualized dividend, fallback to simple calculation
+  // Count regular payments in last 12 months
+  const now = new Date();
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setMonth(now.getMonth() - 12);
+  const recentRegularCount = sortedRegular.filter(d => new Date(d.ex_date) >= oneYearAgo).length;
+  
+  // Use calculated annual dividend from volatility metrics, fallback to simple calculation
   const annualizedDividend = volMetrics.annualDividend ?? 
-    (lastDividend ? lastDividend * paymentsPerYear : null);
+    (lastDividend && recentRegularCount > 0 ? lastDividend * recentRegularCount : null);
+  
+  // Update paymentsPerYear to reflect actual count of regular payments
+  const actualPaymentsPerYear = recentRegularCount > 0 ? recentRegularCount : paymentsPerYear;
   
   // Calculate forward yield
   let forwardYield: number | null = null;
@@ -338,7 +381,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     // Dividend data
     lastDividend,
     annualizedDividend,
-    paymentsPerYear,
+    paymentsPerYear: actualPaymentsPerYear,
     forwardYield,
     
     // Volatility metrics (frequency-proof)
