@@ -8,71 +8,139 @@ const CACHE_DURATION = 30000;
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL || '';
 
 type DatabaseETF = {
-  symbol: string;
+  symbol?: string;
+  ticker?: string;  // etf_static uses ticker
   issuer: string | null;
   description: string | null;
-  pay_day: string | null;
+  pay_day?: string | null;
+  pay_day_text?: string | null;  // etf_static uses pay_day_text
   ipo_price: number | null;
   price: number | null;
-  price_change: number | null;
-  dividend: number | null;
+  price_change?: number | null;
+  price_change_pct?: number | null;
+  dividend?: number | null;
+  last_dividend?: number | null;  // etf_static uses last_dividend
   payments_per_year: number | null;
-  annual_div: number | null;
+  annual_div?: number | null;
+  annual_dividend?: number | null;  // etf_static uses annual_dividend
   forward_yield: number | null;
-  dividend_volatility_index: number | null;
+  
+  // Volatility metrics
+  dividend_volatility_index?: number | string | null;  // Can be number (old) or string (new)
+  dividend_cv_percent?: number | null;
+  dividend_cv?: number | null;
+  dividend_sd?: number | null;
+  
   weighted_rank: number | null;
-  three_year_annualized: number | null;
-  total_return_12m: number | null;
-  total_return_6m: number | null;
-  total_return_3m: number | null;
-  total_return_1m: number | null;
-  total_return_1w: number | null;
+  
+  // Total Return WITH DRIP (new fields from etf_static)
+  tr_drip_3y?: number | null;
+  tr_drip_12m?: number | null;
+  tr_drip_6m?: number | null;
+  tr_drip_3m?: number | null;
+  tr_drip_1m?: number | null;
+  tr_drip_1w?: number | null;
+  
+  // Legacy total return fields (old etfs table)
+  three_year_annualized?: number | null;
+  total_return_12m?: number | null;
+  total_return_6m?: number | null;
+  total_return_3m?: number | null;
+  total_return_1m?: number | null;
+  total_return_1w?: number | null;
+  
+  // Price Return
   price_return_3y: number | null;
   price_return_12m: number | null;
   price_return_6m: number | null;
   price_return_3m: number | null;
   price_return_1m: number | null;
   price_return_1w: number | null;
+  
+  // 52-week range
+  week_52_high?: number | null;
+  week_52_low?: number | null;
+  
+  // Metadata
+  last_updated?: string | null;
+  last_updated_timestamp?: string | null;
 };
 
 function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
+  const symbol = dbEtf.symbol || dbEtf.ticker || '';
   const price = dbEtf.price ?? 0;
-  const annualDiv = dbEtf.annual_div ?? 0;
+  const annualDiv = (dbEtf.annual_dividend ?? dbEtf.annual_div) ?? 0;
   let forwardYield = dbEtf.forward_yield ?? 0;
   
-  if (price > 0 && annualDiv > 0) {
+  if (price > 0 && annualDiv > 0 && !forwardYield) {
     forwardYield = (annualDiv / price) * 100;
   }
 
+  // Handle dividend volatility - can be string (new) or number (old)
+  let dividendVolatilityIndex: string | null = null;
+  let dividendCVPercent: number | null = null;
+  
+  if (typeof dbEtf.dividend_volatility_index === 'string') {
+    dividendVolatilityIndex = dbEtf.dividend_volatility_index;
+  } else if (typeof dbEtf.dividend_volatility_index === 'number') {
+    dividendCVPercent = dbEtf.dividend_volatility_index;
+  }
+  
+  if (dbEtf.dividend_cv_percent != null) {
+    dividendCVPercent = dbEtf.dividend_cv_percent;
+  }
+
   return {
-    symbol: dbEtf.symbol,
-    name: dbEtf.description || dbEtf.symbol,
+    symbol: symbol,
+    name: dbEtf.description || symbol,
     issuer: dbEtf.issuer || '',
     description: dbEtf.description || '',
-    payDay: dbEtf.pay_day || undefined,
+    payDay: (dbEtf.pay_day_text || dbEtf.pay_day) || undefined,
     ipoPrice: dbEtf.ipo_price ?? 0,
     price: price,
     priceChange: dbEtf.price_change ?? 0,
-    dividend: dbEtf.dividend ?? 0,
+    priceChangePercent: dbEtf.price_change_pct ?? null,
+    dividend: (dbEtf.last_dividend ?? dbEtf.dividend) ?? 0,
     numPayments: dbEtf.payments_per_year ?? 12,
     annualDividend: annualDiv,
     forwardYield: forwardYield,
-    standardDeviation: dbEtf.dividend_volatility_index ?? 0,
+    
+    // Volatility metrics
+    dividendSD: dbEtf.dividend_sd ?? null,
+    dividendCV: dbEtf.dividend_cv ?? null,
+    dividendCVPercent: dividendCVPercent,
+    dividendVolatilityIndex: dividendVolatilityIndex,
+    
+    // Legacy field for backward compatibility
+    standardDeviation: dividendCVPercent ?? 0,
+    
     weightedRank: dbEtf.weighted_rank ?? null,
-    week52Low: 0,
-    week52High: 0,
-    totalReturn3Yr: dbEtf.three_year_annualized ?? undefined,
-    totalReturn12Mo: dbEtf.total_return_12m ?? undefined,
-    totalReturn6Mo: dbEtf.total_return_6m ?? undefined,
-    totalReturn3Mo: dbEtf.total_return_3m ?? undefined,
-    totalReturn1Mo: dbEtf.total_return_1m ?? undefined,
-    totalReturn1Wk: dbEtf.total_return_1w ?? undefined,
-    priceReturn3Yr: dbEtf.price_return_3y ?? undefined,
-    priceReturn12Mo: dbEtf.price_return_12m ?? undefined,
-    priceReturn6Mo: dbEtf.price_return_6m ?? undefined,
-    priceReturn3Mo: dbEtf.price_return_3m ?? undefined,
-    priceReturn1Mo: dbEtf.price_return_1m ?? undefined,
-    priceReturn1Wk: dbEtf.price_return_1w ?? undefined,
+    week52Low: dbEtf.week_52_low ?? 0,
+    week52High: dbEtf.week_52_high ?? 0,
+    
+    // Total Return WITH DRIP - prefer new fields, fallback to legacy
+    trDrip3Yr: (dbEtf.tr_drip_3y ?? dbEtf.three_year_annualized) ?? null,
+    trDrip12Mo: (dbEtf.tr_drip_12m ?? dbEtf.total_return_12m) ?? null,
+    trDrip6Mo: (dbEtf.tr_drip_6m ?? dbEtf.total_return_6m) ?? null,
+    trDrip3Mo: (dbEtf.tr_drip_3m ?? dbEtf.total_return_3m) ?? null,
+    trDrip1Mo: (dbEtf.tr_drip_1m ?? dbEtf.total_return_1m) ?? null,
+    trDrip1Wk: (dbEtf.tr_drip_1w ?? dbEtf.total_return_1w) ?? null,
+    
+    // Legacy fields for backward compatibility
+    totalReturn3Yr: (dbEtf.tr_drip_3y ?? dbEtf.three_year_annualized) ?? null,
+    totalReturn12Mo: (dbEtf.tr_drip_12m ?? dbEtf.total_return_12m) ?? null,
+    totalReturn6Mo: (dbEtf.tr_drip_6m ?? dbEtf.total_return_6m) ?? null,
+    totalReturn3Mo: (dbEtf.tr_drip_3m ?? dbEtf.total_return_3m) ?? null,
+    totalReturn1Mo: (dbEtf.tr_drip_1m ?? dbEtf.total_return_1m) ?? null,
+    totalReturn1Wk: (dbEtf.tr_drip_1w ?? dbEtf.total_return_1w) ?? null,
+    
+    // Price Return
+    priceReturn3Yr: dbEtf.price_return_3y ?? null,
+    priceReturn12Mo: dbEtf.price_return_12m ?? null,
+    priceReturn6Mo: dbEtf.price_return_6m ?? null,
+    priceReturn3Mo: dbEtf.price_return_3m ?? null,
+    priceReturn1Mo: dbEtf.price_return_1m ?? null,
+    priceReturn1Wk: dbEtf.price_return_1w ?? null,
   };
 }
 
@@ -109,8 +177,8 @@ export const fetchETFDataWithMetadata = async (): Promise<ETFDataResponse> => {
     // Handle both array response and wrapped response
     const dbEtfs: DatabaseETF[] = Array.isArray(json) ? json : (json.data || []);
     const etfs: ETF[] = dbEtfs.map(mapDatabaseETFToETF);
-    const lastUpdated = Array.isArray(json) ? null : (json.last_updated || null);
-    const lastUpdatedTimestamp = Array.isArray(json) ? null : (json.last_updated_timestamp || null);
+    const lastUpdated = Array.isArray(json) ? null : (json.last_updated || json.lastUpdated || null);
+    const lastUpdatedTimestamp = Array.isArray(json) ? null : (json.last_updated_timestamp || json.lastUpdatedTimestamp || null);
     
     dataCache.set("__ALL__", { 
       data: etfs as unknown as ETF, 

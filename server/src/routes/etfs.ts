@@ -251,17 +251,41 @@ router.post('/upload-static', upload.single('file'), handleStaticUpload);
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from('etfs')
+    
+    // Try etf_static first (new table), fallback to etfs (legacy)
+    let { data, error } = await supabase
+      .from('etf_static')
       .select('*')
-      .order('symbol', { ascending: true });
+      .order('ticker', { ascending: true });
+
+    // If etf_static doesn't exist or is empty, fallback to legacy etfs table
+    if (error || !data || data.length === 0) {
+      const legacyResult = await supabase
+        .from('etfs')
+        .select('*')
+        .order('symbol', { ascending: true });
+      
+      if (!legacyResult.error && legacyResult.data) {
+        data = legacyResult.data;
+        error = null;
+      }
+    }
 
     if (error) {
       res.status(500).json({ error: 'Failed to fetch ETFs' });
       return;
     }
 
-    res.json(data ?? []);
+    // Transform etf_static data to match expected format if needed
+    const transformedData = data?.map((item: any) => {
+      // If from etf_static, ensure symbol field exists (map from ticker)
+      if (item.ticker && !item.symbol) {
+        return { ...item, symbol: item.ticker };
+      }
+      return item;
+    });
+
+    res.json(transformedData ?? []);
   } catch (error) {
     logger.error('Routes', `Error fetching ETFs: ${(error as Error).message}`);
     res.status(500).json({ error: 'Internal server error' });
