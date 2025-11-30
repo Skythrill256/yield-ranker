@@ -714,34 +714,33 @@ const AdminPanel = () => {
                         </Button>
                       </div>
                     </div>
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg -mx-4 sm:mx-0">
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
                       <table className="min-w-full divide-y divide-slate-200 bg-white">
                         <thead className="bg-slate-50">
                           <tr>
-                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-2 sm:-ml-3"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
                                 onClick={() => handleSort("display_name")}
                               >
-                                <span className="hidden md:inline">Name</span>
-                                <span className="md:hidden">N</span>
-                                <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                Name
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-2 sm:-ml-3"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
                                 onClick={() => handleSort("email")}
                               >
                                 Email
-                                <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -752,10 +751,10 @@ const AdminPanel = () => {
                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                               Premium
                             </th>
-                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -766,7 +765,7 @@ const AdminPanel = () => {
                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden xl:table-cell">
+                            <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -777,7 +776,7 @@ const AdminPanel = () => {
                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-2 sm:px-4 py-3 text-right">Actions</th>
+                            <th className="px-3 sm:px-4 py-3 text-right whitespace-nowrap">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -808,20 +807,15 @@ const AdminPanel = () => {
                                   key={profile.id}
                                   className="hover:bg-slate-50 transition-colors"
                                 >
-                                  <td className="px-2 sm:px-4 py-3 text-sm font-medium text-foreground">
-                                    <div className="flex flex-col">
-                                      <span>{profile.display_name || "—"}</span>
-                                      <span className="text-xs text-muted-foreground md:hidden mt-1">
-                                        {profile.role === "admin" ? "Admin" : "Premium"}
-                                      </span>
-                                    </div>
+                                  <td className="px-3 sm:px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">
+                                    {profile.display_name || "—"}
                                   </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
-                                    <div className="max-w-[200px] sm:max-w-none truncate">
+                                  <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground">
+                                    <div className="min-w-[150px] max-w-[250px] sm:max-w-none truncate">
                                       {profile.email}
                                     </div>
                                   </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-foreground hidden md:table-cell">
+                                  <td className="px-3 sm:px-4 py-3 text-sm text-foreground whitespace-nowrap">
                                     <span
                                       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                                         profile.role === "admin"
@@ -832,7 +826,7 @@ const AdminPanel = () => {
                                       {profile.role === "admin" ? "Admin" : "Premium"}
                                     </span>
                                   </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-foreground hidden lg:table-cell">
+                                  <td className="px-3 sm:px-4 py-3 text-sm text-foreground whitespace-nowrap">
                                     <Switch
                                       checked={profile.is_premium}
                                       onCheckedChange={(checked) =>
@@ -841,16 +835,16 @@ const AdminPanel = () => {
                                       disabled={updatingId === premiumKey}
                                     />
                                   </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                                  <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                                     {profile.last_login
                                       ? formatDate(profile.last_login)
                                       : "—"}
                                   </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
+                                  <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                                     {formatDate(profile.created_at)}
                                   </td>
-                                  <td className="px-2 sm:px-4 py-3 text-sm text-right">
-                                    <div className="flex items-center justify-end gap-1 sm:gap-2 flex-wrap">
+                                  <td className="px-3 sm:px-4 py-3 text-sm text-right whitespace-nowrap">
+                                    <div className="flex items-center justify-end gap-2">
                                       <Button
                                         variant="outline"
                                         size="sm"
@@ -858,14 +852,9 @@ const AdminPanel = () => {
                                         disabled={updatingId === roleKey}
                                         className="border-2 text-xs sm:text-sm"
                                       >
-                                        <span className="hidden sm:inline">
-                                          {profile.role === "admin"
-                                            ? "Remove admin"
-                                            : "Make admin"}
-                                        </span>
-                                        <span className="sm:hidden">
-                                          {profile.role === "admin" ? "Remove" : "Admin"}
-                                        </span>
+                                        {profile.role === "admin"
+                                          ? "Remove admin"
+                                          : "Make admin"}
                                       </Button>
                                       <Button
                                         variant="outline"

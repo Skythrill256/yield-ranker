@@ -152,18 +152,17 @@ export const Header = () => {
           </nav>
 
           {/* Mobile Menu Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden h-14 w-14 hover:bg-slate-100 transition-colors text-foreground"
+          <button
+            className="md:hidden p-2 hover:bg-slate-100 transition-colors text-foreground rounded-md"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {mobileMenuOpen ? (
-              <X className="h-10 w-10 text-foreground" />
+              <X className="h-8 w-8 text-foreground" />
             ) : (
-              <Menu className="h-10 w-10 text-foreground" />
+              <Menu className="h-8 w-8 text-foreground" />
             )}
-          </Button>
+          </button>
         </div>
 
         {/* Mobile Search */}
