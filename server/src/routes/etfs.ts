@@ -429,11 +429,19 @@ router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
     }
 
     const preferNumeric = (a: any, b: any): any => {
-      const numA = typeof a === 'number' ? a : (a != null && a !== '' ? parseFloat(String(a)) : null);
-      const numB = typeof b === 'number' ? b : (b != null && b !== '' ? parseFloat(String(b)) : null);
-      if (numA != null && !isNaN(numA) && numA !== 0) return numA;
-      if (numB != null && !isNaN(numB) && numB !== 0) return numB;
-      return a ?? b;
+      if (a === null || a === undefined || a === '') {
+        return b ?? null;
+      }
+      if (b === null || b === undefined || b === '') {
+        return a ?? null;
+      }
+      const numA = typeof a === 'number' ? a : parseFloat(String(a));
+      const numB = typeof b === 'number' ? b : parseFloat(String(b));
+      if (!isNaN(numA) && numA !== 0) return numA;
+      if (!isNaN(numB) && numB !== 0) return numB;
+      if (!isNaN(numA)) return numA;
+      if (!isNaN(numB)) return numB;
+      return a ?? b ?? null;
     };
 
     const preferValue = (a: any, b: any): any => {
