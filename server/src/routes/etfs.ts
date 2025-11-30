@@ -277,69 +277,91 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     };
 
     const preferNumeric = (a: any, b: any): any => {
-      const numA = typeof a === 'number' ? a : (a != null ? parseFloat(a) : null);
-      const numB = typeof b === 'number' ? b : (b != null ? parseFloat(b) : null);
+      const numA = typeof a === 'number' ? a : (a != null && a !== '' ? parseFloat(String(a)) : null);
+      const numB = typeof b === 'number' ? b : (b != null && b !== '' ? parseFloat(String(b)) : null);
       if (numA != null && !isNaN(numA) && numA !== 0) return numA;
       if (numB != null && !isNaN(numB) && numB !== 0) return numB;
       return a ?? b;
     };
 
+    const legacyMap = new Map<string, any>();
+    for (const item of legacyData) {
+      const symbol = (item.symbol || '').toUpperCase();
+      if (symbol) {
+        legacyMap.set(symbol, item);
+      }
+    }
+
     const mergedMap = new Map<string, any>();
 
-    for (const item of staticData) {
-      const ticker = (item.ticker || '').toUpperCase();
-      if (ticker) {
+    for (const staticItem of staticData) {
+      const ticker = (staticItem.ticker || '').toUpperCase();
+      if (!ticker) continue;
+
+      const legacyItem = legacyMap.get(ticker);
+      
+      if (legacyItem) {
         mergedMap.set(ticker, {
-          ...item,
-          symbol: item.ticker,
+          ticker: staticItem.ticker,
+          symbol: staticItem.ticker,
+          issuer: preferValue(staticItem.issuer, legacyItem.issuer),
+          description: preferValue(staticItem.description, legacyItem.description),
+          pay_day_text: preferValue(staticItem.pay_day_text, legacyItem.pay_day),
+          pay_day: preferValue(staticItem.pay_day_text, legacyItem.pay_day),
+          payments_per_year: preferNumeric(staticItem.payments_per_year, legacyItem.payments_per_year),
+          ipo_price: preferNumeric(staticItem.ipo_price, legacyItem.ipo_price),
+          price: preferNumeric(staticItem.price, legacyItem.price),
+          price_change: preferNumeric(staticItem.price_change, legacyItem.price_change),
+          price_change_pct: preferNumeric(staticItem.price_change_pct, legacyItem.price_change_pct),
+          dividend: preferNumeric(legacyItem.dividend, staticItem.last_dividend),
+          last_dividend: preferNumeric(staticItem.last_dividend, legacyItem.dividend),
+          annual_div: preferNumeric(legacyItem.annual_div, staticItem.annual_dividend),
+          annual_dividend: preferNumeric(staticItem.annual_dividend, legacyItem.annual_dividend ?? legacyItem.annual_div),
+          forward_yield: preferNumeric(staticItem.forward_yield, legacyItem.forward_yield),
+          dividend_sd: preferNumeric(staticItem.dividend_sd, legacyItem.dividend_sd),
+          dividend_cv: preferNumeric(staticItem.dividend_cv, legacyItem.dividend_cv),
+          dividend_cv_percent: preferNumeric(staticItem.dividend_cv_percent, legacyItem.dividend_cv_percent),
+          dividend_volatility_index: preferValue(staticItem.dividend_volatility_index, legacyItem.dividend_volatility_index),
+          weighted_rank: preferNumeric(staticItem.weighted_rank, legacyItem.weighted_rank),
+          tr_drip_3y: preferNumeric(staticItem.tr_drip_3y, legacyItem.tr_drip_3y ?? legacyItem.three_year_annualized),
+          tr_drip_12m: preferNumeric(staticItem.tr_drip_12m, legacyItem.tr_drip_12m ?? legacyItem.total_return_12m),
+          tr_drip_6m: preferNumeric(staticItem.tr_drip_6m, legacyItem.tr_drip_6m ?? legacyItem.total_return_6m),
+          tr_drip_3m: preferNumeric(staticItem.tr_drip_3m, legacyItem.tr_drip_3m ?? legacyItem.total_return_3m),
+          tr_drip_1m: preferNumeric(staticItem.tr_drip_1m, legacyItem.tr_drip_1m ?? legacyItem.total_return_1m),
+          tr_drip_1w: preferNumeric(staticItem.tr_drip_1w, legacyItem.tr_drip_1w ?? legacyItem.total_return_1w),
+          price_return_3y: preferNumeric(staticItem.price_return_3y, legacyItem.price_return_3y),
+          price_return_12m: preferNumeric(staticItem.price_return_12m, legacyItem.price_return_12m),
+          price_return_6m: preferNumeric(staticItem.price_return_6m, legacyItem.price_return_6m),
+          price_return_3m: preferNumeric(staticItem.price_return_3m, legacyItem.price_return_3m),
+          price_return_1m: preferNumeric(staticItem.price_return_1m, legacyItem.price_return_1m),
+          price_return_1w: preferNumeric(staticItem.price_return_1w, legacyItem.price_return_1w),
+          week_52_high: preferNumeric(staticItem.week_52_high, legacyItem.week_52_high),
+          week_52_low: preferNumeric(staticItem.week_52_low, legacyItem.week_52_low),
+          last_updated: preferValue(staticItem.last_updated, legacyItem.last_updated),
+          spreadsheet_updated_at: preferValue(staticItem.updated_at, legacyItem.spreadsheet_updated_at),
+          three_year_annualized: preferNumeric(staticItem.tr_drip_3y, legacyItem.three_year_annualized),
+          total_return_12m: preferNumeric(staticItem.tr_drip_12m, legacyItem.total_return_12m),
+          total_return_6m: preferNumeric(staticItem.tr_drip_6m, legacyItem.total_return_6m),
+          total_return_3m: preferNumeric(staticItem.tr_drip_3m, legacyItem.total_return_3m),
+          total_return_1m: preferNumeric(staticItem.tr_drip_1m, legacyItem.total_return_1m),
+          total_return_1w: preferNumeric(staticItem.tr_drip_1w, legacyItem.total_return_1w),
+        });
+      } else {
+        mergedMap.set(ticker, {
+          ...staticItem,
+          symbol: staticItem.ticker,
         });
       }
     }
 
-    for (const item of legacyData) {
-      const symbol = (item.symbol || '').toUpperCase();
-      if (symbol) {
-        const existing = mergedMap.get(symbol);
-        if (existing) {
-          mergedMap.set(symbol, {
-            ...existing,
-            price: preferNumeric(item.price, existing.price),
-            price_change: preferNumeric(item.price_change, existing.price_change),
-            price_change_pct: preferNumeric(item.price_change_pct, existing.price_change_pct),
-            dividend: preferNumeric(item.dividend, existing.last_dividend),
-            last_dividend: preferNumeric(item.dividend, existing.last_dividend),
-            annual_div: preferNumeric(item.annual_div, existing.annual_dividend),
-            annual_dividend: preferNumeric(item.annual_dividend ?? item.annual_div, existing.annual_dividend),
-            forward_yield: preferNumeric(item.forward_yield, existing.forward_yield),
-            dividend_sd: preferNumeric(item.dividend_sd, existing.dividend_sd),
-            dividend_cv: preferNumeric(item.dividend_cv, existing.dividend_cv),
-            dividend_cv_percent: preferNumeric(item.dividend_cv_percent, existing.dividend_cv_percent),
-            dividend_volatility_index: preferValue(item.dividend_volatility_index, existing.dividend_volatility_index),
-            weighted_rank: preferNumeric(item.weighted_rank, existing.weighted_rank),
-            tr_drip_3y: preferNumeric(item.tr_drip_3y ?? item.three_year_annualized, existing.tr_drip_3y),
-            tr_drip_12m: preferNumeric(item.tr_drip_12m ?? item.total_return_12m, existing.tr_drip_12m),
-            tr_drip_6m: preferNumeric(item.tr_drip_6m ?? item.total_return_6m, existing.tr_drip_6m),
-            tr_drip_3m: preferNumeric(item.tr_drip_3m ?? item.total_return_3m, existing.tr_drip_3m),
-            tr_drip_1m: preferNumeric(item.tr_drip_1m ?? item.total_return_1m, existing.tr_drip_1m),
-            tr_drip_1w: preferNumeric(item.tr_drip_1w ?? item.total_return_1w, existing.tr_drip_1w),
-            price_return_3y: preferNumeric(item.price_return_3y, existing.price_return_3y),
-            price_return_12m: preferNumeric(item.price_return_12m, existing.price_return_12m),
-            price_return_6m: preferNumeric(item.price_return_6m, existing.price_return_6m),
-            price_return_3m: preferNumeric(item.price_return_3m, existing.price_return_3m),
-            price_return_1m: preferNumeric(item.price_return_1m, existing.price_return_1m),
-            price_return_1w: preferNumeric(item.price_return_1w, existing.price_return_1w),
-            week_52_high: preferNumeric(item.week_52_high, existing.week_52_high),
-            week_52_low: preferNumeric(item.week_52_low, existing.week_52_low),
-            last_updated: preferValue(item.last_updated, existing.last_updated),
-            spreadsheet_updated_at: preferValue(item.spreadsheet_updated_at, existing.updated_at),
-          });
-        } else {
-          mergedMap.set(symbol, {
-            ...item,
-            ticker: item.symbol,
-            pay_day_text: item.pay_day,
-          });
-        }
+    for (const legacyItem of legacyData) {
+      const symbol = (legacyItem.symbol || '').toUpperCase();
+      if (symbol && !mergedMap.has(symbol)) {
+        mergedMap.set(symbol, {
+          ...legacyItem,
+          ticker: legacyItem.symbol,
+          pay_day_text: legacyItem.pay_day,
+        });
       }
     }
 
@@ -387,8 +409,8 @@ router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
     }
 
     const preferNumeric = (a: any, b: any): any => {
-      const numA = typeof a === 'number' ? a : (a != null ? parseFloat(a) : null);
-      const numB = typeof b === 'number' ? b : (b != null ? parseFloat(b) : null);
+      const numA = typeof a === 'number' ? a : (a != null && a !== '' ? parseFloat(String(a)) : null);
+      const numB = typeof b === 'number' ? b : (b != null && b !== '' ? parseFloat(String(b)) : null);
       if (numA != null && !isNaN(numA) && numA !== 0) return numA;
       if (numB != null && !isNaN(numB) && numB !== 0) return numB;
       return a ?? b;
@@ -407,37 +429,49 @@ router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
     let merged: any;
     if (staticData && legacyData) {
       merged = {
-        ...staticData,
+        ticker: staticData.ticker,
         symbol: staticData.ticker,
-        price: preferNumeric(legacyData.price, staticData.price),
-        price_change: preferNumeric(legacyData.price_change, staticData.price_change),
-        price_change_pct: preferNumeric(legacyData.price_change_pct, staticData.price_change_pct),
+        issuer: preferValue(staticData.issuer, legacyData.issuer),
+        description: preferValue(staticData.description, legacyData.description),
+        pay_day_text: preferValue(staticData.pay_day_text, legacyData.pay_day),
+        pay_day: preferValue(staticData.pay_day_text, legacyData.pay_day),
+        payments_per_year: preferNumeric(staticData.payments_per_year, legacyData.payments_per_year),
+        ipo_price: preferNumeric(staticData.ipo_price, legacyData.ipo_price),
+        price: preferNumeric(staticData.price, legacyData.price),
+        price_change: preferNumeric(staticData.price_change, legacyData.price_change),
+        price_change_pct: preferNumeric(staticData.price_change_pct, legacyData.price_change_pct),
         dividend: preferNumeric(legacyData.dividend, staticData.last_dividend),
-        last_dividend: preferNumeric(legacyData.dividend, staticData.last_dividend),
+        last_dividend: preferNumeric(staticData.last_dividend, legacyData.dividend),
         annual_div: preferNumeric(legacyData.annual_div, staticData.annual_dividend),
-        annual_dividend: preferNumeric(legacyData.annual_dividend ?? legacyData.annual_div, staticData.annual_dividend),
-        forward_yield: preferNumeric(legacyData.forward_yield, staticData.forward_yield),
-        dividend_sd: preferNumeric(legacyData.dividend_sd, staticData.dividend_sd),
-        dividend_cv: preferNumeric(legacyData.dividend_cv, staticData.dividend_cv),
-        dividend_cv_percent: preferNumeric(legacyData.dividend_cv_percent, staticData.dividend_cv_percent),
-        dividend_volatility_index: preferValue(legacyData.dividend_volatility_index, staticData.dividend_volatility_index),
-        weighted_rank: preferNumeric(legacyData.weighted_rank, staticData.weighted_rank),
-        tr_drip_3y: preferNumeric(legacyData.tr_drip_3y ?? legacyData.three_year_annualized, staticData.tr_drip_3y),
-        tr_drip_12m: preferNumeric(legacyData.tr_drip_12m ?? legacyData.total_return_12m, staticData.tr_drip_12m),
-        tr_drip_6m: preferNumeric(legacyData.tr_drip_6m ?? legacyData.total_return_6m, staticData.tr_drip_6m),
-        tr_drip_3m: preferNumeric(legacyData.tr_drip_3m ?? legacyData.total_return_3m, staticData.tr_drip_3m),
-        tr_drip_1m: preferNumeric(legacyData.tr_drip_1m ?? legacyData.total_return_1m, staticData.tr_drip_1m),
-        tr_drip_1w: preferNumeric(legacyData.tr_drip_1w ?? legacyData.total_return_1w, staticData.tr_drip_1w),
-        price_return_3y: preferNumeric(legacyData.price_return_3y, staticData.price_return_3y),
-        price_return_12m: preferNumeric(legacyData.price_return_12m, staticData.price_return_12m),
-        price_return_6m: preferNumeric(legacyData.price_return_6m, staticData.price_return_6m),
-        price_return_3m: preferNumeric(legacyData.price_return_3m, staticData.price_return_3m),
-        price_return_1m: preferNumeric(legacyData.price_return_1m, staticData.price_return_1m),
-        price_return_1w: preferNumeric(legacyData.price_return_1w, staticData.price_return_1w),
-        week_52_high: preferNumeric(legacyData.week_52_high, staticData.week_52_high),
-        week_52_low: preferNumeric(legacyData.week_52_low, staticData.week_52_low),
-        last_updated: preferValue(legacyData.last_updated, staticData.last_updated),
-        spreadsheet_updated_at: preferValue(legacyData.spreadsheet_updated_at, staticData.updated_at),
+        annual_dividend: preferNumeric(staticData.annual_dividend, legacyData.annual_dividend ?? legacyData.annual_div),
+        forward_yield: preferNumeric(staticData.forward_yield, legacyData.forward_yield),
+        dividend_sd: preferNumeric(staticData.dividend_sd, legacyData.dividend_sd),
+        dividend_cv: preferNumeric(staticData.dividend_cv, legacyData.dividend_cv),
+        dividend_cv_percent: preferNumeric(staticData.dividend_cv_percent, legacyData.dividend_cv_percent),
+        dividend_volatility_index: preferValue(staticData.dividend_volatility_index, legacyData.dividend_volatility_index),
+        weighted_rank: preferNumeric(staticData.weighted_rank, legacyData.weighted_rank),
+        tr_drip_3y: preferNumeric(staticData.tr_drip_3y, legacyData.tr_drip_3y ?? legacyData.three_year_annualized),
+        tr_drip_12m: preferNumeric(staticData.tr_drip_12m, legacyData.tr_drip_12m ?? legacyData.total_return_12m),
+        tr_drip_6m: preferNumeric(staticData.tr_drip_6m, legacyData.tr_drip_6m ?? legacyData.total_return_6m),
+        tr_drip_3m: preferNumeric(staticData.tr_drip_3m, legacyData.tr_drip_3m ?? legacyData.total_return_3m),
+        tr_drip_1m: preferNumeric(staticData.tr_drip_1m, legacyData.tr_drip_1m ?? legacyData.total_return_1m),
+        tr_drip_1w: preferNumeric(staticData.tr_drip_1w, legacyData.tr_drip_1w ?? legacyData.total_return_1w),
+        price_return_3y: preferNumeric(staticData.price_return_3y, legacyData.price_return_3y),
+        price_return_12m: preferNumeric(staticData.price_return_12m, legacyData.price_return_12m),
+        price_return_6m: preferNumeric(staticData.price_return_6m, legacyData.price_return_6m),
+        price_return_3m: preferNumeric(staticData.price_return_3m, legacyData.price_return_3m),
+        price_return_1m: preferNumeric(staticData.price_return_1m, legacyData.price_return_1m),
+        price_return_1w: preferNumeric(staticData.price_return_1w, legacyData.price_return_1w),
+        week_52_high: preferNumeric(staticData.week_52_high, legacyData.week_52_high),
+        week_52_low: preferNumeric(staticData.week_52_low, legacyData.week_52_low),
+        last_updated: preferValue(staticData.last_updated, legacyData.last_updated),
+        spreadsheet_updated_at: preferValue(staticData.updated_at, legacyData.spreadsheet_updated_at),
+        three_year_annualized: preferNumeric(staticData.tr_drip_3y, legacyData.three_year_annualized),
+        total_return_12m: preferNumeric(staticData.tr_drip_12m, legacyData.total_return_12m),
+        total_return_6m: preferNumeric(staticData.tr_drip_6m, legacyData.total_return_6m),
+        total_return_3m: preferNumeric(staticData.tr_drip_3m, legacyData.total_return_3m),
+        total_return_1m: preferNumeric(staticData.tr_drip_1m, legacyData.total_return_1m),
+        total_return_1w: preferNumeric(staticData.tr_drip_1w, legacyData.total_return_1w),
       };
     } else if (staticData) {
       merged = {
