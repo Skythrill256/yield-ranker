@@ -15,6 +15,9 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY prisma/ ./prisma/
 
+# Generate Prisma client
+RUN npx prisma generate
+
 # Build TypeScript
 RUN npm run build
 
@@ -29,9 +32,10 @@ COPY package*.json ./
 # Install production dependencies only
 RUN npm ci --omit=dev
 
-# Copy built files from builder
+# Copy built files and generated Prisma client from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/generated ./generated
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -43,16 +47,13 @@ RUN chown -R nodejs:nodejs /app
 # Switch to non-root user
 USER nodejs
 
-# Expose port
-EXPOSE 4000
-
 # Environment variables
 ENV NODE_ENV=production
-ENV PORT=4000
+# Railway injects PORT, don't hardcode it
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "fetch('http://localhost:4000/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+# Health check uses PORT env var
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://localhost:' + (process.env.PORT || 4000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
 # Start the application
 CMD ["node", "dist/src/index.js"]
