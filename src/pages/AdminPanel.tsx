@@ -609,43 +609,43 @@ const AdminPanel = () => {
           <div className="p-4 sm:p-6 lg:p-8 space-y-6">
             {activeTab === "users" && (
               <>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Card className="p-5 border-2 border-slate-200">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <Card className="p-4 sm:p-5 border-2 border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm text-muted-foreground font-medium">
                         Total users
                       </span>
                       <Users className="w-5 h-5 text-slate-500" />
                     </div>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">
                       {totalUsers}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {adminCount} admins, {premiumCount} premium users
                     </p>
                   </Card>
-                  <Card className="p-5 border-2 border-slate-200">
+                  <Card className="p-4 sm:p-5 border-2 border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm text-muted-foreground font-medium">
                         Admins
                       </span>
                       <ShieldCheck className="w-5 h-5 text-primary" />
                     </div>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">
                       {adminCount}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Full system access
                     </p>
                   </Card>
-                  <Card className="p-5 border-2 border-slate-200">
+                  <Card className="p-4 sm:p-5 border-2 border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm text-muted-foreground font-medium">
                         Premium users
                       </span>
                       <ShieldCheck className="w-5 h-5 text-green-600" />
                     </div>
-                    <p className="text-3xl font-bold text-foreground">
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">
                       {premiumCount}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -654,9 +654,9 @@ const AdminPanel = () => {
                   </Card>
                 </div>
                 <Card className="border-2 border-slate-200">
-                  <div className="p-6 space-y-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="relative w-full sm:max-w-xs">
+                  <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div className="relative w-full md:max-w-xs">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                         <Input
                           value={searchQuery}
@@ -667,17 +667,15 @@ const AdminPanel = () => {
                           className="pl-10 h-10 border-2"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
                         <Button
                           variant="outline"
                           onClick={() => {
                             if (profiles.length === 0) return;
                             
-                            // Simple CSV with just emails - one email per line
                             const emails = profiles.map((p) => p.email).filter(Boolean);
                             const csvContent = emails.join("\n");
                             
-                            // Create blob and download
                             const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
                             const link = document.createElement("a");
                             const url = URL.createObjectURL(blob);
@@ -696,52 +694,54 @@ const AdminPanel = () => {
                             });
                           }}
                           disabled={loading || profiles.length === 0}
-                          className="h-10 border-2"
+                          className="h-10 border-2 w-full sm:w-auto"
                         >
-                          Download Emails CSV
+                          <span className="hidden sm:inline">Download Emails CSV</span>
+                          <span className="sm:hidden">Download CSV</span>
                         </Button>
                         <Button
                           variant="outline"
                           onClick={fetchProfiles}
                           disabled={loading}
-                          className="h-10 border-2"
+                          className="h-10 border-2 w-full sm:w-auto"
                         >
                           <RefreshCw
-                            className={`w-4 h-4 mr-2 ${
+                            className={`w-4 h-4 sm:mr-2 ${
                               loading ? "animate-spin" : ""
                             }`}
                           />
-                          Refresh
+                          <span className="hidden sm:inline">Refresh</span>
                         </Button>
                       </div>
                     </div>
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg -mx-4 sm:mx-0">
                       <table className="min-w-full divide-y divide-slate-200 bg-white">
                         <thead className="bg-slate-50">
                           <tr>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-2 sm:-ml-3"
                                 onClick={() => handleSort("display_name")}
                               >
-                                Name
-                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                <span className="hidden md:inline">Name</span>
+                                <span className="md:hidden">N</span>
+                                <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                               </Button>
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-3"
+                                className="h-8 hover:bg-slate-100 hover:text-foreground transition-colors -ml-2 sm:-ml-3"
                                 onClick={() => handleSort("email")}
                               >
                                 Email
-                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                               </Button>
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden md:table-cell">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -752,10 +752,10 @@ const AdminPanel = () => {
                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
                               Premium
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden lg:table-cell">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -766,7 +766,7 @@ const AdminPanel = () => {
                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                            <th className="px-2 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider hidden xl:table-cell">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -777,14 +777,14 @@ const AdminPanel = () => {
                                 <ArrowUpDown className="ml-2 h-4 w-4" />
                               </Button>
                             </th>
-                            <th className="px-4 py-3" />
+                            <th className="px-2 sm:px-4 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {loading ? (
                             <tr>
                               <td
-                                colSpan={8}
+                                colSpan={7}
                                 className="px-4 py-10 text-center text-sm text-muted-foreground"
                               >
                                 Loading users...
@@ -793,7 +793,7 @@ const AdminPanel = () => {
                           ) : filteredAndSortedProfiles.length === 0 ? (
                             <tr>
                               <td
-                                colSpan={8}
+                                colSpan={7}
                                 className="px-4 py-10 text-center text-sm text-muted-foreground"
                               >
                                 No users found for "{searchQuery}"
@@ -808,13 +808,20 @@ const AdminPanel = () => {
                                   key={profile.id}
                                   className="hover:bg-slate-50 transition-colors"
                                 >
-                                  <td className="px-4 py-3 text-sm font-medium text-foreground">
-                                    {profile.display_name || "—"}
+                                  <td className="px-2 sm:px-4 py-3 text-sm font-medium text-foreground">
+                                    <div className="flex flex-col">
+                                      <span>{profile.display_name || "—"}</span>
+                                      <span className="text-xs text-muted-foreground md:hidden mt-1">
+                                        {profile.role === "admin" ? "Admin" : "Premium"}
+                                      </span>
+                                    </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">
-                                    {profile.email}
+                                  <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground">
+                                    <div className="max-w-[200px] sm:max-w-none truncate">
+                                      {profile.email}
+                                    </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-foreground">
+                                  <td className="px-2 sm:px-4 py-3 text-sm text-foreground hidden md:table-cell">
                                     <span
                                       className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
                                         profile.role === "admin"
@@ -825,7 +832,7 @@ const AdminPanel = () => {
                                       {profile.role === "admin" ? "Admin" : "Premium"}
                                     </span>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-foreground">
+                                  <td className="px-2 sm:px-4 py-3 text-sm text-foreground hidden lg:table-cell">
                                     <Switch
                                       checked={profile.is_premium}
                                       onCheckedChange={(checked) =>
@@ -834,26 +841,31 @@ const AdminPanel = () => {
                                       disabled={updatingId === premiumKey}
                                     />
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                  <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
                                     {profile.last_login
                                       ? formatDate(profile.last_login)
                                       : "—"}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                  <td className="px-2 sm:px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
                                     {formatDate(profile.created_at)}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-right">
-                                    <div className="flex items-center justify-end gap-2">
+                                  <td className="px-2 sm:px-4 py-3 text-sm text-right">
+                                    <div className="flex items-center justify-end gap-1 sm:gap-2 flex-wrap">
                                       <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => handleRoleToggle(profile)}
                                         disabled={updatingId === roleKey}
-                                        className="border-2"
+                                        className="border-2 text-xs sm:text-sm"
                                       >
-                                        {profile.role === "admin"
-                                          ? "Remove admin"
-                                          : "Make admin"}
+                                        <span className="hidden sm:inline">
+                                          {profile.role === "admin"
+                                            ? "Remove admin"
+                                            : "Make admin"}
+                                        </span>
+                                        <span className="sm:hidden">
+                                          {profile.role === "admin" ? "Remove" : "Admin"}
+                                        </span>
                                       </Button>
                                       <Button
                                         variant="outline"

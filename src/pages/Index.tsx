@@ -463,7 +463,7 @@ const Index = () => {
                   )}
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
                 {/* Customize Rankings */}
                 <Button
                   variant="outline"
@@ -475,7 +475,7 @@ const Index = () => {
                       setShowRankingPanel(true);
                     }
                   }}
-                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 rounded-md whitespace-nowrap w-full sm:w-auto justify-center"
+                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
                 >
                   <Sliders className="h-4 w-4 mr-2" />
                   Customize Rankings
@@ -486,7 +486,7 @@ const Index = () => {
                     variant={showFavoritesOnly ? "default" : "outline"}
                     size="sm"
                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`border-2 h-10 sm:h-9 transition-colors whitespace-nowrap w-full sm:w-auto justify-center ${
+                    className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
                       showFavoritesOnly
                         ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                         : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"

@@ -1290,8 +1290,8 @@ export default function Dashboard() {
 
               <Card className="p-4 sm:p-6 border-2 border-slate-200 overflow-auto relative z-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
-                  <div className="flex-1 min-w-0 relative z-0">
-                    <h2 className="text-lg sm:text-xl font-semibold mb-2 relative z-0" style={{ zIndex: 0 }}>
+                  <div className="flex-1 min-w-0 relative z-0" style={{ zIndex: 0 }}>
+                    <h2 className="text-lg sm:text-xl font-semibold mb-2 relative z-0" style={{ zIndex: 0, position: 'relative' }}>
                       {selectedETF.symbol}{" "}
                       {chartType === "price" ? "Price Return" : "Total Return"} Chart
                     </h2>
@@ -2312,15 +2312,15 @@ export default function Dashboard() {
                             )}
                           </span>
                         </div>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto md:flex-nowrap">
                           {/* Search */}
-                          <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs">
+                          <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input
                               placeholder="Search ETFs..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="pl-10 w-full h-10 sm:h-9 border-2 text-sm"
+                              className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
                             />
                           </div>
                           {/* Customize Rankings */}
@@ -2334,7 +2334,7 @@ export default function Dashboard() {
                                 setShowRankingPanel(true);
                               }
                             }}
-                            className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 rounded-md whitespace-nowrap w-full sm:w-auto justify-center"
+                            className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
                           >
                             <Sliders className="h-4 w-4 mr-2" />
                             Customize Rankings
@@ -2346,7 +2346,7 @@ export default function Dashboard() {
                             onClick={() =>
                               setShowFavoritesOnly(!showFavoritesOnly)
                             }
-                            className={`border-2 h-10 sm:h-9 transition-colors whitespace-nowrap w-full sm:w-auto justify-center ${
+                            className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
                               showFavoritesOnly
                                 ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                                 : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
