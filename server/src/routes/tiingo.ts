@@ -103,32 +103,57 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     const staticData = await getETFStatic(ticker);
     const paymentsPerYear = staticData?.payments_per_year ?? 12;
     
-    // Fallback to Tiingo API if database is empty
-    // Tiingo includes dividends in price data via divCash field
     let isLiveData = false;
     if (dividends.length === 0) {
-      logger.info('Routes', `No dividends in DB for ${ticker}, extracting from Tiingo price data...`);
-      const prices = await fetchTiingoPrices(ticker, startDate);
+      logger.info('Routes', `No dividends in DB for ${ticker}, fetching from Tiingo...`);
       
-      // Extract dividend records from price data (divCash > 0)
-      const dividendPrices = prices.filter(p => p.divCash > 0);
+        try {
+        const { fetchDividendHistory } = await import('../services/tiingo.js');
+        const tiingoDividends = await fetchDividendHistory(ticker, startDate);
+        if (tiingoDividends.length > 0) {
+          isLiveData = true;
+          dividends = tiingoDividends.map(d => ({
+            ticker: ticker.toUpperCase(),
+            ex_date: d.exDate,
+            pay_date: d.payDate || null,
+            record_date: d.recordDate || null,
+            declare_date: d.declareDate || null,
+            div_cash: d.divCash,
+            adj_amount: d.divCash,
+            div_type: null,
+            frequency: null,
+            description: null,
+            currency: 'USD',
+            split_factor: d.splitFactor || 1,
+          })).sort((a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
+        }
+      } catch (error) {
+        logger.warn('Routes', `Failed to fetch Tiingo dividends for ${ticker}, trying price data...`);
+      }
       
-      if (dividendPrices.length > 0) {
-        isLiveData = true;
-        dividends = dividendPrices.map(p => ({
-          ticker: ticker.toUpperCase(),
-          ex_date: p.date.split('T')[0],
-          pay_date: null,  // Not available in price data
-          record_date: null,
-          declare_date: null,
-          div_cash: p.divCash,
-          adj_amount: p.divCash,
-          div_type: null,
-          frequency: null,
-          description: null,
-          currency: 'USD',
-          split_factor: p.splitFactor,
-        })).sort((a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
+      if (dividends.length === 0) {
+        logger.info('Routes', `Trying to extract dividends from Tiingo price data for ${ticker}...`);
+        const prices = await fetchTiingoPrices(ticker, startDate);
+        
+        const dividendPrices = prices.filter(p => p.divCash > 0);
+        
+        if (dividendPrices.length > 0) {
+          isLiveData = true;
+          dividends = dividendPrices.map(p => ({
+            ticker: ticker.toUpperCase(),
+            ex_date: p.date.split('T')[0],
+            pay_date: null,
+            record_date: null,
+            declare_date: null,
+            div_cash: p.divCash,
+            adj_amount: p.divCash,
+            div_type: null,
+            frequency: null,
+            description: null,
+            currency: 'USD',
+            split_factor: p.splitFactor,
+          })).sort((a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
+        }
       }
     }
     

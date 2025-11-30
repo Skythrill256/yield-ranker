@@ -8,7 +8,7 @@
  * - Bottom half: Dividend payout schedule table
  */
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -38,7 +38,7 @@ import { fetchDividends, type DividendData, type DividendRecord } from "@/servic
 
 interface DividendHistoryProps {
   ticker: string;
-  annualDividend?: number | null;  // Pass from ETF data if available
+  annualDividend?: number | null;
 }
 
 interface YearlyDividend {
@@ -56,12 +56,9 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAllRecords, setShowAllRecords] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
   const [timeRange, setTimeRange] = useState<TimeRange>('5Y');
 
-  // All useMemo hooks must be called BEFORE any early returns (Rules of Hooks)
-  
-  // Filter dividends by time range
   const getFilteredDividends = useMemo(() => {
     if (!dividendData?.dividends) return [];
     
@@ -80,7 +77,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     return dividendData.dividends.filter(d => new Date(d.exDate) >= cutoffDate);
   }, [dividendData, timeRange]);
 
-  // Group dividends by year
   const yearlyDividends = useMemo(() => {
     if (!dividendData?.dividends) return [];
     
@@ -109,7 +105,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     return result.sort((a, b) => b.year - a.year);
   }, [dividendData]);
 
-  // Prepare chart data (last 5 years, chronological)
   const chartData = useMemo(() => {
     return yearlyDividends
       .slice(0, 5)
@@ -121,14 +116,12 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       }));
   }, [yearlyDividends]);
 
-  // Calculate year-over-year growth
   const yoyGrowth = useMemo(() => {
     return yearlyDividends.length >= 2
       ? ((yearlyDividends[0].total - yearlyDividends[1].total) / yearlyDividends[1].total) * 100
       : null;
   }, [yearlyDividends]);
 
-  // Filter records by time range for table
   const getFilteredTableRecords = useMemo(() => {
     if (!dividendData?.dividends) return [];
     
@@ -147,12 +140,31 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     return dividendData.dividends.filter(d => new Date(d.exDate) >= cutoffDate);
   }, [dividendData, timeRange]);
 
-  // Records to display in table
-  const displayedRecords = useMemo(() => {
-    return showAllRecords 
-      ? getFilteredTableRecords
-      : getFilteredTableRecords.slice(0, 12);
-  }, [showAllRecords, getFilteredTableRecords]);
+  const recordsByYear = useMemo(() => {
+    const grouped = new Map<number, DividendRecord[]>();
+    getFilteredTableRecords.forEach(record => {
+      const year = new Date(record.exDate).getFullYear();
+      if (!grouped.has(year)) {
+        grouped.set(year, []);
+      }
+      grouped.get(year)!.push(record);
+    });
+    return Array.from(grouped.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([year, records]) => ({ year, records }));
+  }, [getFilteredTableRecords]);
+
+  const toggleYear = (year: number) => {
+    setExpandedYears(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(year)) {
+        newSet.delete(year);
+      } else {
+        newSet.add(year);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     const loadDividends = async () => {
@@ -162,6 +174,10 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       try {
         const data = await fetchDividends(ticker, 10);
         setDividendData(data);
+        if (data.dividends.length > 0) {
+          const firstYear = new Date(data.dividends[0].exDate).getFullYear();
+          setExpandedYears(new Set([firstYear]));
+        }
       } catch (err) {
         console.error('Error loading dividends:', err);
         setError('Failed to load dividend history');
@@ -173,7 +189,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     loadDividends();
   }, [ticker]);
 
-  // Early returns AFTER all hooks
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -205,7 +220,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           </p>
         </div>
         
-        {/* Summary Stats */}
         <div className="flex gap-4">
           <div className="text-center">
             <p className="text-xs text-muted-foreground">Annual Dividend</p>
@@ -227,7 +241,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         </div>
       </div>
 
-      {/* Time Range Buttons - per Section 3.2 */}
       <div className="flex gap-1 mb-4">
         {(['1Y', '3Y', '5Y', '10Y', '20Y', 'ALL'] as TimeRange[]).map((range) => (
           <Button
@@ -242,7 +255,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         ))}
       </div>
 
-      {/* Bar Chart - Individual Dividend Payments */}
       {getFilteredDividends.length > 0 && (
         <div className="mb-6">
           <h3 className="text-sm font-medium mb-4">Dividend Payments by Ex-Date</h3>
@@ -287,7 +299,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         </div>
       )}
 
-      {/* Annual Totals Bar Chart */}
       {chartData.length > 0 && (
         <div className="mb-8">
           <h3 className="text-sm font-medium mb-4">Annual Dividend Totals</h3>
@@ -334,7 +345,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         </div>
       )}
 
-      {/* Dividend Table - Updated Layout per FIELDS FOR DATABASE */}
       <div>
         <h3 className="text-sm font-medium mb-4">Dividend Payout Schedule</h3>
         <div className="border rounded-lg overflow-hidden overflow-x-auto">
@@ -352,79 +362,98 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayedRecords.map((div, idx) => {
-                const exDate = new Date(div.exDate);
-                const payDate = div.payDate ? new Date(div.payDate) : null;
-                const recordDate = div.recordDate ? new Date(div.recordDate) : null;
-                
-                // Determine type label
-                const typeLabel = div.type === 'Special' ? 'Special' : 'Regular';
-                
-                // Use frequency from API if available, otherwise infer
-                const frequency = div.frequency ?? (() => {
-                  if (dividendData?.paymentsPerYear === 12) return 'Mo';
-                  if (dividendData?.paymentsPerYear === 4) return 'Qtr';
-                  if (dividendData?.paymentsPerYear === 52) return 'Week';
-                  if (dividendData?.paymentsPerYear === 1) return 'Annual';
-                  return dividendData?.paymentsPerYear ? `${dividendData.paymentsPerYear}x/Yr` : '-';
-                })();
+              {recordsByYear.map(({ year, records }) => {
+                const isExpanded = expandedYears.has(year);
+                const displayRecords = isExpanded ? records : (showAllRecords ? records : records.slice(0, 4));
                 
                 return (
-                  <TableRow key={idx} className="hover:bg-slate-50">
-                    <TableCell className="font-medium">
-                      {exDate.getFullYear()}
-                    </TableCell>
-                    <TableCell className="font-mono text-green-600">
-                      ${div.amount.toFixed(4)}
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground">
-                      ${(div.adjAmount ?? div.amount).toFixed(4)}
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        typeLabel === 'Special' 
-                          ? 'bg-amber-100 text-amber-700' 
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {typeLabel}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {frequency}
-                    </TableCell>
-                    <TableCell>
-                      {exDate.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      {recordDate
-                        ? recordDate.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : '-'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      {payDate
-                        ? payDate.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })
-                        : '-'
-                      }
-                    </TableCell>
-                  </TableRow>
+                  <React.Fragment key={year}>
+                    <TableRow 
+                      className="bg-slate-100 hover:bg-slate-200 cursor-pointer"
+                      onClick={() => toggleYear(year)}
+                    >
+                      <TableCell colSpan={8} className="font-semibold py-3">
+                        <div className="flex items-center justify-between">
+                          <span>{year}</span>
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {isExpanded && displayRecords.map((div, idx) => {
+                      const exDate = new Date(div.exDate);
+                      const payDate = div.payDate ? new Date(div.payDate) : null;
+                      const recordDate = div.recordDate ? new Date(div.recordDate) : null;
+                      
+                      const typeLabel = div.type === 'Special' ? 'Special' : 'Regular';
+                      
+                      const frequency = div.frequency ?? (() => {
+                        if (dividendData?.paymentsPerYear === 12) return 'Mo';
+                        if (dividendData?.paymentsPerYear === 4) return 'Qtr';
+                        if (dividendData?.paymentsPerYear === 52) return 'Week';
+                        if (dividendData?.paymentsPerYear === 1) return 'Annual';
+                        return dividendData?.paymentsPerYear ? `${dividendData.paymentsPerYear}x/Yr` : '-';
+                      })();
+                      
+                      return (
+                        <TableRow key={`${year}-${idx}`} className="hover:bg-slate-50">
+                          <TableCell className="font-medium">
+                            {exDate.getFullYear()}
+                          </TableCell>
+                          <TableCell className="font-mono text-green-600">
+                            ${div.amount.toFixed(4)}
+                          </TableCell>
+                          <TableCell className="font-mono text-muted-foreground">
+                            ${(div.adjAmount ?? div.amount).toFixed(4)}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              typeLabel === 'Special' 
+                                ? 'bg-amber-100 text-amber-700' 
+                                : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {typeLabel}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {frequency}
+                          </TableCell>
+                          <TableCell>
+                            {exDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            {recordDate
+                              ? recordDate.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })
+                              : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {payDate
+                              ? payDate.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })
+                              : '-'}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
             </TableBody>
           </Table>
         </div>
         
-        {/* Show More Button */}
-        {dividendData.dividends.length > 12 && (
+        {getFilteredTableRecords.length > recordsByYear.reduce((sum, { year, records }) => sum + (expandedYears.has(year) ? records.length : Math.min(4, records.length)), 0) && (
           <div className="mt-4 text-center">
             <Button
               variant="outline"
@@ -440,7 +469,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  Show All ({dividendData.dividends.length} records)
+                  Show All ({getFilteredTableRecords.length} records)
                 </>
               )}
             </Button>
@@ -448,7 +477,6 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         )}
       </div>
 
-      {/* Footer */}
       <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground">
         <p>
           <DollarSign className="h-3 w-3 inline mr-1" />
