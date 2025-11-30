@@ -247,45 +247,109 @@ router.post('/upload-static', upload.single('file'), handleStaticUpload);
 
 /**
  * GET / - Get all ETFs
+ * Merges data from etf_static (Excel uploads) and etfs (legacy/API data)
  */
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
     const supabase = getSupabase();
     
-    // Try etf_static first (new table), fallback to etfs (legacy)
-    let { data, error } = await supabase
+    const staticResult = await supabase
       .from('etf_static')
       .select('*')
       .order('ticker', { ascending: true });
 
-    // If etf_static doesn't exist or is empty, fallback to legacy etfs table
-    if (error || !data || data.length === 0) {
-      const legacyResult = await supabase
-        .from('etfs')
-        .select('*')
-        .order('symbol', { ascending: true });
-      
-      if (!legacyResult.error && legacyResult.data) {
-        data = legacyResult.data;
-        error = null;
+    const legacyResult = await supabase
+      .from('etfs')
+      .select('*')
+      .order('symbol', { ascending: true });
+
+    const staticData = staticResult.data || [];
+    const legacyData = legacyResult.data || [];
+
+    const preferValue = (a: any, b: any): any => {
+      if (a !== null && a !== undefined && a !== 0 && a !== '0' && a !== '') {
+        return a;
+      }
+      if (b !== null && b !== undefined && b !== 0 && b !== '0' && b !== '') {
+        return b;
+      }
+      return a ?? b;
+    };
+
+    const preferNumeric = (a: any, b: any): any => {
+      const numA = typeof a === 'number' ? a : (a != null ? parseFloat(a) : null);
+      const numB = typeof b === 'number' ? b : (b != null ? parseFloat(b) : null);
+      if (numA != null && !isNaN(numA) && numA !== 0) return numA;
+      if (numB != null && !isNaN(numB) && numB !== 0) return numB;
+      return a ?? b;
+    };
+
+    const mergedMap = new Map<string, any>();
+
+    for (const item of staticData) {
+      const ticker = (item.ticker || '').toUpperCase();
+      if (ticker) {
+        mergedMap.set(ticker, {
+          ...item,
+          symbol: item.ticker,
+        });
       }
     }
 
-    if (error) {
-      res.status(500).json({ error: 'Failed to fetch ETFs' });
-      return;
+    for (const item of legacyData) {
+      const symbol = (item.symbol || '').toUpperCase();
+      if (symbol) {
+        const existing = mergedMap.get(symbol);
+        if (existing) {
+          mergedMap.set(symbol, {
+            ...existing,
+            price: preferNumeric(item.price, existing.price),
+            price_change: preferNumeric(item.price_change, existing.price_change),
+            price_change_pct: preferNumeric(item.price_change_pct, existing.price_change_pct),
+            dividend: preferNumeric(item.dividend, existing.last_dividend),
+            last_dividend: preferNumeric(item.dividend, existing.last_dividend),
+            annual_div: preferNumeric(item.annual_div, existing.annual_dividend),
+            annual_dividend: preferNumeric(item.annual_dividend ?? item.annual_div, existing.annual_dividend),
+            forward_yield: preferNumeric(item.forward_yield, existing.forward_yield),
+            dividend_sd: preferNumeric(item.dividend_sd, existing.dividend_sd),
+            dividend_cv: preferNumeric(item.dividend_cv, existing.dividend_cv),
+            dividend_cv_percent: preferNumeric(item.dividend_cv_percent, existing.dividend_cv_percent),
+            dividend_volatility_index: preferValue(item.dividend_volatility_index, existing.dividend_volatility_index),
+            weighted_rank: preferNumeric(item.weighted_rank, existing.weighted_rank),
+            tr_drip_3y: preferNumeric(item.tr_drip_3y ?? item.three_year_annualized, existing.tr_drip_3y),
+            tr_drip_12m: preferNumeric(item.tr_drip_12m ?? item.total_return_12m, existing.tr_drip_12m),
+            tr_drip_6m: preferNumeric(item.tr_drip_6m ?? item.total_return_6m, existing.tr_drip_6m),
+            tr_drip_3m: preferNumeric(item.tr_drip_3m ?? item.total_return_3m, existing.tr_drip_3m),
+            tr_drip_1m: preferNumeric(item.tr_drip_1m ?? item.total_return_1m, existing.tr_drip_1m),
+            tr_drip_1w: preferNumeric(item.tr_drip_1w ?? item.total_return_1w, existing.tr_drip_1w),
+            price_return_3y: preferNumeric(item.price_return_3y, existing.price_return_3y),
+            price_return_12m: preferNumeric(item.price_return_12m, existing.price_return_12m),
+            price_return_6m: preferNumeric(item.price_return_6m, existing.price_return_6m),
+            price_return_3m: preferNumeric(item.price_return_3m, existing.price_return_3m),
+            price_return_1m: preferNumeric(item.price_return_1m, existing.price_return_1m),
+            price_return_1w: preferNumeric(item.price_return_1w, existing.price_return_1w),
+            week_52_high: preferNumeric(item.week_52_high, existing.week_52_high),
+            week_52_low: preferNumeric(item.week_52_low, existing.week_52_low),
+            last_updated: preferValue(item.last_updated, existing.last_updated),
+            spreadsheet_updated_at: preferValue(item.spreadsheet_updated_at, existing.updated_at),
+          });
+        } else {
+          mergedMap.set(symbol, {
+            ...item,
+            ticker: item.symbol,
+            pay_day_text: item.pay_day,
+          });
+        }
+      }
     }
 
-    // Transform etf_static data to match expected format if needed
-    const transformedData = data?.map((item: any) => {
-      // If from etf_static, ensure symbol field exists (map from ticker)
-      if (item.ticker && !item.symbol) {
-        return { ...item, symbol: item.ticker };
-      }
-      return item;
+    const mergedArray = Array.from(mergedMap.values()).sort((a, b) => {
+      const symbolA = (a.symbol || a.ticker || '').toUpperCase();
+      const symbolB = (b.symbol || b.ticker || '').toUpperCase();
+      return symbolA.localeCompare(symbolB);
     });
 
-    res.json(transformedData ?? []);
+    res.json(mergedArray);
   } catch (error) {
     logger.error('Routes', `Error fetching ETFs: ${(error as Error).message}`);
     res.status(500).json({ error: 'Internal server error' });
@@ -294,24 +358,101 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
 /**
  * GET /:symbol - Get single ETF
+ * Merges data from etf_static and etfs tables
  */
 router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
   try {
     const { symbol } = req.params;
+    const ticker = symbol.toUpperCase();
     const supabase = getSupabase();
     
-    const { data, error } = await supabase
-      .from('etfs')
+    const staticResult = await supabase
+      .from('etf_static')
       .select('*')
-      .eq('symbol', symbol.toUpperCase())
+      .eq('ticker', ticker)
       .single();
 
-    if (error || !data) {
+    const legacyResult = await supabase
+      .from('etfs')
+      .select('*')
+      .eq('symbol', ticker)
+      .single();
+
+    const staticData = staticResult.data;
+    const legacyData = legacyResult.data;
+
+    if (!staticData && !legacyData) {
       res.status(404).json({ error: 'ETF not found' });
       return;
     }
 
-    res.json(data);
+    const preferNumeric = (a: any, b: any): any => {
+      const numA = typeof a === 'number' ? a : (a != null ? parseFloat(a) : null);
+      const numB = typeof b === 'number' ? b : (b != null ? parseFloat(b) : null);
+      if (numA != null && !isNaN(numA) && numA !== 0) return numA;
+      if (numB != null && !isNaN(numB) && numB !== 0) return numB;
+      return a ?? b;
+    };
+
+    const preferValue = (a: any, b: any): any => {
+      if (a !== null && a !== undefined && a !== 0 && a !== '0' && a !== '') {
+        return a;
+      }
+      if (b !== null && b !== undefined && b !== 0 && b !== '0' && b !== '') {
+        return b;
+      }
+      return a ?? b;
+    };
+
+    let merged: any;
+    if (staticData && legacyData) {
+      merged = {
+        ...staticData,
+        symbol: staticData.ticker,
+        price: preferNumeric(legacyData.price, staticData.price),
+        price_change: preferNumeric(legacyData.price_change, staticData.price_change),
+        price_change_pct: preferNumeric(legacyData.price_change_pct, staticData.price_change_pct),
+        dividend: preferNumeric(legacyData.dividend, staticData.last_dividend),
+        last_dividend: preferNumeric(legacyData.dividend, staticData.last_dividend),
+        annual_div: preferNumeric(legacyData.annual_div, staticData.annual_dividend),
+        annual_dividend: preferNumeric(legacyData.annual_dividend ?? legacyData.annual_div, staticData.annual_dividend),
+        forward_yield: preferNumeric(legacyData.forward_yield, staticData.forward_yield),
+        dividend_sd: preferNumeric(legacyData.dividend_sd, staticData.dividend_sd),
+        dividend_cv: preferNumeric(legacyData.dividend_cv, staticData.dividend_cv),
+        dividend_cv_percent: preferNumeric(legacyData.dividend_cv_percent, staticData.dividend_cv_percent),
+        dividend_volatility_index: preferValue(legacyData.dividend_volatility_index, staticData.dividend_volatility_index),
+        weighted_rank: preferNumeric(legacyData.weighted_rank, staticData.weighted_rank),
+        tr_drip_3y: preferNumeric(legacyData.tr_drip_3y ?? legacyData.three_year_annualized, staticData.tr_drip_3y),
+        tr_drip_12m: preferNumeric(legacyData.tr_drip_12m ?? legacyData.total_return_12m, staticData.tr_drip_12m),
+        tr_drip_6m: preferNumeric(legacyData.tr_drip_6m ?? legacyData.total_return_6m, staticData.tr_drip_6m),
+        tr_drip_3m: preferNumeric(legacyData.tr_drip_3m ?? legacyData.total_return_3m, staticData.tr_drip_3m),
+        tr_drip_1m: preferNumeric(legacyData.tr_drip_1m ?? legacyData.total_return_1m, staticData.tr_drip_1m),
+        tr_drip_1w: preferNumeric(legacyData.tr_drip_1w ?? legacyData.total_return_1w, staticData.tr_drip_1w),
+        price_return_3y: preferNumeric(legacyData.price_return_3y, staticData.price_return_3y),
+        price_return_12m: preferNumeric(legacyData.price_return_12m, staticData.price_return_12m),
+        price_return_6m: preferNumeric(legacyData.price_return_6m, staticData.price_return_6m),
+        price_return_3m: preferNumeric(legacyData.price_return_3m, staticData.price_return_3m),
+        price_return_1m: preferNumeric(legacyData.price_return_1m, staticData.price_return_1m),
+        price_return_1w: preferNumeric(legacyData.price_return_1w, staticData.price_return_1w),
+        week_52_high: preferNumeric(legacyData.week_52_high, staticData.week_52_high),
+        week_52_low: preferNumeric(legacyData.week_52_low, staticData.week_52_low),
+        last_updated: preferValue(legacyData.last_updated, staticData.last_updated),
+        spreadsheet_updated_at: preferValue(legacyData.spreadsheet_updated_at, staticData.updated_at),
+      };
+    } else if (staticData) {
+      merged = {
+        ...staticData,
+        symbol: staticData.ticker,
+      };
+    } else {
+      merged = {
+        ...legacyData,
+        ticker: legacyData.symbol,
+        pay_day_text: legacyData.pay_day,
+      };
+    }
+
+    res.json(merged);
   } catch (error) {
     logger.error('Routes', `Error fetching ETF: ${(error as Error).message}`);
     res.status(500).json({ error: 'Internal server error' });

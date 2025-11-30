@@ -43,8 +43,20 @@ export function useFavorites() {
   const toggleFavorite = (symbol: string) => {
     setFavorites(prev => {
       const newFavorites = new Set(prev);
-      if (newFavorites.has(symbol)) {
-        newFavorites.delete(symbol);
+      const normalizedSymbol = symbol.toUpperCase();
+      
+      let found = false;
+      let existingSymbol = '';
+      for (const fav of newFavorites) {
+        if (fav.toUpperCase() === normalizedSymbol) {
+          found = true;
+          existingSymbol = fav;
+          break;
+        }
+      }
+      
+      if (found) {
+        newFavorites.delete(existingSymbol);
       } else {
         newFavorites.add(symbol);
       }
@@ -52,12 +64,50 @@ export function useFavorites() {
     });
   };
 
-  const isFavorite = (symbol: string) => favorites.has(symbol);
+  const isFavorite = (symbol: string) => {
+    const normalizedSymbol = symbol.toUpperCase();
+    for (const fav of favorites) {
+      if (fav.toUpperCase() === normalizedSymbol) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  /**
+   * Clean up favorites by removing symbols that no longer exist in the ETF data
+   * This should be called when ETF data is loaded to ensure favorites only contain valid symbols
+   * Also normalizes favorites to match the exact symbol format from the data
+   */
+  const cleanupFavorites = (validSymbols: string[]) => {
+    const validMap = new Map<string, string>();
+    validSymbols.forEach(s => {
+      const upper = s.toUpperCase();
+      validMap.set(upper, s);
+    });
+    
+    setFavorites(prev => {
+      const cleaned = new Set<string>();
+      prev.forEach(favSymbol => {
+        const upperFav = favSymbol.toUpperCase();
+        const matchedSymbol = validMap.get(upperFav);
+        if (matchedSymbol) {
+          cleaned.add(matchedSymbol);
+        }
+      });
+      
+      if (cleaned.size !== prev.size || Array.from(cleaned).some(s => !validMap.has(s.toUpperCase()))) {
+        return cleaned;
+      }
+      return prev;
+    });
+  };
 
   return {
     favorites,
     toggleFavorite,
     isFavorite,
+    cleanupFavorites,
   };
 }
 

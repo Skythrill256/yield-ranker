@@ -18,7 +18,7 @@ const Favorites = () => {
   const { profile } = useAuth();
   const isPremium = !!profile;
   const isGuest = !profile;
-  const { favorites, toggleFavorite } = useFavorites();
+  const { favorites, toggleFavorite, cleanupFavorites } = useFavorites();
 
   const [weights, setWeights] = useState<RankingWeights>({
     yield: 30,
@@ -49,6 +49,10 @@ const Favorites = () => {
         return true;
       });
       setEtfData(deduplicated);
+      
+      // Clean up favorites to remove symbols that no longer exist
+      cleanupFavorites(deduplicated.map(etf => etf.symbol));
+      
       setIsLoading(false);
     };
     loadETFData();

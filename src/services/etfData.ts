@@ -67,7 +67,7 @@ type DatabaseETF = {
 };
 
 function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
-  const symbol = dbEtf.symbol || dbEtf.ticker || '';
+  const symbol = (dbEtf.symbol || dbEtf.ticker || '').toUpperCase().trim();
   const price = dbEtf.price ?? 0;
   const annualDiv = (dbEtf.annual_dividend ?? dbEtf.annual_div) ?? 0;
   let forwardYield = dbEtf.forward_yield ?? 0;
@@ -249,32 +249,44 @@ export const fetchComparisonData = async (
   symbols: string[],
   timeframe: ComparisonTimeframe,
 ): Promise<ComparisonResponse> => {
-  // Use Tiingo live comparison API
+  const normalizedSymbols = symbols.map(s => s.toUpperCase().trim()).filter(s => s.length > 0);
+  
+  if (normalizedSymbols.length === 0) {
+    return {
+      symbols: [],
+      timeframe,
+      data: {},
+    };
+  }
+  
   const response = await fetch(`${API_BASE_URL}/api/tiingo/live/compare`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ tickers: symbols, period: timeframe }),
+    body: JSON.stringify({ tickers: normalizedSymbols, period: timeframe }),
   });
+  
   if (!response.ok) {
-    throw new Error("Failed to fetch comparison data from Tiingo");
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch comparison data: ${errorText || response.statusText}`);
   }
+  
   const json = await response.json();
   
-  // Transform Tiingo response to match expected format
   const transformedData: ComparisonResponse = {
-    symbols: json.tickers || [],
+    symbols: (json.tickers || normalizedSymbols).map((t: string) => t.toUpperCase()),
     timeframe,
     data: {},
   };
   
+  const responseData = json.data || {};
   for (const ticker of transformedData.symbols) {
-    const tickerData = json.data[ticker];
-    if (tickerData) {
-      transformedData.data[ticker] = {
+    const tickerData = responseData[ticker] || responseData[ticker.toUpperCase()] || responseData[ticker.toLowerCase()];
+    if (tickerData && tickerData.timestamps && tickerData.adjCloses) {
+      transformedData.data[ticker.toUpperCase()] = {
         timestamps: tickerData.timestamps,
-        closes: tickerData.adjCloses, // Use adjusted close for total return
+        closes: tickerData.adjCloses,
       };
     }
   }

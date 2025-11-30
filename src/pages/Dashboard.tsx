@@ -54,6 +54,13 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DividendHistory } from "@/components/DividendHistory";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
 import {
   saveRankingWeights,
@@ -85,11 +92,13 @@ export default function Dashboard() {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { favorites, toggleFavorite: toggleFavoriteHook } = useFavorites();
+  const { favorites, toggleFavorite: toggleFavoriteHook, cleanupFavorites } = useFavorites();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllETFs, setShowAllETFs] = useState(false);
   const [selectedETF, setSelectedETF] = useState<ETF | null>(null);
+  const [showDividendModal, setShowDividendModal] = useState(false);
+  const [dividendModalSymbol, setDividendModalSymbol] = useState<string | null>(null);
   const [selectedTimeframe, setSelectedTimeframe] =
     useState<ComparisonTimeframe>("6M");
   const [initialETFCount, setInitialETFCount] = useState(5);
@@ -137,6 +146,9 @@ export default function Dashboard() {
         return true;
       });
       setEtfData(deduplicated);
+      
+      // Clean up favorites to remove symbols that no longer exist
+      cleanupFavorites(deduplicated.map(etf => etf.symbol));
 
       // Format the last updated timestamp
       if (result.lastUpdatedTimestamp) {
@@ -2567,7 +2579,8 @@ export default function Dashboard() {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        navigate(`/etf/${etf.symbol}/dividends`);
+                                        setDividendModalSymbol(etf.symbol);
+                                        setShowDividendModal(true);
                                       }}
                                       className="tabular-nums text-xs text-primary font-medium hover:underline cursor-pointer transition-colors"
                                       title="Click to view dividend history"
@@ -2947,6 +2960,36 @@ export default function Dashboard() {
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
       />
+
+      {/* Dividend History Modal */}
+      <Dialog open={showDividendModal} onOpenChange={setShowDividendModal}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {dividendModalSymbol && (
+                <>
+                  {dividendModalSymbol.toUpperCase()} - Dividend Yield & Payments
+                  {etfData.find(e => e.symbol === dividendModalSymbol) ? (
+                    <p className="text-sm font-normal text-muted-foreground mt-1">
+                      {etfData.find(e => e.symbol === dividendModalSymbol)?.name}
+                    </p>
+                  ) : (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                      <strong>Note:</strong> This ETF is not currently in our database, but dividend history may still be available.
+                    </div>
+                  )}
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {dividendModalSymbol && (
+            <DividendHistory
+              ticker={dividendModalSymbol}
+              annualDividend={etfData.find(e => e.symbol === dividendModalSymbol)?.annualDividend ?? null}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
