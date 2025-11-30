@@ -51,9 +51,5 @@ USER nodejs
 ENV NODE_ENV=production
 # Railway injects PORT, don't hardcode it
 
-# Health check uses PORT env var
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD node -e "fetch('http://localhost:' + (process.env.PORT || 4000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-
 # Start the application
 CMD ["node", "dist/src/index.js"]

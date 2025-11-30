@@ -546,38 +546,59 @@ const ETFDetail = () => {
                   {[etf.symbol, ...comparisonETFs].map((sym, index) => {
                     const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#f59e0b"];
                     const color = colors[index % colors.length];
-                    // Check if this is the only symbol being shown (no comparisons)
-                    const isSingleView = comparisonETFs.length === 0;
                     
-                    // Calculate accurate return from chart data
+                    // Get precomputed return value from ETF data to match top metrics bar
+                    const compareETF = allETFs.find((e) => e.symbol === sym);
                     let returnValue: number | null = null;
-                    if (chartData.length > 0) {
-                      const lastPoint = chartData[chartData.length - 1];
-                      const firstPoint = chartData[0];
-                      
+                    
+                    if (compareETF) {
                       if (chartType === "totalReturn") {
-                        // For total return, use the return value directly (already a percentage)
-                        if (isSingleView) {
-                          // Single ETF view uses 'price' key which is actually the return %
-                          returnValue = lastPoint.price ?? null;
-                        } else {
-                          returnValue = lastPoint[`return_${sym}`] ?? null;
+                        // Use precomputed tr_drip values (same as top metrics bar)
+                        switch (selectedTimeframe) {
+                          case "1W":
+                            returnValue = compareETF.trDrip1Wk ?? compareETF.totalReturn1Wk ?? null;
+                            break;
+                          case "1M":
+                            returnValue = compareETF.trDrip1Mo ?? compareETF.totalReturn1Mo ?? null;
+                            break;
+                          case "3M":
+                            returnValue = compareETF.trDrip3Mo ?? compareETF.totalReturn3Mo ?? null;
+                            break;
+                          case "6M":
+                            returnValue = compareETF.trDrip6Mo ?? compareETF.totalReturn6Mo ?? null;
+                            break;
+                          case "1Y":
+                            returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
+                            break;
+                          case "3Y":
+                            returnValue = compareETF.trDrip3Yr ?? compareETF.totalReturn3Yr ?? null;
+                            break;
+                          default:
+                            returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
                         }
                       } else {
-                        // For price return, calculate % change from start to end
-                        let startPrice: number | undefined;
-                        let endPrice: number | undefined;
-                        
-                        if (isSingleView) {
-                          startPrice = firstPoint.price;
-                          endPrice = lastPoint.price;
-                        } else {
-                          startPrice = firstPoint[`price_${sym}`];
-                          endPrice = lastPoint[`price_${sym}`];
-                        }
-                        
-                        if (startPrice && endPrice && startPrice > 0) {
-                          returnValue = ((endPrice - startPrice) / startPrice) * 100;
+                        // For price return, use precomputed price return values
+                        switch (selectedTimeframe) {
+                          case "1W":
+                            returnValue = compareETF.priceReturn1Wk ?? null;
+                            break;
+                          case "1M":
+                            returnValue = compareETF.priceReturn1Mo ?? null;
+                            break;
+                          case "3M":
+                            returnValue = compareETF.priceReturn3Mo ?? null;
+                            break;
+                          case "6M":
+                            returnValue = compareETF.priceReturn6Mo ?? null;
+                            break;
+                          case "1Y":
+                            returnValue = compareETF.priceReturn12Mo ?? null;
+                            break;
+                          case "3Y":
+                            returnValue = compareETF.priceReturn3Yr ?? null;
+                            break;
+                          default:
+                            returnValue = compareETF.priceReturn12Mo ?? null;
                         }
                       }
                     }
