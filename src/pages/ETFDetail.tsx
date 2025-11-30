@@ -278,7 +278,7 @@ const ETFDetail = () => {
           <Card className="p-6 mb-8 relative z-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
               <div className="flex-1 relative z-0">
-                <h2 className="text-xl font-semibold mb-2 relative z-0">
+                <h2 className="text-xl font-semibold mb-2 relative z-0" style={{ zIndex: 0 }}>
                   {etf.symbol} {chartType === "price" ? "Price Return" : "Total Return"} Chart
                 </h2>
                 <div className="flex gap-2 flex-wrap">

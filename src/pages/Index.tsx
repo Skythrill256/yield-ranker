@@ -442,8 +442,8 @@ const Index = () => {
             </div>
           )}
 
-          <section className="w-full">
-            <div className="flex items-start justify-between gap-2 mb-6">
+          <section className="w-full relative z-0">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
               <div className="flex flex-col gap-1">
                 <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
                   Covered Call Option ETFs
@@ -463,7 +463,7 @@ const Index = () => {
                   )}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5">
                 {/* Customize Rankings */}
                 <Button
                   variant="outline"
@@ -475,7 +475,7 @@ const Index = () => {
                       setShowRankingPanel(true);
                     }
                   }}
-                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-9 rounded-md whitespace-nowrap"
+                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 rounded-md whitespace-nowrap w-full sm:w-auto justify-center"
                 >
                   <Sliders className="h-4 w-4 mr-2" />
                   Customize Rankings
@@ -486,7 +486,7 @@ const Index = () => {
                     variant={showFavoritesOnly ? "default" : "outline"}
                     size="sm"
                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`border-2 h-9 transition-colors whitespace-nowrap ${
+                    className={`border-2 h-10 sm:h-9 transition-colors whitespace-nowrap w-full sm:w-auto justify-center ${
                       showFavoritesOnly
                         ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                         : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"

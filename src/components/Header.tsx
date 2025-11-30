@@ -46,7 +46,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-md shadow-sm">
+    <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur-md shadow-sm">
       <div className="w-full px-6 sm:px-8 lg:px-12">
         <div className="flex h-20 items-center justify-between gap-6">
           <NavLink
@@ -155,13 +155,13 @@ export const Header = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden h-12 w-12 hover:bg-slate-100 transition-colors text-foreground"
+            className="md:hidden h-14 w-14 hover:bg-slate-100 transition-colors text-foreground"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
-              <X className="h-7 w-7 text-foreground" />
+              <X className="h-10 w-10 text-foreground" />
             ) : (
-              <Menu className="h-7 w-7 text-foreground" />
+              <Menu className="h-10 w-10 text-foreground" />
             )}
           </Button>
         </div>
@@ -178,35 +178,35 @@ export const Header = () => {
           <nav className="w-full px-6 flex flex-col py-2">
             <Button
               variant="ghost"
-              className="justify-start px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-100 rounded-md"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/focus")}
             >
               My Focus
             </Button>
             <Button
               variant="ghost"
-              className="justify-start px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-100 rounded-md"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/covered-call-etfs")}
             >
               Covered Call Option ETFs
             </Button>
             <Button
               variant="ghost"
-              className="justify-start px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-100 rounded-md"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/plans")}
             >
               Plans
             </Button>
             <Button
               variant="ghost"
-              className="justify-start px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-100 rounded-md"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/resources")}
             >
               Resources
             </Button>
             <Button
               variant="ghost"
-              className="justify-start px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-100 rounded-md"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/contact")}
             >
               Contact Us
@@ -217,7 +217,7 @@ export const Header = () => {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start px-0 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground"
+                      className="w-full justify-start px-0 text-base font-semibold text-foreground hover:bg-slate-100 hover:text-foreground"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <div className="flex items-center gap-2">
@@ -258,7 +258,7 @@ export const Header = () => {
             ) : (
               <Button
                 variant="default"
-                className="mx-4 my-2 justify-start px-4 py-2.5 text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-md"
+                className="mx-4 my-2 justify-start px-4 py-3 text-base font-semibold bg-primary hover:bg-primary/90 text-white rounded-md"
                 onClick={() => go("/login")}
               >
                 <LogIn className="w-4 h-4 mr-2" />

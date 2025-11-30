@@ -1291,7 +1291,7 @@ export default function Dashboard() {
               <Card className="p-4 sm:p-6 border-2 border-slate-200 overflow-auto relative z-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
                   <div className="flex-1 min-w-0 relative z-0">
-                    <h2 className="text-lg sm:text-xl font-semibold mb-2 relative z-0">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-2 relative z-0" style={{ zIndex: 0 }}>
                       {selectedETF.symbol}{" "}
                       {chartType === "price" ? "Price Return" : "Total Return"} Chart
                     </h2>
@@ -2292,7 +2292,7 @@ export default function Dashboard() {
                 <div className="flex-1 min-h-0 flex flex-col">
                   <div className="w-full max-w-[98%] mx-auto flex flex-col min-h-0 flex-1">
                     <Card className="p-2 sm:p-3 border-2 border-slate-200 flex-1 min-h-0 flex flex-col">
-                      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3 flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2 sm:mb-3 flex-shrink-0">
                         <div className="flex flex-col gap-1">
                           <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
                             Covered Call Option ETFs
@@ -2312,7 +2312,7 @@ export default function Dashboard() {
                             )}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto">
                           {/* Search */}
                           <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -2320,7 +2320,7 @@ export default function Dashboard() {
                               placeholder="Search ETFs..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className="pl-10 w-full h-9 border-2 text-sm"
+                              className="pl-10 w-full h-10 sm:h-9 border-2 text-sm"
                             />
                           </div>
                           {/* Customize Rankings */}
@@ -2334,7 +2334,7 @@ export default function Dashboard() {
                                 setShowRankingPanel(true);
                               }
                             }}
-                            className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-9 rounded-md whitespace-nowrap"
+                            className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 rounded-md whitespace-nowrap w-full sm:w-auto justify-center"
                           >
                             <Sliders className="h-4 w-4 mr-2" />
                             Customize Rankings
@@ -2346,7 +2346,7 @@ export default function Dashboard() {
                             onClick={() =>
                               setShowFavoritesOnly(!showFavoritesOnly)
                             }
-                            className={`border-2 h-9 transition-colors whitespace-nowrap ${
+                            className={`border-2 h-10 sm:h-9 transition-colors whitespace-nowrap w-full sm:w-auto justify-center ${
                               showFavoritesOnly
                                 ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                                 : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
