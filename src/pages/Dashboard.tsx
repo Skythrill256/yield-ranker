@@ -1288,10 +1288,10 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <Card className="p-4 sm:p-6 border-2 border-slate-200 overflow-auto">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-lg sm:text-xl font-semibold mb-2">
+              <Card className="p-4 sm:p-6 border-2 border-slate-200 overflow-auto relative z-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
+                  <div className="flex-1 min-w-0 relative z-0">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-2 relative z-0">
                       {selectedETF.symbol}{" "}
                       {chartType === "price" ? "Price Return" : "Total Return"} Chart
                     </h2>

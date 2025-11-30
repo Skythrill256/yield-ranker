@@ -276,9 +276,9 @@ const ETFDetail = () => {
         {/* Chart Section - No tabs, direct display */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200 relative z-0">
           <Card className="p-6 mb-8 relative z-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div className="flex-1">
-                <h2 className="text-xl font-semibold mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
+              <div className="flex-1 relative z-0">
+                <h2 className="text-xl font-semibold mb-2 relative z-0">
                   {etf.symbol} {chartType === "price" ? "Price Return" : "Total Return"} Chart
                 </h2>
                 <div className="flex gap-2 flex-wrap">
