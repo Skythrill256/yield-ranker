@@ -159,7 +159,7 @@ const ETFDetail = () => {
   const priceChangePercent = ((priceChange / etf.price) * 100).toFixed(2);
   const isPositive = priceChange >= 0;
   
-  const chartValues = chartData.map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
+  const chartValues = (chartData && Array.isArray(chartData) ? chartData : []).map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
   const minValue = chartValues.length > 0 ? Math.min(...chartValues, 0) : -10;
   const maxValue = chartValues.length > 0 ? Math.max(...chartValues, 0) : 10;
 
@@ -496,7 +496,8 @@ const ETFDetail = () => {
               {/* Chart Area */}
               <div className="flex-1 min-w-0 order-2 lg:order-1">
                 <ResponsiveContainer width="100%" height={400}>
-                  {comparisonETFs.length > 0 ? (
+                  {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
+                    comparisonETFs.length > 0 ? (
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                       <XAxis 
@@ -507,10 +508,11 @@ const ETFDetail = () => {
                         axisLine={false}
                         interval="preserveStartEnd"
                         tickFormatter={(value, index, ticks) => {
+                          if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return value || '';
                           // Deduplicate: only show label if different from previous
-                          if (index === 0 || index === ticks.length - 1) return value;
+                          if (index === 0 || index === ticks.length - 1) return value || '';
                           const prevLabel = ticks[index - 1]?.value;
-                          return value === prevLabel ? '' : value;
+                          return value === prevLabel ? '' : (value || '');
                         }}
                       />
                       <YAxis 
@@ -568,7 +570,7 @@ const ETFDetail = () => {
                         );
                       })}
                     </LineChart>
-                  ) : (
+                  ) : (chartData && Array.isArray(chartData) && chartData.length > 0) ? (
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                       <XAxis 
@@ -579,10 +581,11 @@ const ETFDetail = () => {
                         axisLine={false}
                         interval="preserveStartEnd"
                         tickFormatter={(value, index, ticks) => {
+                          if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return value || '';
                           // Deduplicate: only show label if different from previous
-                          if (index === 0 || index === ticks.length - 1) return value;
+                          if (index === 0 || index === ticks.length - 1) return value || '';
                           const prevLabel = ticks[index - 1]?.value;
-                          return value === prevLabel ? '' : value;
+                          return value === prevLabel ? '' : (value || '');
                         }}
                       />
                       <YAxis 
@@ -633,6 +636,12 @@ const ETFDetail = () => {
                         name={etf.symbol}
                       />
                     </LineChart>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">Chart data is loading or unavailable.</p>
+                      </div>
+                    </div>
                   )}
                 </ResponsiveContainer>
               </div>

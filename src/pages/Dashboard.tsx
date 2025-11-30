@@ -91,7 +91,7 @@ export default function Dashboard() {
   const [showAllETFs, setShowAllETFs] = useState(false);
   const [selectedETF, setSelectedETF] = useState<ETF | null>(null);
   const [selectedTimeframe, setSelectedTimeframe] =
-    useState<ComparisonTimeframe>("1D");
+    useState<ComparisonTimeframe>("6M");
   const [initialETFCount, setInitialETFCount] = useState(5);
   const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
   const [accountPanelExpanded, setAccountPanelExpanded] = useState(false);
@@ -903,6 +903,8 @@ export default function Dashboard() {
 
   const handleETFClick = (etf: ETF) => {
     setSelectedETF(etf);
+    setChartType("totalReturn");
+    setSelectedTimeframe("6M");
     setComparisonETFs((prev) => prev.filter((s) => s !== etf.symbol));
     setShowAllETFs(false);
     setTimeout(() => {
@@ -979,7 +981,7 @@ export default function Dashboard() {
     ).toFixed(2);
     const isPositive = priceChange >= 0;
 
-    const chartValues = chartData
+    const chartValues = (chartData && Array.isArray(chartData) ? chartData : [])
       .map((d) => d.price)
       .filter((v): v is number => typeof v === "number" && !isNaN(v));
     const minChartValue =
@@ -1521,7 +1523,8 @@ export default function Dashboard() {
                 )}
 
                 <ResponsiveContainer width="100%" height={chartHeight}>
-                  {comparisonETFs.length > 0 ? (
+                  {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
+                    comparisonETFs.length > 0 ? (
                     <LineChart data={chartData}>
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -1539,10 +1542,11 @@ export default function Dashboard() {
                         height={chartHeight < 280 ? 50 : 30}
                         interval="preserveStartEnd"
                         tickFormatter={(value, index, ticks) => {
+                          if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return value || '';
                           // Deduplicate: only show label if different from previous
-                          if (index === 0 || index === ticks.length - 1) return value;
+                          if (index === 0 || index === ticks.length - 1) return value || '';
                           const prevLabel = ticks[index - 1]?.value;
-                          return value === prevLabel ? '' : value;
+                          return value === prevLabel ? '' : (value || '');
                         }}
                       />
                       <YAxis
@@ -1607,7 +1611,7 @@ export default function Dashboard() {
                         );
                       })}
                     </LineChart>
-                  ) : (
+                  ) : (chartData && Array.isArray(chartData) && chartData.length > 0) ? (
                     <AreaChart data={chartData}>
                       <defs>
                         <linearGradient
@@ -1645,10 +1649,11 @@ export default function Dashboard() {
                         height={chartHeight < 280 ? 50 : 30}
                         interval="preserveStartEnd"
                         tickFormatter={(value, index, ticks) => {
+                          if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return value || '';
                           // Deduplicate: only show label if different from previous
-                          if (index === 0 || index === ticks.length - 1) return value;
+                          if (index === 0 || index === ticks.length - 1) return value || '';
                           const prevLabel = ticks[index - 1]?.value;
-                          return value === prevLabel ? '' : value;
+                          return value === prevLabel ? '' : (value || '');
                         }}
                       />
                       <YAxis
@@ -1699,6 +1704,12 @@ export default function Dashboard() {
                         dot={false}
                       />
                     </AreaChart>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center">
+                        <p className="text-muted-foreground">Chart data is loading or unavailable.</p>
+                      </div>
+                    </div>
                   )}
                 </ResponsiveContainer>
               </Card>

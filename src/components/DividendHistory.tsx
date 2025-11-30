@@ -241,7 +241,14 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                 fontSize={10}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}
+                tickFormatter={(value) => {
+                  if (!value) return '';
+                  try {
+                    return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                  } catch {
+                    return '';
+                  }
+                }}
               />
               <YAxis 
                 stroke="#94a3b8" 
