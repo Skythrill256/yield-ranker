@@ -74,6 +74,7 @@ export interface RankingWeights {
   volatility: number;       // Using dividend CV%
   totalReturn: number;
   timeframe?: "3mo" | "6mo" | "12mo";
+  stdDev?: number;          // Deprecated: legacy field for backwards compatibility
 }
 
 // Type for dividend history records (for the Dividend History page)

@@ -4,7 +4,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   fetchETFData,
   fetchETFDataWithMetadata,
-  fetchQuickUpdates,
   fetchComparisonData,
   generateChartData,
   ChartType,
@@ -1541,13 +1540,7 @@ export default function Dashboard() {
                         textAnchor={chartHeight < 280 ? "end" : "middle"}
                         height={chartHeight < 280 ? 50 : 30}
                         interval="preserveStartEnd"
-                        tickFormatter={(value, index, ticks) => {
-                          if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return value || '';
-                          // Deduplicate: only show label if different from previous
-                          if (index === 0 || index === ticks.length - 1) return value || '';
-                          const prevLabel = ticks[index - 1]?.value;
-                          return value === prevLabel ? '' : (value || '');
-                        }}
+                        tickFormatter={(value) => value || ''}
                       />
                       <YAxis
                         stroke="#94a3b8"
@@ -1615,7 +1608,7 @@ export default function Dashboard() {
                         );
                       })}
                     </LineChart>
-                  ) : (chartData && Array.isArray(chartData) && chartData.length > 0) ? (
+                  ) : (
                     <AreaChart data={chartData}>
                       <defs>
                         <linearGradient
@@ -1652,13 +1645,7 @@ export default function Dashboard() {
                         textAnchor={chartHeight < 280 ? "end" : "middle"}
                         height={chartHeight < 280 ? 50 : 30}
                         interval="preserveStartEnd"
-                        tickFormatter={(value, index, ticks) => {
-                          if (!ticks || !Array.isArray(ticks) || ticks.length === 0) return value || '';
-                          // Deduplicate: only show label if different from previous
-                          if (index === 0 || index === ticks.length - 1) return value || '';
-                          const prevLabel = ticks[index - 1]?.value;
-                          return value === prevLabel ? '' : (value || '');
-                        }}
+                        tickFormatter={(value) => value || ''}
                       />
                       <YAxis
                         stroke="#94a3b8"
@@ -1710,7 +1697,7 @@ export default function Dashboard() {
                         strokeLinecap="round"
                       />
                     </AreaChart>
-                  ) : (
+                  )) : (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
                         <p className="text-muted-foreground">Chart data is loading or unavailable.</p>
