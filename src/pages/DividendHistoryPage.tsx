@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import Header from "@/components/Header";
+import { Header } from "@/components/Header";
 import { DividendHistory } from "@/components/DividendHistory";
 import { fetchETFDataWithMetadata } from "@/services/etfData";
 import { ETF } from "@/types/etf";
