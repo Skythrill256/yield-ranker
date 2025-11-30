@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { DividendHistory } from "@/components/DividendHistory";
-import { fetchETFDataWithMetadata } from "@/services/etfData";
+import { fetchSingleETF } from "@/services/etfData";
 import { ETF } from "@/types/etf";
 
 const DividendHistoryPage = () => {
@@ -20,7 +20,7 @@ const DividendHistoryPage = () => {
       
       setIsLoading(true);
       try {
-        const data = await fetchETFDataWithMetadata(symbol);
+        const data = await fetchSingleETF(symbol);
         setEtf(data);
       } catch (error) {
         console.error("Error loading ETF:", error);
@@ -86,7 +86,7 @@ const DividendHistoryPage = () => {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200">
           <DividendHistory 
             ticker={symbol} 
-            annualDividend={etf.annualDividend ?? etf.annualDividendAmount ?? null}
+            annualDividend={etf.annualDividend ?? null}
           />
         </div>
       </main>
