@@ -392,6 +392,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     });
 
     let lastUpdatedTimestamp: string | null = null;
+    
     for (const item of mergedArray) {
       const timestamp = item.last_updated || item.updated_at || item.spreadsheet_updated_at;
       if (timestamp) {
@@ -399,6 +400,20 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
         if (!lastUpdatedTimestamp || ts > new Date(lastUpdatedTimestamp).getTime()) {
           lastUpdatedTimestamp = timestamp;
         }
+      }
+    }
+    
+    if (!lastUpdatedTimestamp) {
+      const syncLogResult = await supabase
+        .from('data_sync_log')
+        .select('last_sync_date, updated_at')
+        .eq('data_type', 'prices')
+        .order('last_sync_date', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (syncLogResult.data) {
+        lastUpdatedTimestamp = syncLogResult.data.updated_at || syncLogResult.data.last_sync_date || null;
       }
     }
 
