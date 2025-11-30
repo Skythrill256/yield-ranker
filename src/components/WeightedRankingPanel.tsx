@@ -247,10 +247,10 @@ export function WeightedRankingPanel({ onSelectETF }: WeightedRankingPanelProps)
                 </p>
               </div>
 
-              {/* Volatility Weight */}
+              {/* Volatility Weight (Dividend CV%) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">Dividend Stability</label>
+                  <label className="text-sm font-medium">Dividend Stability (CV%)</label>
                   <span className="text-sm font-bold text-primary">{weights.volatility}%</span>
                 </div>
                 <Slider
@@ -262,7 +262,7 @@ export function WeightedRankingPanel({ onSelectETF }: WeightedRankingPanelProps)
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Lower volatility = better score (inverted normalization)
+                  Lower dividend CV% = more stable dividends = better score (inverted normalization)
                 </p>
               </div>
             </div>
@@ -392,8 +392,10 @@ export function WeightedRankingPanel({ onSelectETF }: WeightedRankingPanelProps)
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
           <Info className="h-4 w-4 inline mr-2" />
           <strong>Methodology:</strong> Rankings use Min-Max normalization (0-1 scale). 
-          Volatility is inverted so lower values score higher. 
-          Composite score = weighted sum of normalized values.
+          Dividend volatility uses the industry-standard frequency-proof CV% calculation 
+          (rolling 365-day annualized series, immune to payout frequency changes). 
+          Lower CV% = more stable dividends = higher score. 
+          Total return uses DRIP method (adjClose ratio). Source: Tiingo
         </div>
       </Card>
     </div>

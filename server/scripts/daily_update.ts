@@ -35,6 +35,8 @@ import {
   healthCheck,
   getRateLimitStatus,
 } from '../src/services/tiingo.js';
+import { calculateMetrics } from '../src/services/metrics.js';
+import { batchUpdateETFMetrics } from '../src/services/database.js';
 import type { TiingoPriceData, TiingoDividendData } from '../src/types/index.js';
 
 // ============================================================================
@@ -397,6 +399,60 @@ async function updateTicker(
     
     if (!dryRun) {
       await updateSyncLog(ticker, 'dividends', lastDividendDate, dividendsAdded, 'success');
+    }
+    
+    // Step 3: Recompute metrics (annualized dividend, SD/CV, returns)
+    // This is the key step per Section 2.4 of the PDF:
+    // - Recompute annualized dividend series → annual_dividend, SD, CV
+    // - Recompute all total-return and price-return horizons
+    // - Persist to DB
+    console.log(`  Recomputing metrics...`);
+    if (!dryRun) {
+      try {
+        const metrics = await calculateMetrics(ticker);
+        await batchUpdateETFMetrics([{
+          ticker,
+          metrics: {
+            price: metrics.currentPrice,
+            price_change: metrics.priceChange,
+            price_change_pct: metrics.priceChangePercent,
+            last_dividend: metrics.lastDividend,
+            annual_dividend: metrics.annualizedDividend,
+            forward_yield: metrics.forwardYield,
+            dividend_sd: metrics.dividendSD,
+            dividend_cv: metrics.dividendCV,
+            dividend_cv_percent: metrics.dividendCVPercent,
+            dividend_volatility_index: metrics.dividendVolatilityIndex,
+            week_52_high: metrics.week52High,
+            week_52_low: metrics.week52Low,
+            // Total Return WITH DRIP
+            tr_drip_3y: metrics.totalReturnDrip?.['3Y'],
+            tr_drip_12m: metrics.totalReturnDrip?.['1Y'],
+            tr_drip_6m: metrics.totalReturnDrip?.['6M'],
+            tr_drip_3m: metrics.totalReturnDrip?.['3M'],
+            tr_drip_1m: metrics.totalReturnDrip?.['1M'],
+            tr_drip_1w: metrics.totalReturnDrip?.['1W'],
+            // Price Return
+            price_return_3y: metrics.priceReturn?.['3Y'],
+            price_return_12m: metrics.priceReturn?.['1Y'],
+            price_return_6m: metrics.priceReturn?.['6M'],
+            price_return_3m: metrics.priceReturn?.['3M'],
+            price_return_1m: metrics.priceReturn?.['1M'],
+            price_return_1w: metrics.priceReturn?.['1W'],
+            // Total Return WITHOUT DRIP (optional)
+            tr_nodrip_3y: metrics.totalReturnNoDrip?.['3Y'],
+            tr_nodrip_12m: metrics.totalReturnNoDrip?.['1Y'],
+            tr_nodrip_6m: metrics.totalReturnNoDrip?.['6M'],
+            tr_nodrip_3m: metrics.totalReturnNoDrip?.['3M'],
+            tr_nodrip_1m: metrics.totalReturnNoDrip?.['1M'],
+            tr_nodrip_1w: metrics.totalReturnNoDrip?.['1W'],
+            last_updated: new Date().toISOString(),
+          }
+        }]);
+        console.log(`  ✓ Metrics updated: yield=${metrics.forwardYield?.toFixed(2)}%, CV=${metrics.dividendCVPercent?.toFixed(1)}%`);
+      } catch (metricsError) {
+        console.error(`  ⚠️ Metrics calculation failed:`, metricsError instanceof Error ? metricsError.message : metricsError);
+      }
     }
     
     console.log(`  ✓ ${pricesAdded} prices, ${dividendsAdded} dividends`);

@@ -90,6 +90,40 @@ export async function getETFStatic(ticker: string): Promise<ETFStaticRecord | nu
         payments_per_year: legacy.payments_per_year,
         ipo_price: legacy.ipo_price,
         default_rank_weights: null,
+        // Return null for all computed fields when using legacy
+        price: null,
+        price_change: null,
+        price_change_pct: null,
+        last_dividend: null,
+        annual_dividend: null,
+        forward_yield: null,
+        dividend_sd: null,
+        dividend_cv: null,
+        dividend_cv_percent: null,
+        dividend_volatility_index: null,
+        weighted_rank: null,
+        tr_drip_3y: null,
+        tr_drip_12m: null,
+        tr_drip_6m: null,
+        tr_drip_3m: null,
+        tr_drip_1m: null,
+        tr_drip_1w: null,
+        price_return_3y: null,
+        price_return_12m: null,
+        price_return_6m: null,
+        price_return_3m: null,
+        price_return_1m: null,
+        price_return_1w: null,
+        tr_nodrip_3y: null,
+        tr_nodrip_12m: null,
+        tr_nodrip_6m: null,
+        tr_nodrip_3m: null,
+        tr_nodrip_1m: null,
+        tr_nodrip_1w: null,
+        week_52_high: null,
+        week_52_low: null,
+        last_updated: null,
+        data_source: null,
       };
     }
     return null;
@@ -110,6 +144,49 @@ export async function upsertETFStatic(records: ETFStaticRecord[]): Promise<numbe
   }
   
   return records.length;
+}
+
+/**
+ * Update computed metrics for a ticker in the etf_static table
+ */
+export async function updateETFMetrics(
+  ticker: string,
+  metrics: Partial<ETFStaticRecord>
+): Promise<void> {
+  const db = getSupabase();
+  
+  const { error } = await db
+    .from('etf_static')
+    .update({
+      ...metrics,
+      last_updated: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('ticker', ticker.toUpperCase());
+  
+  if (error) {
+    logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
+  }
+}
+
+/**
+ * Batch update metrics for multiple tickers
+ */
+export async function batchUpdateETFMetrics(
+  updates: Array<{ ticker: string; metrics: Partial<ETFStaticRecord> }>
+): Promise<number> {
+  let updated = 0;
+  
+  for (const { ticker, metrics } of updates) {
+    try {
+      await updateETFMetrics(ticker, metrics);
+      updated++;
+    } catch (error) {
+      logger.error('Database', `Failed to update ${ticker}: ${error}`);
+    }
+  }
+  
+  return updated;
 }
 
 // ============================================================================

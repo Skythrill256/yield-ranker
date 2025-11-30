@@ -46,15 +46,17 @@ export const ETFTable = ({
   const isPremium = !!profile;
   const isGuest = !profile;
 
+  // Total Return WITH DRIP columns (using adjClose ratio method)
+  // Price Return columns (using unadjusted close prices)
   const returnColumns: { key: keyof ETF; label: string }[] =
     viewMode === "total"
       ? [
-          { key: "totalReturn3Yr", label: "3 Yr" },
-          { key: "totalReturn12Mo", label: "12 Mo" },
-          { key: "totalReturn6Mo", label: "6 Mo" },
-          { key: "totalReturn3Mo", label: "3 Mo" },
-          { key: "totalReturn1Mo", label: "1 Mo" },
-          { key: "totalReturn1Wk", label: "1 Wk" },
+          { key: "trDrip3Yr", label: "3 Yr" },
+          { key: "trDrip12Mo", label: "12 Mo" },
+          { key: "trDrip6Mo", label: "6 Mo" },
+          { key: "trDrip3Mo", label: "3 Mo" },
+          { key: "trDrip1Mo", label: "1 Mo" },
+          { key: "trDrip1Wk", label: "1 Wk" },
         ]
       : [
           { key: "priceReturn3Yr", label: "3 Yr" },
@@ -229,7 +231,7 @@ export const ETFTable = ({
                 <SortButton field="forwardYield">Yield</SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton field="standardDeviation">
+                <SortButton field="dividendCVPercent">
                   <div className="whitespace-normal leading-tight">Dividend<br/>Volatility</div>
                 </SortButton>
               </th>
@@ -312,34 +314,34 @@ export const ETFTable = ({
                     {etf.payDay || "N/A"}
                   </td>
                   <td className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    etf.price > etf.ipoPrice ? 'bg-green-100 text-green-700' : ''
+                    etf.ipoPrice && etf.price > etf.ipoPrice ? 'bg-green-100 text-green-700' : ''
                   }`}>
-                    ${etf.ipoPrice.toFixed(2)}
+                    {etf.ipoPrice != null ? `$${etf.ipoPrice.toFixed(2)}` : 'N/A'}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium text-foreground">
                     ${etf.price.toFixed(2)}
                   </td>
                   <td className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    etf.priceChange >= 0 ? 'text-green-600' : 'text-red-600'
+                    etf.priceChange != null && etf.priceChange >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {etf.priceChange >= 0 ? '+' : ''}{etf.priceChange.toFixed(2)}
+                    {etf.priceChange != null ? `${etf.priceChange >= 0 ? '+' : ''}${etf.priceChange.toFixed(2)}` : 'N/A'}
                   </td>
                   <td 
                     className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-foreground font-medium"
                   >
-                    {etf.dividend.toFixed(4)}
+                    {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
                     {etf.numPayments}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                    ${etf.annualDividend.toFixed(2)}
+                    {etf.annualDividend != null ? `$${etf.annualDividend.toFixed(2)}` : 'N/A'}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-xs">
-                    {etf.forwardYield.toFixed(1)}%
+                    {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
                   </td>
-                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                    {etf.standardDeviation.toFixed(3)}
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground" title={etf.dividendVolatilityIndex || undefined}>
+                    {etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendVolatilityIndex || 'N/A')}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
                     {isGuest ? (

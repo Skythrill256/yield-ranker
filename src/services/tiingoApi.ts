@@ -44,7 +44,10 @@ export interface DividendRecord {
   recordDate: string | null;
   declareDate: string | null;
   amount: number;
-  type: string;
+  adjAmount: number;         // Split-adjusted amount
+  type: 'Regular' | 'Special';
+  frequency: string;         // Mo, Qtr, Week, Annual, etc.
+  description: string | null;
   currency: string;
 }
 
@@ -59,19 +62,63 @@ export interface DividendData {
 
 export interface ETFMetrics {
   ticker: string;
-  name: string;
+  name: string | null;
   issuer: string | null;
+  ipoPrice: number | null;
+  payDay: string | null;
   currentPrice: number | null;
   previousClose: number | null;
   priceChange: number | null;
   priceChangePercent: number | null;
   week52High: number | null;
   week52Low: number | null;
+  
+  // Dividend data
   lastDividend: number | null;
-  annualizedDividend: number | null;
-  yield: number | null;
+  annualizedDividend: number | null;  // Rolling 365-day sum
   paymentsPerYear: number;
-  dividendVolatility: number | null;
+  forwardYield: number | null;        // annual_dividend / price
+  
+  // Volatility metrics (frequency-proof)
+  dividendSD: number | null;          // SD of rolling 365D annualized series
+  dividendCV: number | null;          // CV as decimal (e.g., 0.18)
+  dividendCVPercent: number | null;   // CV as percentage (e.g., 18.0)
+  dividendVolatilityIndex: string | null;
+  
+  // Weighted ranking
+  weightedRank: number | null;
+  
+  // Total Return WITH DRIP (using adjClose ratio)
+  totalReturnDrip: {
+    '1W': number | null;
+    '1M': number | null;
+    '3M': number | null;
+    '6M': number | null;
+    '1Y': number | null;
+    '3Y': number | null;
+  };
+  
+  // Price Return (non-DRIP, using unadjusted close)
+  priceReturn: {
+    '1W': number | null;
+    '1M': number | null;
+    '3M': number | null;
+    '6M': number | null;
+    '1Y': number | null;
+    '3Y': number | null;
+  };
+  
+  // Total Return WITHOUT DRIP (optional)
+  totalReturnNoDrip: {
+    '1W': number | null;
+    '1M': number | null;
+    '3M': number | null;
+    '6M': number | null;
+    '1Y': number | null;
+    '3Y': number | null;
+  } | null;
+  
+  // Legacy combined returns for backward compatibility
   returns: {
     '1W': { price: number | null; total: number | null };
     '1M': { price: number | null; total: number | null };
@@ -80,7 +127,9 @@ export interface ETFMetrics {
     '1Y': { price: number | null; total: number | null };
     '3Y': { price: number | null; total: number | null };
   };
+  
   calculatedAt: string;
+  dataSource: string;
 }
 
 export interface ComparisonData {
@@ -299,6 +348,74 @@ export function generateComparisonChartData(
   return result;
 }
 
+/**
+ * Convert backend ETFMetrics to frontend ETF type
+ */
+export function metricsToETF(metrics: ETFMetrics, isFavorite: boolean = false): import('@/types/etf').ETF {
+  return {
+    symbol: metrics.ticker,
+    name: metrics.name || metrics.ticker,
+    issuer: metrics.issuer || '',
+    description: metrics.name || '',
+    ipoPrice: metrics.ipoPrice,
+    payDay: metrics.payDay,
+    
+    // Live price data
+    price: metrics.currentPrice || 0,
+    priceChange: metrics.priceChange,
+    priceChangePercent: metrics.priceChangePercent,
+    
+    // Dividend data
+    dividend: metrics.lastDividend,
+    numPayments: metrics.paymentsPerYear,
+    annualDividend: metrics.annualizedDividend,
+    forwardYield: metrics.forwardYield,
+    
+    // Volatility metrics (frequency-proof)
+    dividendSD: metrics.dividendSD,
+    dividendCV: metrics.dividendCV,
+    dividendCVPercent: metrics.dividendCVPercent,
+    dividendVolatilityIndex: metrics.dividendVolatilityIndex,
+    
+    // Ranking
+    weightedRank: metrics.weightedRank,
+    
+    // 52-week range
+    week52Low: metrics.week52Low,
+    week52High: metrics.week52High,
+    
+    // Total Return WITH DRIP
+    trDrip3Yr: metrics.totalReturnDrip['3Y'],
+    trDrip12Mo: metrics.totalReturnDrip['1Y'],
+    trDrip6Mo: metrics.totalReturnDrip['6M'],
+    trDrip3Mo: metrics.totalReturnDrip['3M'],
+    trDrip1Mo: metrics.totalReturnDrip['1M'],
+    trDrip1Wk: metrics.totalReturnDrip['1W'],
+    
+    // Price Return
+    priceReturn3Yr: metrics.priceReturn['3Y'],
+    priceReturn12Mo: metrics.priceReturn['1Y'],
+    priceReturn6Mo: metrics.priceReturn['6M'],
+    priceReturn3Mo: metrics.priceReturn['3M'],
+    priceReturn1Mo: metrics.priceReturn['1M'],
+    priceReturn1Wk: metrics.priceReturn['1W'],
+    
+    // Legacy fields for backward compatibility
+    standardDeviation: metrics.dividendCVPercent ?? 0,
+    totalReturn3Yr: metrics.totalReturnDrip['3Y'],
+    totalReturn12Mo: metrics.totalReturnDrip['1Y'],
+    totalReturn6Mo: metrics.totalReturnDrip['6M'],
+    totalReturn3Mo: metrics.totalReturnDrip['3M'],
+    totalReturn1Mo: metrics.totalReturnDrip['1M'],
+    totalReturn1Wk: metrics.totalReturnDrip['1W'],
+    
+    // Metadata
+    isFavorite,
+    lastUpdated: metrics.calculatedAt,
+    dataSource: metrics.dataSource,
+  };
+}
+
 export default {
   fetchTiingoPrices,
   fetchLatestPrice,
@@ -308,4 +425,5 @@ export default {
   fetchRankings,
   fetchSyncStatus,
   generateComparisonChartData,
+  metricsToETF,
 };

@@ -71,8 +71,11 @@ export interface DividendRecord {
   record_date: string | null;
   declare_date: string | null;
   div_cash: number;
+  adj_amount: number | null;      // Split-adjusted dividend amount
   split_factor: number | null;
   div_type: string | null;
+  frequency: string | null;       // Mo, Qtr, Week, etc.
+  description: string | null;     // Dividend description
   currency: string | null;
   created_at?: string;
 }
@@ -85,6 +88,57 @@ export interface ETFStaticRecord {
   payments_per_year: number | null;
   ipo_price: number | null;
   default_rank_weights: Record<string, number> | null;
+  
+  // Live price fields
+  price: number | null;
+  price_change: number | null;
+  price_change_pct: number | null;
+  
+  // Dividend + frequency fields
+  last_dividend: number | null;
+  annual_dividend: number | null;   // Rolling 365-day sum
+  forward_yield: number | null;
+  
+  // Volatility metrics (frequency-proof)
+  dividend_sd: number | null;
+  dividend_cv: number | null;
+  dividend_cv_percent: number | null;
+  dividend_volatility_index: string | null;
+  
+  // Ranking
+  weighted_rank: number | null;
+  
+  // Total Return WITH DRIP
+  tr_drip_3y: number | null;
+  tr_drip_12m: number | null;
+  tr_drip_6m: number | null;
+  tr_drip_3m: number | null;
+  tr_drip_1m: number | null;
+  tr_drip_1w: number | null;
+  
+  // Price Return (non-DRIP)
+  price_return_3y: number | null;
+  price_return_12m: number | null;
+  price_return_6m: number | null;
+  price_return_3m: number | null;
+  price_return_1m: number | null;
+  price_return_1w: number | null;
+  
+  // Total Return WITHOUT DRIP
+  tr_nodrip_3y: number | null;
+  tr_nodrip_12m: number | null;
+  tr_nodrip_6m: number | null;
+  tr_nodrip_3m: number | null;
+  tr_nodrip_1m: number | null;
+  tr_nodrip_1w: number | null;
+  
+  // 52-week range
+  week_52_high: number | null;
+  week_52_low: number | null;
+  
+  // Metadata
+  last_updated: string | null;
+  data_source: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -110,17 +164,61 @@ export interface ETFMetrics {
   ticker: string;
   name: string | null;
   issuer: string | null;
+  ipoPrice: number | null;
+  payDay: string | null;
   currentPrice: number | null;
   previousClose: number | null;
   priceChange: number | null;
   priceChangePercent: number | null;
   week52High: number | null;
   week52Low: number | null;
+  
+  // Dividend data
   lastDividend: number | null;
-  annualizedDividend: number | null;
-  yield: number | null;
+  annualizedDividend: number | null;  // Rolling 365-day sum
   paymentsPerYear: number;
-  dividendVolatility: number | null;
+  forwardYield: number | null;        // annual_dividend / price
+  
+  // Volatility metrics (frequency-proof)
+  dividendSD: number | null;          // SD of rolling 365D annualized series
+  dividendCV: number | null;          // CV as decimal (e.g., 0.18)
+  dividendCVPercent: number | null;   // CV as percentage (e.g., 18.0)
+  dividendVolatilityIndex: string | null;
+  
+  // Weighted ranking
+  weightedRank: number | null;
+  
+  // Total Return WITH DRIP (using adjClose ratio)
+  totalReturnDrip: {
+    '1W': number | null;
+    '1M': number | null;
+    '3M': number | null;
+    '6M': number | null;
+    '1Y': number | null;
+    '3Y': number | null;
+  };
+  
+  // Price Return (non-DRIP, using unadjusted close)
+  priceReturn: {
+    '1W': number | null;
+    '1M': number | null;
+    '3M': number | null;
+    '6M': number | null;
+    '1Y': number | null;
+    '3Y': number | null;
+  };
+  
+  // Optional: Total Return WITHOUT DRIP
+  totalReturnNoDrip: {
+    '1W': number | null;
+    '1M': number | null;
+    '3M': number | null;
+    '6M': number | null;
+    '1Y': number | null;
+    '3Y': number | null;
+  } | null;
+  
+  // Legacy combined returns for backward compatibility
   returns: {
     '1W': ReturnData;
     '1M': ReturnData;
@@ -129,7 +227,9 @@ export interface ETFMetrics {
     '1Y': ReturnData;
     '3Y': ReturnData;
   };
+  
   calculatedAt: string;
+  dataSource: string;
 }
 
 export interface ReturnData {

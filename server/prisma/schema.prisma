@@ -525,6 +525,7 @@ model site_settings {
 // ============================================================================
 
 /// Manual ETF metadata from Excel uploads - data Tiingo doesn't provide
+/// Plus computed metrics from Tiingo data
 model etf_static {
   ticker               String             @id @db.VarChar(20)
   issuer               String?            @db.VarChar(255)
@@ -533,6 +534,57 @@ model etf_static {
   payments_per_year    Int?
   ipo_price            Decimal?           @db.Decimal(12, 4)
   default_rank_weights Json?              @default("{}")
+  
+  // Live price fields (from Tiingo EOD)
+  price                Decimal?           @db.Decimal(12, 4)   // Today's close
+  price_change         Decimal?           @db.Decimal(12, 4)   // Today's close minus previous close
+  price_change_pct     Decimal?           @db.Decimal(12, 4)   // Price change percentage
+  
+  // Dividend + frequency fields
+  last_dividend        Decimal?           @db.Decimal(12, 6)   // Latest regular dividend amount
+  annual_dividend      Decimal?           @db.Decimal(12, 6)   // Rolling 365-day sum of regular, split-adjusted dividends
+  forward_yield        Decimal?           @db.Decimal(12, 6)   // annual_dividend / price
+  
+  // Volatility metrics (frequency-proof using rolling 365D annualized series)
+  dividend_sd          Decimal?           @db.Decimal(12, 6)   // SD of rolling 365-day annualized series
+  dividend_cv          Decimal?           @db.Decimal(12, 6)   // CV as decimal (e.g., 0.18)
+  dividend_cv_percent  Decimal?           @db.Decimal(12, 4)   // CV as percentage (e.g., 18.0)
+  dividend_volatility_index String?       @db.VarChar(20)      // Display label for volatility
+  
+  // Ranking
+  weighted_rank        Decimal?           @db.Decimal(12, 4)   // Precomputed numeric rank
+  
+  // Total Return WITH DRIP (using adjClose ratio)
+  tr_drip_3y           Decimal?           @db.Decimal(12, 6)   // 3-year total return with DRIP
+  tr_drip_12m          Decimal?           @db.Decimal(12, 6)   // 12-month total return with DRIP
+  tr_drip_6m           Decimal?           @db.Decimal(12, 6)   // 6-month total return with DRIP
+  tr_drip_3m           Decimal?           @db.Decimal(12, 6)   // 3-month total return with DRIP
+  tr_drip_1m           Decimal?           @db.Decimal(12, 6)   // 1-month total return with DRIP
+  tr_drip_1w           Decimal?           @db.Decimal(12, 6)   // 1-week total return with DRIP
+  
+  // Price Return (non-DRIP, using unadjusted close)
+  price_return_3y      Decimal?           @db.Decimal(12, 6)   // 3-year price return
+  price_return_12m     Decimal?           @db.Decimal(12, 6)   // 12-month price return
+  price_return_6m      Decimal?           @db.Decimal(12, 6)   // 6-month price return
+  price_return_3m      Decimal?           @db.Decimal(12, 6)   // 3-month price return
+  price_return_1m      Decimal?           @db.Decimal(12, 6)   // 1-month price return
+  price_return_1w      Decimal?           @db.Decimal(12, 6)   // 1-week price return
+  
+  // Optional: Total Return WITHOUT DRIP (sum of dividends method)
+  tr_nodrip_3y         Decimal?           @db.Decimal(12, 6)
+  tr_nodrip_12m        Decimal?           @db.Decimal(12, 6)
+  tr_nodrip_6m         Decimal?           @db.Decimal(12, 6)
+  tr_nodrip_3m         Decimal?           @db.Decimal(12, 6)
+  tr_nodrip_1m         Decimal?           @db.Decimal(12, 6)
+  tr_nodrip_1w         Decimal?           @db.Decimal(12, 6)
+  
+  // 52-week range
+  week_52_high         Decimal?           @db.Decimal(12, 4)
+  week_52_low          Decimal?           @db.Decimal(12, 4)
+  
+  // Metadata
+  last_updated         DateTime?          @default(now()) @db.Timestamptz(6)
+  data_source          String?            @default("Tiingo") @db.VarChar(50)
   created_at           DateTime?          @default(now()) @db.Timestamptz(6)
   updated_at           DateTime?          @default(now()) @db.Timestamptz(6)
   
@@ -541,6 +593,8 @@ model etf_static {
   data_sync_log        data_sync_log[]
 
   @@index([issuer], map: "idx_etf_static_issuer")
+  @@index([weighted_rank], map: "idx_etf_static_weighted_rank")
+  @@index([forward_yield], map: "idx_etf_static_forward_yield")
   @@schema("public")
 }
 
@@ -581,8 +635,11 @@ model dividends_detail {
   record_date  DateTime? @db.Date
   declare_date DateTime? @db.Date
   div_cash     Decimal   @db.Decimal(12, 6)
+  adj_amount   Decimal?  @db.Decimal(12, 6)  // Split-adjusted dividend amount
   split_factor Decimal?  @default(1) @db.Decimal(12, 6)
   div_type     String?   @db.VarChar(50)
+  frequency    String?   @db.VarChar(20)     // Regular frequency: Mo, Qtr, Week, etc.
+  description  String?                        // Dividend description
   currency     String?   @default("USD") @db.VarChar(10)
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   

@@ -22,6 +22,8 @@
     "seed:ticker": "tsx scripts/seed_history.ts --ticker",
     "daily:update": "tsx scripts/daily_update.ts",
     "daily:update:force": "tsx scripts/daily_update.ts --force",
+    "cron:daily": "tsx scripts/daily_update.ts",
+    "cron:daily:force": "tsx scripts/daily_update.ts --force",
     "tiingo:test": "tsx -e \"import { healthCheck } from './src/services/tiingo.js'; healthCheck().then(console.log)\""
   },
   "dependencies": {

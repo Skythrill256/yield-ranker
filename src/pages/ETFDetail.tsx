@@ -3,10 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { PerformanceChart } from "@/components/PerformanceChart";
-import { DividendHistory } from "@/components/DividendHistory";
-import { ArrowLeft, TrendingUp, TrendingDown, Plus, X, Loader2, BarChart3, LineChartIcon } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Plus, X, Loader2, Clock } from "lucide-react";
 import {
   fetchETFData,
   fetchComparisonData,
@@ -18,11 +15,16 @@ import { ETF } from "@/types/etf";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
+  Area,
+  ComposedChart,
 } from "recharts";
 
 const ETFDetail = () => {
@@ -38,8 +40,11 @@ const ETFDetail = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [activeChartTab, setActiveChartTab] = useState<string>("performance");
   const [hasLoadedLiveChart, setHasLoadedLiveChart] = useState(false);
+  const [lastUpdated] = useState(new Date().toLocaleString('en-US', { 
+    month: 'short', day: 'numeric', year: 'numeric', 
+    hour: '2-digit', minute: '2-digit' 
+  }));
 
   const toggleComparison = (compSymbol: string) => {
     if (comparisonETFs.includes(compSymbol)) {
@@ -95,15 +100,16 @@ const ETFDetail = () => {
     }
   }, [etf, comparisonETFs, chartType, selectedTimeframe]);
 
+  // Load chart on mount
   useEffect(() => {
-    if (activeChartTab === "live" && !hasLoadedLiveChart) {
+    if (!hasLoadedLiveChart && etf) {
       buildChartData();
       setHasLoadedLiveChart(true);
     }
-  }, [activeChartTab, buildChartData, hasLoadedLiveChart]);
+  }, [buildChartData, hasLoadedLiveChart, etf]);
 
   useEffect(() => {
-    if (activeChartTab === "live" && hasLoadedLiveChart) {
+    if (hasLoadedLiveChart) {
       buildChartData();
     }
   }, [comparisonETFs, chartType, selectedTimeframe]);
@@ -143,20 +149,19 @@ const ETFDetail = () => {
 
   const timeframes: ComparisonTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "YTD", "1Y", "3Y", "5Y", "10Y", "20Y", "MAX"];
 
-  const keyMetrics = [
-    { label: "LAST CLOSE PRICE", value: `$${etf.price.toFixed(2)}` },
-    { label: "52-WEEK RANGE", value: `$${etf.week52Low.toFixed(2)} - $${etf.week52High.toFixed(2)}` },
-    { label: "MARKET CAP", value: "N/A" },
-    { label: "DIVIDEND YIELD", value: `${etf.forwardYield.toFixed(2)}%` },
-    { label: "PE RATIO", value: "N/A" },
-    { label: "PE RATIO (FWD)", value: "N/A" },
-    { label: "REVENUE TTM", value: "N/A" },
-    { label: "NET INCOME TTM", value: "N/A" },
-    { label: "NET PROFIT MARGIN TTM", value: "N/A" },
-    { label: "TTM TOTAL RETURN", value: `${(etf.totalReturn12Mo || 0).toFixed(2)}%`, isPercentage: true, value_raw: etf.totalReturn12Mo || 0 },
-    { label: "3Y TOTAL RETURN", value: `${(etf.totalReturn3Yr || 0).toFixed(2)}%`, isPercentage: true, value_raw: etf.totalReturn3Yr || 0 },
-    { label: "5Y TOTAL RETURN", value: `${(etf.totalReturn6Mo || 0).toFixed(2)}%`, isPercentage: true, value_raw: etf.totalReturn6Mo || 0 },
-  ];
+  // Get the return value for display based on timeframe
+  const getReturnForTimeframe = () => {
+    switch (selectedTimeframe) {
+      case '1W': return etf.trDrip1Wk ?? etf.totalReturn1Wk;
+      case '1M': return etf.trDrip1Mo ?? etf.totalReturn1Mo;
+      case '3M': return etf.trDrip3Mo ?? etf.totalReturn3Mo;
+      case '6M': return etf.trDrip6Mo ?? etf.totalReturn6Mo;
+      case '1Y': return etf.trDrip12Mo ?? etf.totalReturn12Mo;
+      case '3Y': return etf.trDrip3Yr ?? etf.totalReturn3Yr;
+      default: return etf.trDrip12Mo ?? etf.totalReturn12Mo;
+    }
+  };
+  const currentReturn = getReturnForTimeframe();
 
   return (
     <div className="min-h-screen bg-background">
@@ -174,43 +179,86 @@ const ETFDetail = () => {
           </Button>
         </div>
 
+        {/* Header with symbol, price, and return indicator */}
         <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
-          <div className="flex items-baseline gap-4 mb-2">
-            <h1 className="text-3xl sm:text-4xl font-bold">{etf.symbol}</h1>
-            <span className="text-lg text-muted-foreground">{etf.name}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-3xl font-bold">${etf.price.toFixed(2)}</span>
-            <span className={`text-lg font-semibold flex items-center ${isPositive ? "text-green-600" : "text-red-600"}`}>
-              {isPositive ? <TrendingUp className="w-5 h-5 mr-1" /> : <TrendingDown className="w-5 h-5 mr-1" />}
-              {priceChangePercent}%
-            </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-baseline gap-4 mb-2">
+                <h1 className="text-3xl sm:text-4xl font-bold">{etf.symbol}</h1>
+                <span className="text-lg text-muted-foreground">{etf.name}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl font-bold">${etf.price.toFixed(2)}</span>
+                <span className={`text-lg font-semibold flex items-center ${
+                  currentReturn != null && currentReturn >= 0 ? "text-green-600" : "text-red-600"
+                }`}>
+                  {currentReturn != null && currentReturn >= 0 ? <TrendingUp className="w-5 h-5 mr-1" /> : <TrendingDown className="w-5 h-5 mr-1" />}
+                  {currentReturn != null ? `${currentReturn >= 0 ? '+' : ''}${currentReturn.toFixed(2)}%` : 'N/A'}
+                </span>
+              </div>
+            </div>
+            {/* Last Updated + Source */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>Last updated: {lastUpdated}</span>
+              <span className="text-primary font-medium">Source: Tiingo</span>
+            </div>
           </div>
         </div>
 
+        {/* Top Metrics Bar - Section 3.3: Show precomputed tr_drip_* values */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-150">
+          <Card className="p-4 mb-4">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">3 Yr TR:</span>
+                  <span className={`font-semibold ${(etf.trDrip3Yr ?? etf.totalReturn3Yr) != null && (etf.trDrip3Yr ?? etf.totalReturn3Yr)! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(etf.trDrip3Yr ?? etf.totalReturn3Yr) != null ? `${(etf.trDrip3Yr ?? etf.totalReturn3Yr)! >= 0 ? '+' : ''}${(etf.trDrip3Yr ?? etf.totalReturn3Yr)!.toFixed(1)}%` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">12 Mo:</span>
+                  <span className={`font-semibold ${(etf.trDrip12Mo ?? etf.totalReturn12Mo) != null && (etf.trDrip12Mo ?? etf.totalReturn12Mo)! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(etf.trDrip12Mo ?? etf.totalReturn12Mo) != null ? `${(etf.trDrip12Mo ?? etf.totalReturn12Mo)! >= 0 ? '+' : ''}${(etf.trDrip12Mo ?? etf.totalReturn12Mo)!.toFixed(1)}%` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">6 Mo:</span>
+                  <span className={`font-semibold ${(etf.trDrip6Mo ?? etf.totalReturn6Mo) != null && (etf.trDrip6Mo ?? etf.totalReturn6Mo)! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(etf.trDrip6Mo ?? etf.totalReturn6Mo) != null ? `${(etf.trDrip6Mo ?? etf.totalReturn6Mo)! >= 0 ? '+' : ''}${(etf.trDrip6Mo ?? etf.totalReturn6Mo)!.toFixed(1)}%` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">3 Mo:</span>
+                  <span className={`font-semibold ${(etf.trDrip3Mo ?? etf.totalReturn3Mo) != null && (etf.trDrip3Mo ?? etf.totalReturn3Mo)! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(etf.trDrip3Mo ?? etf.totalReturn3Mo) != null ? `${(etf.trDrip3Mo ?? etf.totalReturn3Mo)! >= 0 ? '+' : ''}${(etf.trDrip3Mo ?? etf.totalReturn3Mo)!.toFixed(1)}%` : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">1 Mo:</span>
+                  <span className={`font-semibold ${(etf.trDrip1Mo ?? etf.totalReturn1Mo) != null && (etf.trDrip1Mo ?? etf.totalReturn1Mo)! >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(etf.trDrip1Mo ?? etf.totalReturn1Mo) != null ? `${(etf.trDrip1Mo ?? etf.totalReturn1Mo)! >= 0 ? '+' : ''}${(etf.trDrip1Mo ?? etf.totalReturn1Mo)!.toFixed(1)}%` : 'N/A'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <div className="text-right">
+                  <span className="text-muted-foreground">Fwd Yield: </span>
+                  <span className="font-bold text-primary">{etf.forwardYield?.toFixed(2) ?? 'N/A'}%</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Chart Section - No tabs, direct display */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200">
           <Card className="p-6 mb-8">
-            <Tabs value={activeChartTab} onValueChange={setActiveChartTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="performance">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  Performance Summary
-                </TabsTrigger>
-                <TabsTrigger value="live">
-                  <LineChartIcon className="w-4 h-4 mr-2" />
-                  Live Price Chart
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="performance">
-                <PerformanceChart etf={etf} />
-              </TabsContent>
-
-              <TabsContent value="live">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex-1">
                 <h2 className="text-xl font-semibold mb-2">
-                  {etf.symbol} {chartType === "price" ? "Price" : "Total Return"} Chart
+                  {etf.symbol} {chartType === "price" ? "Price Return" : "Total Return"} Chart
                 </h2>
                 <div className="flex gap-2 flex-wrap">
                   <button
@@ -221,7 +269,7 @@ const ETFDetail = () => {
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    Price Chart
+                    Price Return Chart
                   </button>
                   <button
                     onClick={() => setChartType("totalReturn")}
@@ -233,13 +281,13 @@ const ETFDetail = () => {
                   >
                     Total Return Chart
                   </button>
-                    <button
-                      onClick={() => setShowComparisonSelector(!showComparisonSelector)}
-                      className="px-3 py-1 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Compare ({comparisonETFs.length}/5)
-                    </button>
+                  <button
+                    onClick={() => setShowComparisonSelector(!showComparisonSelector)}
+                    className="px-3 py-1 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Compare ({comparisonETFs.length}/5)
+                  </button>
                 </div>
               </div>
               <div className="flex gap-1 flex-wrap">
@@ -267,30 +315,30 @@ const ETFDetail = () => {
                   
                   let displayValue = "N/A";
                   if (chartType === "totalReturn") {
-                    let returnValue: number | undefined;
+                    let returnValue: number | null | undefined;
                     switch (selectedTimeframe) {
                       case "1W":
-                        returnValue = compareETF.totalReturn1Wk;
+                        returnValue = compareETF.trDrip1Wk ?? compareETF.totalReturn1Wk;
                         break;
                       case "1M":
-                        returnValue = compareETF.totalReturn1Mo;
+                        returnValue = compareETF.trDrip1Mo ?? compareETF.totalReturn1Mo;
                         break;
                       case "3M":
-                        returnValue = compareETF.totalReturn3Mo;
+                        returnValue = compareETF.trDrip3Mo ?? compareETF.totalReturn3Mo;
                         break;
                       case "6M":
-                        returnValue = compareETF.totalReturn6Mo;
+                        returnValue = compareETF.trDrip6Mo ?? compareETF.totalReturn6Mo;
                         break;
                       case "1Y":
-                        returnValue = compareETF.totalReturn12Mo;
+                        returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo;
                         break;
                       case "3Y":
-                        returnValue = compareETF.totalReturn3Yr;
+                        returnValue = compareETF.trDrip3Yr ?? compareETF.totalReturn3Yr;
                         break;
                       default:
-                        returnValue = compareETF.totalReturn12Mo;
+                        returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo;
                     }
-                    displayValue = returnValue !== undefined
+                    displayValue = returnValue != null
                       ? `${returnValue > 0 ? "+" : ""}${returnValue.toFixed(2)}%`
                       : "N/A";
                   } else {
@@ -567,51 +615,143 @@ const ETFDetail = () => {
                 <div className="mt-4 pt-3 border-t border-slate-200">
                   <p className="text-xs text-muted-foreground">
                     {chartType === "totalReturn" 
-                      ? "Total return includes dividends reinvested." 
-                      : "Price return excludes dividends."
+                      ? "Total return includes dividends reinvested (DRIP)." 
+                      : "Price return excludes dividends (capital gains only)."
                     }
                   </p>
                 </div>
               </div>
             </div>
-              </TabsContent>
-            </Tabs>
+            
+            {/* Trading Volume Chart - Section 3.4: gray vertical volume bars */}
+            {chartData.length > 0 && chartData.some(d => d.volume && d.volume > 0) && (
+              <div className="mt-6 pt-4 border-t">
+                <h3 className="text-sm font-semibold mb-3">Trading Volume</h3>
+                <ResponsiveContainer width="100%" height={80}>
+                  <BarChart data={chartData}>
+                    <XAxis 
+                      dataKey="time" 
+                      stroke="#94a3b8" 
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="#94a3b8" 
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                        return value.toString();
+                      }}
+                      width={50}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(255, 255, 255, 0.98)",
+                        border: "none",
+                        borderRadius: "8px",
+                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                        padding: "8px 12px",
+                      }}
+                      formatter={(value: number) => [value.toLocaleString(), "Volume"]}
+                    />
+                    <Bar 
+                      dataKey="volume" 
+                      fill="#94a3b8"
+                      radius={[2, 2, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+            
+            {/* Dividend Volume Chart */}
+            {chartData.length > 0 && chartData.some(d => d.divCash && d.divCash > 0) && (
+              <div className="mt-4 pt-4 border-t">
+                <h3 className="text-sm font-semibold mb-3">Dividend Payments</h3>
+                <ResponsiveContainer width="100%" height={80}>
+                  <BarChart data={chartData.filter(d => d.divCash && d.divCash > 0)}>
+                    <XAxis 
+                      dataKey="time" 
+                      stroke="#94a3b8" 
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis 
+                      stroke="#94a3b8" 
+                      fontSize={10}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `$${value.toFixed(2)}`}
+                      width={50}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "rgba(255, 255, 255, 0.98)",
+                        border: "none",
+                        borderRadius: "8px",
+                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                        padding: "8px 12px",
+                      }}
+                      formatter={(value: number) => [`$${value.toFixed(4)}`, "Dividend"]}
+                    />
+                    <Bar 
+                      dataKey="divCash" 
+                      fill="#22c55e"
+                      radius={[2, 2, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
         </div>
 
+        {/* Quick Stats Card - Minimal key info only */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-300">
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">{etf.symbol} Key Metrics</h2>
-              <Button variant="outline" size="sm">
-                See All Metrics
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Forward Yield</p>
+                <p className="text-xl font-bold text-primary">
+                  {etf.forwardYield != null ? `${etf.forwardYield.toFixed(2)}%` : 'N/A'}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">52-Week Range</p>
+                <p className="text-sm font-medium">
+                  ${etf.week52Low?.toFixed(2) ?? 'N/A'} - ${etf.week52High?.toFixed(2) ?? 'N/A'}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Annual Dividend</p>
+                <p className="text-xl font-bold text-green-600">
+                  ${etf.annualDividend?.toFixed(2) ?? 'N/A'}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Dividend Volatility</p>
+                <p className="text-sm font-medium">
+                  {etf.dividendVolatilityIndex ?? (etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : 'N/A')}
+                </p>
+              </div>
+            </div>
+            
+            {/* Link to Dividend History */}
+            <div className="mt-4 pt-4 border-t text-center">
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/etf/${etf.symbol}/dividends`)}
+                className="gap-2"
+              >
+                View Full Dividend History
               </Button>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {keyMetrics.map((metric, index) => (
-                <div key={index} className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    {metric.label}
-                  </p>
-                  <p className={`text-xl font-bold ${
-                    metric.isPercentage && metric.value_raw !== undefined
-                      ? metric.value_raw >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
-                      : "text-foreground"
-                  }`}>
-                    {metric.value}
-                  </p>
-                </div>
-              ))}
-            </div>
           </Card>
-        </div>
-
-        {/* Dividend History Section */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-400 mt-8">
-          <DividendHistory ticker={etf.symbol} annualDividend={etf.annualDividend} />
         </div>
       </main>
     </div>

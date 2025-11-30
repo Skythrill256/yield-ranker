@@ -120,6 +120,15 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       }
     }
     
+    // Infer frequency from payments per year
+    const getFrequencyLabel = (paymentsPerYear: number): string => {
+      if (paymentsPerYear === 12) return 'Mo';
+      if (paymentsPerYear === 4) return 'Qtr';
+      if (paymentsPerYear === 52) return 'Week';
+      if (paymentsPerYear === 1) return 'Annual';
+      return `${paymentsPerYear}x/Yr`;
+    };
+    
     res.json({
       ticker: ticker.toUpperCase(),
       paymentsPerYear,
@@ -132,7 +141,10 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         recordDate: d.record_date,
         declareDate: d.declare_date,
         amount: d.div_cash,
-        type: d.div_type ?? 'Cash',
+        adjAmount: d.adj_amount ?? d.div_cash,  // Split-adjusted amount
+        type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
+        frequency: d.frequency ?? getFrequencyLabel(paymentsPerYear),
+        description: d.description,
         currency: d.currency ?? 'USD',
       })),
     });
