@@ -46,6 +46,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Logo } from "@/components/Logo";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
@@ -1290,53 +1297,34 @@ export default function Dashboard() {
 
               <Card className="p-4 sm:p-6 border-2 border-slate-200 overflow-auto relative" style={{ zIndex: 1 }}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative" style={{ zIndex: 1 }}>
-                  <div className="flex-1 min-w-0 relative" style={{ zIndex: 1 }}>
-                    <h2 className="text-lg sm:text-xl font-semibold mb-2 relative" style={{ zIndex: 1 }}>
-                      {selectedETF.symbol}{" "}
-                      {chartType === "price" ? "Price Return" : "Total Return"} Chart
-                    </h2>
-                    <div className="flex gap-2 flex-wrap">
-                      <button
-                        onClick={() => setChartType("totalReturn")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                          chartType === "totalReturn"
-                            ? "bg-primary text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                        Metric:
+                      </label>
+                      <Select
+                        value={chartType === "price" ? "priceReturn" : "totalReturn"}
+                        onValueChange={(value) => setChartType(value === "priceReturn" ? "price" : "totalReturn")}
                       >
-                        Total Return Chart
-                      </button>
-                      <button
-                        onClick={() => setChartType("price")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                          chartType === "price"
-                            ? "bg-primary text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        Price Return Chart
-                      </button>
-                      <button
-                        onClick={() =>
-                          setShowComparisonSelector(!showComparisonSelector)
-                        }
-                        className="px-3 py-1 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Compare ({comparisonETFs.length}/5)
-                      </button>
+                        <SelectTrigger className="w-[160px] h-9 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="totalReturn">Total Return</SelectItem>
+                          <SelectItem value="priceReturn">Price Return</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                  <div className="flex gap-0.5 sm:gap-1 flex-wrap overflow-x-auto max-w-full">
-                    {timeframes.map((tf: ComparisonTimeframe) => (
-                      <Button
-                        key={tf}
-                        variant={
-                          selectedTimeframe === tf ? "default" : "outline"
-                        }
-                        size="sm"
-                        onClick={() => setSelectedTimeframe(tf)}
-                        className={`h-6 sm:h-8 px-1.5 sm:px-3 text-[10px] sm:text-xs whitespace-nowrap ${
+                    <div className="flex gap-0.5 sm:gap-1 flex-wrap overflow-x-auto max-w-full">
+                      {timeframes.map((tf: ComparisonTimeframe) => (
+                        <Button
+                          key={tf}
+                          variant={
+                            selectedTimeframe === tf ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => setSelectedTimeframe(tf)}
+                          className={`h-9 px-1.5 sm:px-3 text-[10px] sm:text-xs whitespace-nowrap ${
                           selectedTimeframe !== tf
                             ? "border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors"
                             : ""
@@ -1345,6 +1333,15 @@ export default function Dashboard() {
                         {tf}
                       </Button>
                     ))}
+                    <button
+                      onClick={() =>
+                        setShowComparisonSelector(!showComparisonSelector)
+                      }
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1 h-9"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Compare ({comparisonETFs.length}/5)
+                    </button>
                   </div>
                 </div>
 
