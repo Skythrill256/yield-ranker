@@ -275,22 +275,20 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       {getFilteredDividends.length > 0 && (() => {
         const dividends = getFilteredDividends.slice().reverse().slice(-50);
         
-        // Detect if frequency changed across the dividend history
-        const frequencies: string[] = [];
-        for (let i = 0; i < dividends.length - 1; i++) {
-          const currentDate = new Date(dividends[i].exDate);
-          const nextDate = new Date(dividends[i + 1].exDate);
-          const daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-          
-          let frequency: string;
-          if (daysBetween <= 10) frequency = 'weekly';
-          else if (daysBetween <= 35) frequency = 'monthly';
-          else if (daysBetween <= 95) frequency = 'quarterly';
-          else if (daysBetween <= 185) frequency = 'semi-annual';
-          else frequency = 'annual';
-          
-          frequencies.push(frequency);
-        }
+        // Detect if frequency changed using actual frequency field from API
+        const frequencies = dividends
+          .map(div => {
+            const freq = div.frequency || '';
+            // Normalize frequency strings for comparison
+            const normalized = freq.toLowerCase();
+            if (normalized.includes('week') || normalized === 'weekly') return 'weekly';
+            if (normalized.includes('month') || normalized === 'monthly' || normalized === 'mo') return 'monthly';
+            if (normalized.includes('quarter') || normalized === 'quarterly' || normalized.includes('qtr')) return 'quarterly';
+            if (normalized.includes('semi') || normalized.includes('semi-annual')) return 'semi-annual';
+            if (normalized.includes('annual') || normalized === 'annual' || normalized === 'yearly') return 'annual';
+            return null;
+          })
+          .filter((f): f is string => f !== null);
         
         // Check if frequency changed (more than one unique frequency)
         const uniqueFrequencies = new Set(frequencies);
