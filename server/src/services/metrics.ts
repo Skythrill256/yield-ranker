@@ -170,11 +170,8 @@ function calculateDividendVolatility(
   // Detection: frequency == "weekly" OR len(payouts) >= 40
   let isWeeklyPayer = false;
   
-  // Check by payment count: if we have 40+ payments, it's likely weekly
-  if (actualDividendAmounts.length >= 40) {
-    isWeeklyPayer = true;
-  } else if (series.length >= 2) {
-    // Calculate average days between payments to detect frequency
+  // Calculate average days between payments to detect frequency
+  if (series.length >= 2) {
     let totalDays = 0;
     let dayCount = 0;
     for (let i = 0; i < series.length - 1; i++) {
@@ -186,9 +183,15 @@ function calculateDividendVolatility(
     }
     if (dayCount > 0) {
       const avgDaysBetween = totalDays / dayCount;
-      // Weekly: <= 10 days between payments
-      isWeeklyPayer = avgDaysBetween <= 10;
+      // Weekly: <= 10 days between payments OR if we have 40+ payments (likely weekly)
+      isWeeklyPayer = avgDaysBetween <= 10 || actualDividendAmounts.length >= 40;
+    } else if (actualDividendAmounts.length >= 40) {
+      // Fallback: if we have 40+ payments, assume weekly
+      isWeeklyPayer = true;
     }
+  } else if (actualDividendAmounts.length >= 40) {
+    // Fallback: if we have 40+ payments, assume weekly
+    isWeeklyPayer = true;
   }
   
   // Annualize weekly payers: multiply by sqrt(52/12) ≈ 2.08
