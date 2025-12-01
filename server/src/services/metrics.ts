@@ -94,6 +94,14 @@ function getAnnualizationFactor(frequency: 'weekly' | 'monthly' | 'quarterly' | 
 }
 
 /**
+ * Helper function to detect if a ticker is a weekly payer
+ */
+function isWeeklyPayerTicker(ticker: string): boolean {
+  const weeklyTickers = ['TSLY','NVDY','MSTY','CONY','GOOY','AMZY','APLY','QQQY','IWMY','QDTE','XDTE','SDTY','QDTY','RDTY','YMAX','YMAG','ULTY','LFGY','YETH','RDTE','PLTW','TSLW','HOOW','GOOW','METW','AMZW','AMDW','AVGW','MSTW','NFLW','COIW','WPAY','XBTY','YBIT','HOOY','CVNY','PLTY','NVYY','CHPY','GPTY','MAGY','TQQY','TSYY','YSPY','AZYY','PLYY','AMYY','COYY','TSII','NVII','HOII','COII','PLTI','BRKW','MSFW'];
+  return weeklyTickers.includes(ticker.toUpperCase()) || ticker.toUpperCase().endsWith('Y');
+}
+
+/**
  * Calculate dividend volatility using actual dividend payment amounts.
  * Industry-standard approach (YCharts, Portfolio Visualizer, etc.):
  * 1. Filter out special dividends
@@ -106,7 +114,8 @@ function getAnnualizationFactor(frequency: 'weekly' | 'monthly' | 'quarterly' | 
  */
 function calculateDividendVolatility(
   dividends: DividendRecord[],
-  periodInMonths: 6 | 12 = 12
+  periodInMonths: 6 | 12 = 12,
+  ticker?: string
 ): DividendVolatilityResult {
   const nullResult: DividendVolatilityResult = {
     annualDividend: null,
@@ -167,11 +176,14 @@ function calculateDividendVolatility(
   
   // 6. Detect if this is a weekly payer and annualize volatility for comparability
   // Weekly payers need to be annualized: multiply by sqrt(52/12) ≈ 2.08
-  // Detection: frequency == "weekly" OR len(payouts) >= 40
+  // Detection: use ticker-based detection first (most reliable), then fall back to date-based
   let isWeeklyPayer = false;
   
-  // Calculate average days between payments to detect frequency
-  if (series.length >= 2) {
+  // Primary detection: use ticker-based list (most reliable)
+  if (ticker && isWeeklyPayerTicker(ticker)) {
+    isWeeklyPayer = true;
+  } else if (series.length >= 2) {
+    // Secondary detection: calculate average days between payments
     let totalDays = 0;
     let dayCount = 0;
     for (let i = 0; i < series.length - 1; i++) {
@@ -196,6 +208,7 @@ function calculateDividendVolatility(
   
   // Annualize weekly payers: multiply by sqrt(52/12) ≈ 2.08
   // This makes weekly volatility comparable to monthly volatility
+  // THIS IS THE CRITICAL LINE THAT WAS MISSING FOR SOME FUNDS
   if (isWeeklyPayer) {
     const annualizationFactor = Math.sqrt(52 / 12); // ≈ 2.08
     cvPercent = cvPercent * annualizationFactor;
@@ -391,7 +404,8 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   }
   
   // Calculate frequency-proof dividend volatility using 12-month period
-  const volMetrics = calculateDividendVolatility(dividends, 12);
+  // Pass ticker for accurate weekly payer detection
+  const volMetrics = calculateDividendVolatility(dividends, 12, upperTicker);
   
   // Get regular dividends for last dividend and payment count
   const regularDivs = dividends.filter(d => {
