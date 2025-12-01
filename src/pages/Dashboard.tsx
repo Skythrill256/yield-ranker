@@ -1344,6 +1344,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
+                </div>
 
                 {comparisonETFs.length > 0 && (
                   <div className="mb-4 flex gap-2 flex-wrap">

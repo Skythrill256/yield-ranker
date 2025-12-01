@@ -24,7 +24,7 @@ export interface TiingoPriceData {
 
 export interface TiingoDividendData {
   exDate: string;
-  payDate: string | null;
+  paymentDate: string | null;  // Tiingo API uses paymentDate, not payDate
   recordDate: string | null;
   declareDate: string | null;
   divCash: number;

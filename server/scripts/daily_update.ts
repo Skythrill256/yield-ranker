@@ -265,7 +265,7 @@ async function upsertDividends(
   const records = dividends.map(d => ({
     ticker,
     ex_date: d.exDate.split('T')[0],
-    pay_date: d.payDate?.split('T')[0] || null,
+    pay_date: d.paymentDate?.split('T')[0] || null,
     record_date: d.recordDate?.split('T')[0] || null,
     declare_date: d.declareDate?.split('T')[0] || null,
     div_cash: d.divCash,

@@ -607,7 +607,7 @@ describe('Tiingo API Service Integration Tests', () => {
       const mockResponse = [
         {
           exDate: '2024-01-15T00:00:00+00:00',
-          payDate: '2024-01-20T00:00:00+00:00',
+          paymentDate: '2024-01-20T00:00:00+00:00',
           recordDate: '2024-01-16T00:00:00+00:00',
           declareDate: '2024-01-10T00:00:00+00:00',
           divCash: 1.75,
@@ -629,7 +629,7 @@ describe('Tiingo API Service Integration Tests', () => {
       if (result.length > 0) {
         const dividend = result[0];
         expect(dividend).toHaveProperty('exDate');
-        expect(dividend).toHaveProperty('payDate');
+        expect(dividend).toHaveProperty('paymentDate');
         expect(dividend).toHaveProperty('divCash');
       }
     });

@@ -120,7 +120,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
             dividends = tiingoDividends.map(d => ({
               ticker: ticker.toUpperCase(),
               ex_date: d.exDate,
-              pay_date: d.payDate || null,
+              pay_date: d.paymentDate || null,
               record_date: d.recordDate || null,
               declare_date: d.declareDate || null,
               div_cash: d.divCash,
@@ -142,7 +142,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
               if (tiingoDiv) {
                 return {
                   ...dbDiv,
-                  pay_date: dbDiv.pay_date || tiingoDiv.payDate || null,
+                  pay_date: dbDiv.pay_date || tiingoDiv.paymentDate || null,
                   record_date: dbDiv.record_date || tiingoDiv.recordDate || null,
                   declare_date: dbDiv.declare_date || tiingoDiv.declareDate || null,
                 };

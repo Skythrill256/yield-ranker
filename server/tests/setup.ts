@@ -186,7 +186,7 @@ export const mockTiingoResponses: Record<string, any> = {
   '/tiingo/daily/SPY/dividends': [
     {
       exDate: '2024-01-15T00:00:00+00:00',
-      payDate: '2024-01-20T00:00:00+00:00',
+      paymentDate: '2024-01-20T00:00:00+00:00',
       recordDate: '2024-01-16T00:00:00+00:00',
       declareDate: '2024-01-10T00:00:00+00:00',
       divCash: 1.75,
