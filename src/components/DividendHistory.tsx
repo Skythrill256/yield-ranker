@@ -464,7 +464,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                           {isLastInYear && (
                             <TableRow className="bg-slate-50 border-t-2 border-slate-300">
                               <TableCell className="font-semibold text-xs sm:text-sm px-2 sm:px-4 py-2">
-                                Subtotal {year}
+                                {`Subtotal ${year}`}
                               </TableCell>
                               <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
                                 ${yearTotal.toFixed(4)}
