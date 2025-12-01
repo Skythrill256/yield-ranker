@@ -210,30 +210,30 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
   }
 
   return (
-    <Card className="p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <Card className="p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col gap-4 mb-4 sm:mb-6">
         <div>
-          <h2 className="text-xl font-semibold mb-1">Dividend History</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg sm:text-xl font-semibold mb-1">Dividend History</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {dividendData.paymentsPerYear} payments per year • 
             Last dividend: ${dividendData.lastDividend?.toFixed(4) || 'N/A'}
           </p>
         </div>
         
-        <div className="flex gap-4">
-          <div className="text-center">
+        <div className="flex gap-3 sm:gap-4 flex-wrap">
+          <div className="text-center min-w-[100px]">
             <p className="text-xs text-muted-foreground">Annual Dividend</p>
-            <p className="text-lg font-bold text-green-600">
+            <p className="text-base sm:text-lg font-bold text-green-600">
               ${(dividendData.annualizedDividend ?? annualDividend)?.toFixed(2) || 'N/A'}
             </p>
           </div>
           {yoyGrowth !== null && (
-            <div className="text-center">
+            <div className="text-center min-w-[100px]">
               <p className="text-xs text-muted-foreground">YoY Growth</p>
-              <p className={`text-lg font-bold flex items-center justify-center ${
+              <p className={`text-base sm:text-lg font-bold flex items-center justify-center ${
                 yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {yoyGrowth >= 0 ? <TrendingUp className="h-4 w-4 mr-1" /> : <TrendingDown className="h-4 w-4 mr-1" />}
+                {yoyGrowth >= 0 ? <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> : <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />}
                 {yoyGrowth >= 0 ? '+' : ''}{yoyGrowth.toFixed(1)}%
               </p>
             </div>
@@ -241,14 +241,14 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         </div>
       </div>
 
-      <div className="flex gap-1 mb-4">
+      <div className="flex gap-1 mb-4 flex-wrap">
         {(['1Y', '3Y', '5Y', '10Y', '20Y', 'ALL'] as TimeRange[]).map((range) => (
           <Button
             key={range}
             variant={timeRange === range ? "default" : "outline"}
             size="sm"
             onClick={() => setTimeRange(range)}
-            className="h-8 px-3 text-xs"
+            className="h-8 px-2 sm:px-3 text-xs flex-shrink-0"
           >
             {range}
           </Button>
@@ -256,9 +256,9 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       </div>
 
       {getFilteredDividends.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-medium mb-4">Dividend Payments by Ex-Date</h3>
-          <ResponsiveContainer width="100%" height={120}>
+        <div className="mb-4 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Dividend Payments by Ex-Date</h3>
+          <ResponsiveContainer width="100%" height={100} className="sm:h-[120px]">
             <BarChart data={getFilteredDividends.slice().reverse().slice(-50)}>
               <XAxis 
                 dataKey="exDate" 
@@ -300,9 +300,9 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       )}
 
       {chartData.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-sm font-medium mb-4">Annual Dividend Totals</h3>
-          <ResponsiveContainer width="100%" height={200}>
+        <div className="mb-6 sm:mb-8">
+          <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Annual Dividend Totals</h3>
+          <ResponsiveContainer width="100%" height={150} className="sm:h-[200px]">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
@@ -346,19 +346,19 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       )}
 
       <div>
-        <h3 className="text-sm font-medium mb-4">Dividend Payout Schedule</h3>
-        <div className="border rounded-lg overflow-hidden overflow-x-auto">
+        <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Dividend Payout Schedule</h3>
+        <div className="border rounded-lg overflow-hidden overflow-x-auto -mx-3 sm:mx-0">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="font-semibold">Year</TableHead>
-                <TableHead className="font-semibold">Amt</TableHead>
-                <TableHead className="font-semibold">Adj Amt</TableHead>
-                <TableHead className="font-semibold">Type</TableHead>
-                <TableHead className="font-semibold">Frequency</TableHead>
-                <TableHead className="font-semibold">Ex-Div</TableHead>
-                <TableHead className="font-semibold">Record</TableHead>
-                <TableHead className="font-semibold">Pay Date</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Year</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Amt</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap hidden sm:table-cell">Adj Amt</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Type</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap hidden md:table-cell">Frequency</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Ex-Div</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Record</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Pay Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -372,13 +372,13 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       className="bg-slate-100 hover:bg-slate-200 cursor-pointer"
                       onClick={() => toggleYear(year)}
                     >
-                      <TableCell colSpan={8} className="font-semibold py-3">
+                      <TableCell colSpan={8} className="font-semibold py-2 sm:py-3 px-2 sm:px-4">
                         <div className="flex items-center justify-between">
-                          <span>{year}</span>
+                          <span className="text-sm sm:text-base">{year}</span>
                           {isExpanded ? (
-                            <ChevronUp className="h-4 w-4" />
+                            <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
                           ) : (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />
                           )}
                         </div>
                       </TableCell>
@@ -400,17 +400,17 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       
                       return (
                         <TableRow key={`${year}-${idx}`} className="hover:bg-slate-50">
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-xs sm:text-sm px-2 sm:px-4 py-2">
                             {exDate.getFullYear()}
                           </TableCell>
-                          <TableCell className="font-mono text-green-600">
+                          <TableCell className="font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
                             ${div.amount.toFixed(4)}
                           </TableCell>
-                          <TableCell className="font-mono text-muted-foreground">
+                          <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
                             ${(div.adjAmount ?? div.amount).toFixed(4)}
                           </TableCell>
-                          <TableCell>
-                            <span className={`px-2 py-1 rounded text-xs ${
+                          <TableCell className="px-2 sm:px-4 py-2">
+                            <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs ${
                               typeLabel === 'Special' 
                                 ? 'bg-amber-100 text-amber-700' 
                                 : 'bg-slate-100 text-slate-700'
@@ -418,16 +418,16 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                               {typeLabel}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2 hidden md:table-cell">
                             {frequency}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
                             {exDate.toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
                             })}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
                             {recordDate
                               ? recordDate.toLocaleDateString('en-US', {
                                   month: 'short',
@@ -435,7 +435,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                                 })
                               : '-'}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
                             {payDate
                               ? payDate.toLocaleDateString('en-US', {
                                   month: 'short',
@@ -477,12 +477,12 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         )}
       </div>
 
-      <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row justify-between gap-2 text-xs text-muted-foreground">
-        <p>
-          <DollarSign className="h-3 w-3 inline mr-1" />
-          Amounts shown are per-share cash dividends.
+      <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t flex flex-col gap-2 text-[10px] sm:text-xs text-muted-foreground">
+        <p className="flex items-start sm:items-center">
+          <DollarSign className="h-3 w-3 inline mr-1 flex-shrink-0 mt-0.5 sm:mt-0" />
+          <span>Amounts shown are per-share cash dividends.</span>
         </p>
-        <p className="text-right">
+        <p className="sm:text-right">
           Last updated: {new Date().toLocaleDateString('en-US', { 
             month: 'short', 
             day: 'numeric', 
