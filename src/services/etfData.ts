@@ -343,7 +343,20 @@ export const generateChartData = (
         hour: "2-digit",
         minute: "2-digit",
       });
+    } else if (comparison.timeframe === "1W" || comparison.timeframe === "1M") {
+      // For short periods, show day and month
+      timeLabel = date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      });
+    } else if (["3M", "6M", "YTD", "1Y"].includes(comparison.timeframe)) {
+      // For medium periods, show month and year
+      timeLabel = date.toLocaleDateString(undefined, {
+        month: "short",
+        year: "2-digit",
+      });
     } else {
+      // For long periods (3Y, 5Y, 10Y, 20Y, MAX), show abbreviated format
       timeLabel = date.toLocaleDateString(undefined, {
         month: "short",
         year: "numeric",

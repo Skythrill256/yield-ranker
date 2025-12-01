@@ -136,7 +136,7 @@ const ETFDetail = () => {
     if (hasLoadedLiveChart) {
       buildChartData();
     }
-  }, [comparisonETFs, chartType, selectedTimeframe]);
+  }, [comparisonETFs, chartType, selectedTimeframe, buildChartData]);
 
   if (!etf) {
     return (
@@ -567,6 +567,17 @@ const ETFDetail = () => {
               </div>
             )}
 
+            {/* Show actual date range when data is available */}
+            {chartData && chartData.length > 0 && (
+              <div className="mb-2 text-xs text-muted-foreground">
+                Showing data from{' '}
+                {chartData[0]?.fullDate ? new Date(chartData[0].fullDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : chartData[0]?.time}
+                {' '}to{' '}
+                {chartData[chartData.length - 1]?.fullDate ? new Date(chartData[chartData.length - 1].fullDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : chartData[chartData.length - 1]?.time}
+                {' '}({chartData.length} data points)
+              </div>
+            )}
+
             {/* Chart with Right-Side Return Legend */}
             <div className="flex flex-col lg:flex-row gap-4">
               {/* Chart Area */}
@@ -601,7 +612,13 @@ const ETFDetail = () => {
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
-                        interval="preserveStartEnd"
+                        interval={
+                          // Calculate tick interval based on data length and timeframe
+                          chartData.length <= 30 ? 0 :
+                          chartData.length <= 90 ? Math.floor(chartData.length / 6) :
+                          chartData.length <= 365 ? Math.floor(chartData.length / 8) :
+                          Math.floor(chartData.length / 10)
+                        }
                         tickFormatter={(value) => value || ''}
                       />
                       <YAxis 
