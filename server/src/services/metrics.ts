@@ -342,12 +342,15 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   oneYearAgo.setMonth(now.getMonth() - 12);
   const recentRegularCount = sortedRegular.filter(d => new Date(d.ex_date) >= oneYearAgo).length;
   
-  // Use calculated annual dividend from volatility metrics, fallback to simple calculation
-  const annualizedDividend = volMetrics.annualDividend ?? 
-    (lastDividend && recentRegularCount > 0 ? lastDividend * recentRegularCount : null);
-  
   // Update paymentsPerYear to reflect actual count of regular payments
   const actualPaymentsPerYear = recentRegularCount > 0 ? recentRegularCount : paymentsPerYear;
+  
+  // Calculate annual dividend: simple calculation using last dividend * payments per year
+  // This is more accurate than the volatility-based calculation which can be skewed by outliers
+  let annualizedDividend: number | null = null;
+  if (lastDividend && lastDividend > 0 && actualPaymentsPerYear > 0) {
+    annualizedDividend = lastDividend * actualPaymentsPerYear;
+  }
   
   // Calculate forward yield
   let forwardYield: number | null = null;

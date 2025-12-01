@@ -1384,7 +1384,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-4 text-sm">
                     <div className="text-right">
                       <span className="text-muted-foreground">Fwd Yield: </span>
-                      <span className="font-bold text-primary">{selectedETF.forwardYield != null ? `${(selectedETF.forwardYield * 100).toFixed(2)}%` : 'N/A'}</span>
+                      <span className="font-bold text-primary">{selectedETF.forwardYield != null ? `${selectedETF.forwardYield.toFixed(2)}%` : 'N/A'}</span>
                     </div>
                   </div>
                 </div>

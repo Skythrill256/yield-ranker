@@ -274,7 +274,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       {getFilteredDividends.length > 0 && (
         <div className="mb-4 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Dividend Payments by Ex-Date</h3>
-          <ResponsiveContainer width="100%" height={280} className="sm:h-[280px]">
+          <ResponsiveContainer width="100%" height={450} className="sm:h-[450px]">
             <BarChart data={getFilteredDividends.slice().reverse().slice(-50)}>
               <XAxis 
                 dataKey="exDate" 
