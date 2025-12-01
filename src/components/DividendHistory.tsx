@@ -452,20 +452,20 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                             })}
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
-                            {recordDate
+                            {recordDate && !isNaN(recordDate.getTime())
                               ? recordDate.toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                 })
-                              : '-'}
+                              : '_'}
                           </TableCell>
                           <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
-                            {payDate
+                            {payDate && !isNaN(payDate.getTime())
                               ? payDate.toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                 })
-                              : '-'}
+                              : '_'}
                           </TableCell>
                         </TableRow>
                       );
