@@ -1876,9 +1876,9 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-              </Card>
               );
-                })()}
+            })()}
+              </Card>
 
               {/* Quick Stats Card - Matching home version */}
               <Card className="p-4 sm:p-6 border-2 border-slate-200">
