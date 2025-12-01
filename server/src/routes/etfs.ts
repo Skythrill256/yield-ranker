@@ -13,6 +13,7 @@ import { getSupabase } from '../services/database.js';
 import config from '../config/index.js';
 import { logger, parseNumeric } from '../utils/index.js';
 import type { ETFStaticRecord } from '../types/index.js';
+import { calculateMetrics } from '../services/metrics.js';
 
 const router = Router();
 
@@ -541,6 +542,32 @@ router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
         ticker: legacyData.symbol,
         pay_day_text: legacyData.pay_day,
       };
+    }
+
+    // If price returns are missing but total returns exist, calculate them on-the-fly
+    const needsPriceReturns = (
+      (!merged.price_return_3y && merged.tr_drip_3y != null) ||
+      (!merged.price_return_12m && merged.tr_drip_12m != null) ||
+      (!merged.price_return_6m && merged.tr_drip_6m != null) ||
+      (!merged.price_return_3m && merged.tr_drip_3m != null) ||
+      (!merged.price_return_1m && merged.tr_drip_1m != null) ||
+      (!merged.price_return_1w && merged.tr_drip_1w != null)
+    );
+
+    if (needsPriceReturns) {
+      try {
+        const metrics = await calculateMetrics(ticker);
+        if (metrics.priceReturn) {
+          merged.price_return_3y = merged.price_return_3y ?? metrics.priceReturn['3Y'];
+          merged.price_return_12m = merged.price_return_12m ?? metrics.priceReturn['1Y'];
+          merged.price_return_6m = merged.price_return_6m ?? metrics.priceReturn['6M'];
+          merged.price_return_3m = merged.price_return_3m ?? metrics.priceReturn['3M'];
+          merged.price_return_1m = merged.price_return_1m ?? metrics.priceReturn['1M'];
+          merged.price_return_1w = merged.price_return_1w ?? metrics.priceReturn['1W'];
+        }
+      } catch (error) {
+        logger.warn('Routes', `Failed to calculate price returns for ${ticker}: ${(error as Error).message}`);
+      }
     }
 
     res.json(merged);
