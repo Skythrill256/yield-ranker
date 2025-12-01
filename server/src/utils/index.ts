@@ -99,7 +99,8 @@ export function calculateStdDev(values: number[]): number {
   if (values.length < 2) return 0;
   const mean = calculateMean(values);
   const squaredDiffs = values.map(v => Math.pow(v - mean, 2));
-  const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / values.length;
+  // Use sample standard deviation (ddof=1): divide by (n-1) instead of n
+  const variance = squaredDiffs.reduce((sum, d) => sum + d, 0) / (values.length - 1);
   return Math.sqrt(variance);
 }
 
