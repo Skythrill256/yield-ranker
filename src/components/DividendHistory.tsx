@@ -388,6 +388,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                 const sortedRecords = [...records].sort((a, b) => 
                   new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
                 );
+                const isLastYear = yearIndex === recordsByYear.length - 1;
                 
                 return (
                   <React.Fragment key={year}>
@@ -462,18 +463,25 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                             </TableCell>
                           </TableRow>
                           {isLastInYear && (
-                            <TableRow className="bg-slate-50 border-t-2 border-slate-300">
-                              <TableCell className="font-semibold text-xs sm:text-sm px-2 sm:px-4 py-2">
-                                {`Subtotal ${year}`}
-                              </TableCell>
-                              <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
-                                ${yearTotal.toFixed(4)}
-                              </TableCell>
-                              <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
-                                ${yearTotal.toFixed(4)}
-                              </TableCell>
-                              <TableCell colSpan={5} className="px-2 sm:px-4 py-2"></TableCell>
-                            </TableRow>
+                            <>
+                              <TableRow className="bg-slate-50 border-t-2 border-slate-300">
+                                <TableCell className="font-semibold text-xs sm:text-sm px-2 sm:px-4 py-2">
+                                  {`Subtotal ${year}`}
+                                </TableCell>
+                                <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
+                                  ${yearTotal.toFixed(4)}
+                                </TableCell>
+                                <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
+                                  ${yearTotal.toFixed(4)}
+                                </TableCell>
+                                <TableCell colSpan={5} className="px-2 sm:px-4 py-2"></TableCell>
+                              </TableRow>
+                              {!isLastYear && (
+                                <TableRow>
+                                  <TableCell colSpan={8} className="py-3 px-2 sm:px-4"></TableCell>
+                                </TableRow>
+                              )}
+                            </>
                           )}
                         </React.Fragment>
                       );
