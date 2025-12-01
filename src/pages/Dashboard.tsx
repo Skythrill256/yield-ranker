@@ -112,7 +112,8 @@ export default function Dashboard() {
   const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
   const [accountPanelExpanded, setAccountPanelExpanded] = useState(false);
   const [showRankingPanel, setShowRankingPanel] = useState(false);
-  const [infoBanner, setInfoBanner] = useState("");
+  const [guestMessage, setGuestMessage] = useState("");
+  const [premiumMessage, setPremiumMessage] = useState("");
   const [showTotalReturns, setShowTotalReturns] = useState(true);
   const [chartType, setChartType] = useState<ChartType>("totalReturn");
   const [comparisonETFs, setComparisonETFs] = useState<string[]>([]);
@@ -180,9 +181,13 @@ export default function Dashboard() {
       try {
         const { getSiteSettings } = await import("@/services/admin");
         const settings = await getSiteSettings();
-        const bannerSetting = settings.find((s) => s.key === "homepage_banner");
-        if (bannerSetting) {
-          setInfoBanner(bannerSetting.value);
+        const guestMsgSetting = settings.find((s) => s.key === "guest_message");
+        const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
+        if (guestMsgSetting) {
+          setGuestMessage(guestMsgSetting.value);
+        }
+        if (premiumMsgSetting) {
+          setPremiumMessage(premiumMsgSetting.value);
         }
       } catch (error) {
         console.error("Failed to load site settings:", error);
@@ -1267,6 +1272,15 @@ export default function Dashboard() {
 
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+              {((isGuest && guestMessage) || (isPremium && premiumMessage)) && (
+                <div className="w-full">
+                  <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                    <p className="text-base md:text-lg text-foreground leading-relaxed font-medium">
+                      {isGuest ? guestMessage : premiumMessage}
+                    </p>
+                  </Card>
+                </div>
+              )}
               <div className="mb-4 sm:mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-2">
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">

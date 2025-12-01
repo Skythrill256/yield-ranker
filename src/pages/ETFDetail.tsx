@@ -946,7 +946,7 @@ const ETFDetail = () => {
               <div className="text-center p-3 bg-slate-50 rounded-lg">
                 <p className="text-xs text-muted-foreground mb-1">Dividend Volatility</p>
                 <p className="text-sm font-medium">
-                  {etf.dividendVolatilityIndex ?? (etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : 'N/A')}
+                  {etf.dividendCVPercent != null && etf.dividendCVPercent > 0 ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendVolatilityIndex || 'N/A')}
                 </p>
               </div>
             </div>

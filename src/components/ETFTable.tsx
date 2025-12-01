@@ -347,7 +347,7 @@ export const ETFTable = ({
                   <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-xs">
                     {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
                   </td>
-                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground" title={etf.dividendVolatilityIndex || undefined}>
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
                     {etf.dividendCVPercent != null && etf.dividendCVPercent > 0 ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendVolatilityIndex || 'N/A')}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">

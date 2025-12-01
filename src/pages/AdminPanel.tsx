@@ -1000,7 +1000,52 @@ const AdminPanel = () => {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      {siteSettings.map((setting) => (
+                      {/* Guest Message - Always show */}
+                      <div className="space-y-2 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
+                        <label className="block text-sm font-semibold text-foreground">
+                          Message for Guests (without account)
+                        </label>
+                        <Input
+                          value={settingsValues["guest_message"] || ""}
+                          onChange={(event) =>
+                            setSettingsValues((prev) => ({
+                              ...prev,
+                              guest_message: event.target.value,
+                            }))
+                          }
+                          placeholder="Enter message to display for guests above the chart"
+                          className="border-2"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This message appears above the chart for users without an account
+                        </p>
+                      </div>
+
+                      {/* Premium Message - Always show */}
+                      <div className="space-y-2 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                        <label className="block text-sm font-semibold text-foreground">
+                          Message for Premium Subscribers
+                        </label>
+                        <Input
+                          value={settingsValues["premium_message"] || ""}
+                          onChange={(event) =>
+                            setSettingsValues((prev) => ({
+                              ...prev,
+                              premium_message: event.target.value,
+                            }))
+                          }
+                          placeholder="Enter message to display for premium subscribers above the chart"
+                          className="border-2"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This message appears above the chart for premium subscribers
+                        </p>
+                      </div>
+
+                      {/* Other settings */}
+                      {siteSettings
+                        .filter((s) => s.key !== "guest_message" && s.key !== "premium_message")
+                        .map((setting) => (
                         <div key={setting.key} className="space-y-2">
                           <label className="block text-sm font-medium text-foreground">
                             {setting.description || setting.key}

@@ -52,7 +52,8 @@ const Index = () => {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [etfData, setEtfData] = useState<ETF[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [infoBanner, setInfoBanner] = useState("");
+  const [guestMessage, setGuestMessage] = useState("");
+  const [premiumMessage, setPremiumMessage] = useState("");
   const [rankingPresets, setRankingPresets] = useState<RankingPreset[]>([]);
   const [showPresetSaveDialog, setShowPresetSaveDialog] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
@@ -103,9 +104,13 @@ const Index = () => {
       try {
         const { getSiteSettings } = await import("@/services/admin");
         const settings = await getSiteSettings();
-        const bannerSetting = settings.find((s) => s.key === "homepage_banner");
-        if (bannerSetting) {
-          setInfoBanner(bannerSetting.value);
+        const guestMsgSetting = settings.find((s) => s.key === "guest_message");
+        const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
+        if (guestMsgSetting) {
+          setGuestMessage(guestMsgSetting.value);
+        }
+        if (premiumMsgSetting) {
+          setPremiumMessage(premiumMsgSetting.value);
         }
       } catch (error) {
         console.error("Failed to load site settings:", error);
@@ -432,11 +437,11 @@ const Index = () => {
 
       <main className="w-full max-w-[98%] mx-auto px-2 sm:px-3 py-8 md:py-12">
         <div className="space-y-6">
-          {infoBanner && (
+          {((isGuest && guestMessage) || (isPremium && premiumMessage)) && (
             <div className="w-full">
               <Card className="p-4 border-2 border-primary/20 bg-primary/5">
                 <p className="text-base md:text-lg text-foreground leading-relaxed font-medium">
-                  {infoBanner}
+                  {isGuest ? guestMessage : premiumMessage}
                 </p>
               </Card>
             </div>
