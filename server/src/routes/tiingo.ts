@@ -181,17 +181,36 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       }
     }
     
+    // Detect frequency from actual dividend dates first to get accurate paymentsPerYear
+    let actualPaymentsPerYear = paymentsPerYear;
+    if (dividends.length >= 2) {
+      const sorted = [...dividends].sort((a, b) => 
+        new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+      );
+      const firstDate = new Date(sorted[0].ex_date);
+      const lastDate = new Date(sorted[sorted.length - 1].ex_date);
+      const daysDiff = (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDiff > 0 && sorted.length > 1) {
+        const avgDaysBetween = daysDiff / (sorted.length - 1);
+        if (avgDaysBetween <= 10) actualPaymentsPerYear = 52;
+        else if (avgDaysBetween <= 35) actualPaymentsPerYear = 12;
+        else if (avgDaysBetween <= 95) actualPaymentsPerYear = 4;
+        else if (avgDaysBetween <= 185) actualPaymentsPerYear = 2;
+        else actualPaymentsPerYear = 1;
+      }
+    }
+    
     const lastDividend = dividends.length > 0 ? dividends[0].div_cash : null;
-    const annualizedDividend = lastDividend ? lastDividend * paymentsPerYear : null;
+    const annualizedDividend = lastDividend ? lastDividend * actualPaymentsPerYear : null;
     
     // Calculate YoY growth
     let dividendGrowth: number | null = null;
-    if (dividends.length >= paymentsPerYear * 2) {
+    if (dividends.length >= actualPaymentsPerYear * 2) {
       const recentYearTotal = dividends
-        .slice(0, paymentsPerYear)
+        .slice(0, actualPaymentsPerYear)
         .reduce((sum, d) => sum + d.div_cash, 0);
       const priorYearTotal = dividends
-        .slice(paymentsPerYear, paymentsPerYear * 2)
+        .slice(actualPaymentsPerYear, actualPaymentsPerYear * 2)
         .reduce((sum, d) => sum + d.div_cash, 0);
       
       if (priorYearTotal > 0) {
@@ -199,31 +218,78 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       }
     }
     
-    // Infer frequency from payments per year
-    const getFrequencyLabel = (paymentsPerYear: number): string => {
-      if (paymentsPerYear === 12) return 'Mo';
-      if (paymentsPerYear === 4) return 'Qtr';
-      if (paymentsPerYear === 52) return 'Week';
-      if (paymentsPerYear === 1) return 'Annual';
-      return `${paymentsPerYear}x/Yr`;
+    // Detect frequency from actual dividend dates for each dividend
+    const detectFrequencyFromDates = (dividends: typeof dividends, index: number): string => {
+      if (dividends.length < 2) {
+        // Fallback to paymentsPerYear if not enough data
+        if (paymentsPerYear === 12) return 'Mo';
+        if (paymentsPerYear === 4) return 'Qtr';
+        if (paymentsPerYear === 52) return 'Week';
+        if (paymentsPerYear === 1) return 'Annual';
+        return `${paymentsPerYear}x/Yr`;
+      }
+      
+      // Sort dividends by date (ascending) for frequency detection
+      const sorted = [...dividends].sort((a, b) => 
+        new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+      );
+      
+      const currentDate = new Date(dividends[index].ex_date);
+      let daysBetween: number | null = null;
+      
+      // Try to find next dividend
+      for (let i = 0; i < sorted.length - 1; i++) {
+        if (sorted[i].ex_date === dividends[index].ex_date) {
+          const nextDate = new Date(sorted[i + 1].ex_date);
+          daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
+          break;
+        }
+      }
+      
+      // If no next dividend found, try previous dividend
+      if (daysBetween === null) {
+        for (let i = sorted.length - 1; i > 0; i--) {
+          if (sorted[i].ex_date === dividends[index].ex_date) {
+            const prevDate = new Date(sorted[i - 1].ex_date);
+            daysBetween = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+            break;
+          }
+        }
+      }
+      
+      // Determine frequency based on days between payments
+      if (daysBetween !== null) {
+        if (daysBetween <= 10) return 'Week';
+        if (daysBetween <= 35) return 'Mo';
+        if (daysBetween <= 95) return 'Qtr';
+        if (daysBetween <= 185) return 'Semi-Annual';
+        return 'Annual';
+      }
+      
+      // Fallback to actualPaymentsPerYear
+      if (actualPaymentsPerYear === 12) return 'Mo';
+      if (actualPaymentsPerYear === 4) return 'Qtr';
+      if (actualPaymentsPerYear === 52) return 'Week';
+      if (actualPaymentsPerYear === 1) return 'Annual';
+      return `${actualPaymentsPerYear}x/Yr`;
     };
     
     res.json({
       ticker: ticker.toUpperCase(),
-      paymentsPerYear,
+      paymentsPerYear: actualPaymentsPerYear,
       lastDividend,
-      annualizedDividend,
+      annualizedDividend: lastDividend ? lastDividend * actualPaymentsPerYear : null,
       dividendGrowth,
-      isLiveData,  // Flag to indicate data source
-      dividends: dividends.map(d => ({
+      isLiveData,
+      dividends: dividends.map((d, idx) => ({
         exDate: d.ex_date,
         payDate: d.pay_date,
         recordDate: d.record_date,
         declareDate: d.declare_date,
         amount: d.div_cash,
-        adjAmount: d.adj_amount ?? d.div_cash,  // Split-adjusted amount
+        adjAmount: d.adj_amount ?? d.div_cash,
         type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
-        frequency: d.frequency ?? getFrequencyLabel(paymentsPerYear),
+        frequency: d.frequency ?? detectFrequencyFromDates(dividends, idx),
         description: d.description,
         currency: d.currency ?? 'USD',
       })),
