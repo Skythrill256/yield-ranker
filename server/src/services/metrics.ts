@@ -165,6 +165,10 @@ function calculateDividendVolatility(
   const n = trimmedAmounts.length;
   const mean = calculateMean(trimmedAmounts);
   const sd = calculateStdDev(trimmedAmounts);
+  
+  // CV (Coefficient of Variation) = SD / Mean
+  // CV% = CV * 100
+  // This measures relative volatility (standard deviation relative to mean)
   const cv = mean > 0.0001 ? sd / mean : null;
   const cvPercent = cv !== null ? cv * 100 : null;
   
@@ -336,20 +340,29 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     lastDividend = sortedRegular[0].adj_amount ?? sortedRegular[0].div_cash;
   }
   
-  // Count regular payments in last 12 months to determine actual payment frequency
-  const now = new Date();
-  const oneYearAgo = new Date(now);
-  oneYearAgo.setMonth(now.getMonth() - 12);
-  const recentRegularCount = sortedRegular.filter(d => new Date(d.ex_date) >= oneYearAgo).length;
-  
-  // Determine actual payments per year:
-  // 1. Use actual count from last 12 months if we have enough data (at least 4 payments)
-  // 2. Otherwise use the static payments_per_year from database
-  // 3. Fallback to 12 (monthly) if nothing is available
+  // Determine actual payments per year based on CURRENT payment frequency
+  // For ETFs that change frequency (e.g., MSTY from monthly to weekly), we need to detect
+  // the current frequency from the most recent payments, not count all payments in the year
   let actualPaymentsPerYear: number;
-  if (recentRegularCount >= 4) {
-    // We have enough data to trust the actual count
-    actualPaymentsPerYear = recentRegularCount;
+  
+  if (sortedRegular.length >= 2) {
+    // Detect current frequency from most recent payments
+    const mostRecent = sortedRegular[0];
+    const secondMostRecent = sortedRegular[1];
+    const daysBetween = (new Date(mostRecent.ex_date).getTime() - new Date(secondMostRecent.ex_date).getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Determine frequency based on days between most recent payments
+    if (daysBetween <= 10) {
+      actualPaymentsPerYear = 52; // Weekly
+    } else if (daysBetween <= 35) {
+      actualPaymentsPerYear = 12; // Monthly
+    } else if (daysBetween <= 95) {
+      actualPaymentsPerYear = 4; // Quarterly
+    } else if (daysBetween <= 185) {
+      actualPaymentsPerYear = 2; // Semi-Annual
+    } else {
+      actualPaymentsPerYear = 1; // Annual
+    }
   } else if (paymentsPerYear > 0) {
     // Use database value if we don't have enough recent data
     actualPaymentsPerYear = paymentsPerYear;
@@ -359,7 +372,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   }
   
   // Calculate annual dividend: simple calculation using last dividend * payments per year
-  // This is more accurate than the volatility-based calculation which can be skewed by outliers
+  // This uses the CURRENT payment frequency, not a mixed count
   let annualizedDividend: number | null = null;
   if (lastDividend && lastDividend > 0 && actualPaymentsPerYear > 0) {
     annualizedDividend = lastDividend * actualPaymentsPerYear;
