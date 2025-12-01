@@ -1455,7 +1455,7 @@ export default function Dashboard() {
                         "#f97316",
                         "#8b5cf6",
                         "#10b981",
-                        "#f59e0b",
+                        "#ef4444",
                       ];
                       const color = colors[index % colors.length];
                       return (
@@ -1735,7 +1735,7 @@ export default function Dashboard() {
                           "#f97316",
                           "#8b5cf6",
                           "#10b981",
-                          "#f59e0b",
+                          "#ef4444",
                         ];
                         const color = colors[index % colors.length];
                         const dataKey =

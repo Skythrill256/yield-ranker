@@ -381,7 +381,7 @@ const ETFDetail = () => {
                 {[etf.symbol, ...comparisonETFs].map((sym, index) => {
                   const compareETF = allETFs.find((e) => e.symbol === sym);
                   if (!compareETF) return null;
-                  const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#f59e0b"];
+                  const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
                   const color = colors[index % colors.length];
                   
                   let displayValue = "N/A";
@@ -654,7 +654,7 @@ const ETFDetail = () => {
                       )}
                       {/* All ETFs as Lines (when comparing) */}
                       {[etf.symbol, ...comparisonETFs].map((sym, index) => {
-                        const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#f59e0b"];
+                        const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
                         const color = colors[index % colors.length];
                         const dataKey = chartType === "totalReturn" ? `return_${sym}` : `price_${sym}`;
                         return (
@@ -697,7 +697,7 @@ const ETFDetail = () => {
                 ) : (
                 <div className="space-y-3">
                   {[etf.symbol, ...comparisonETFs].map((sym, index) => {
-                    const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#f59e0b"];
+                    const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
                     const color = colors[index % colors.length];
                     
                     // Get precomputed return value from ETF data to match top metrics bar
