@@ -601,7 +601,7 @@ function periodToStartDate(period: ChartPeriod): string {
 // ============================================================================
 
 export async function calculateRankings(
-  weights: RankingWeights = { yield: 34, totalReturn: 33, volatility: 33 }
+  weights: RankingWeights = { yield: 25, totalReturn: 50, volatility: 25, timeframe: "6mo" }
 ): Promise<RankedETF[]> {
   const tickers = await getAllTickers();
   

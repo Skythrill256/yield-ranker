@@ -657,6 +657,10 @@ export default function Dashboard() {
 
   const resetToDefaults = async () => {
     const defaultWeights: RankingWeights = {
+      yield: 25,
+      volatility: 25,
+      totalReturn: 50,
+      timeframe: "6mo",
       yield: 30,
       volatility: 30,
       totalReturn: 40,

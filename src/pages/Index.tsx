@@ -274,11 +274,11 @@ const Index = () => {
   };
 
   const resetToDefaults = () => {
-    setYieldWeight(30);
-    setVolatilityWeight(30);
-    setTotalReturnWeight(40);
-    setTotalReturnTimeframe("12mo");
-    setWeights({ yield: 30, volatility: 30, totalReturn: 40, timeframe: "12mo" });
+    setYieldWeight(25);
+    setVolatilityWeight(25);
+    setTotalReturnWeight(50);
+    setTotalReturnTimeframe("6mo");
+    setWeights({ yield: 25, volatility: 25, totalReturn: 50, timeframe: "6mo" });
   };
 
   const handleSavePreset = async () => {
