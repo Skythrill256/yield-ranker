@@ -553,12 +553,24 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       
                       // Try to get dates from Alpha Vantage first, fall back to Tiingo data
                       const avDates = alphaVantageDates.get(exDateStr);
-                      const payDate = avDates?.paymentDate 
-                        ? new Date(avDates.paymentDate) 
-                        : (div.payDate ? new Date(div.payDate) : null);
-                      const recordDate = avDates?.recordDate 
-                        ? new Date(avDates.recordDate) 
-                        : (div.recordDate ? new Date(div.recordDate) : null);
+                      let payDate: Date | null = null;
+                      let recordDate: Date | null = null;
+                      
+                      if (avDates?.paymentDate) {
+                        const pd = new Date(avDates.paymentDate);
+                        if (!isNaN(pd.getTime())) payDate = pd;
+                      } else if (div.payDate) {
+                        const pd = new Date(div.payDate);
+                        if (!isNaN(pd.getTime())) payDate = pd;
+                      }
+                      
+                      if (avDates?.recordDate) {
+                        const rd = new Date(avDates.recordDate);
+                        if (!isNaN(rd.getTime())) recordDate = rd;
+                      } else if (div.recordDate) {
+                        const rd = new Date(div.recordDate);
+                        if (!isNaN(rd.getTime())) recordDate = rd;
+                      }
                       
                       const typeLabel = div.type === 'Special' ? 'Special' : 'Regular';
                       
