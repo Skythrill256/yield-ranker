@@ -999,10 +999,16 @@ export default function Dashboard() {
 
   if (selectedETF) {
     const priceChange = selectedETF.totalReturn1Mo || 0;
-    const priceChangePercent = (
-      (priceChange / selectedETF.price) *
-      100
-    ).toFixed(2);
+    const priceChangePercent = (() => {
+      const price = selectedETF.price;
+      if (typeof price === 'number' && !isNaN(price) && isFinite(price) && price > 0) {
+        const percent = (priceChange / price) * 100;
+        if (typeof percent === 'number' && !isNaN(percent) && isFinite(percent)) {
+          return percent.toFixed(2);
+        }
+      }
+      return '0.00';
+    })();
     const isPositive = priceChange >= 0;
 
     const chartValues = (chartData && Array.isArray(chartData) ? chartData : [])
@@ -1029,17 +1035,38 @@ export default function Dashboard() {
     ];
 
     const keyMetrics = [
-      { label: "LAST CLOSE PRICE", value: `$${selectedETF.price.toFixed(2)}` },
+      { 
+        label: "LAST CLOSE PRICE", 
+        value: (() => {
+          const price = selectedETF.price;
+          if (typeof price === 'number' && !isNaN(price) && isFinite(price)) {
+            return `$${price.toFixed(2)}`;
+          }
+          return 'N/A';
+        })()
+      },
       {
         label: "52-WEEK RANGE",
-        value: `$${selectedETF.week52Low.toFixed(
-          2
-        )} - $${selectedETF.week52High.toFixed(2)}`,
+        value: (() => {
+          const low = selectedETF.week52Low;
+          const high = selectedETF.week52High;
+          if (typeof low === 'number' && !isNaN(low) && isFinite(low) &&
+              typeof high === 'number' && !isNaN(high) && isFinite(high)) {
+            return `$${low.toFixed(2)} - $${high.toFixed(2)}`;
+          }
+          return 'N/A';
+        })()
       },
       { label: "MARKET CAP", value: "N/A" },
       {
         label: "DIVIDEND YIELD",
-        value: `${selectedETF.forwardYield.toFixed(2)}%`,
+        value: (() => {
+          const yieldVal = selectedETF.forwardYield;
+          if (typeof yieldVal === 'number' && !isNaN(yieldVal) && isFinite(yieldVal)) {
+            return `${yieldVal.toFixed(2)}%`;
+          }
+          return 'N/A';
+        })()
       },
       { label: "PE RATIO", value: "N/A" },
       { label: "PE RATIO (FWD)", value: "N/A" },
@@ -1048,15 +1075,27 @@ export default function Dashboard() {
       { label: "NET PROFIT MARGIN TTM", value: "N/A" },
       {
         label: "TTM TOTAL RETURN",
-        value: `${(selectedETF.totalReturn12Mo || 0).toFixed(2)}%`,
+        value: (() => {
+          const val = selectedETF.totalReturn12Mo;
+          if (typeof val === 'number' && !isNaN(val) && isFinite(val)) {
+            return `${val.toFixed(2)}%`;
+          }
+          return 'N/A';
+        })(),
         isPercentage: true,
-        value_raw: selectedETF.totalReturn12Mo || 0,
+        value_raw: (typeof selectedETF.totalReturn12Mo === 'number' && !isNaN(selectedETF.totalReturn12Mo) && isFinite(selectedETF.totalReturn12Mo)) ? selectedETF.totalReturn12Mo : 0,
       },
       {
         label: "3Y TOTAL RETURN",
-        value: `${(selectedETF.totalReturn3Yr || 0).toFixed(2)}%`,
+        value: (() => {
+          const val = selectedETF.totalReturn3Yr;
+          if (typeof val === 'number' && !isNaN(val) && isFinite(val)) {
+            return `${val.toFixed(2)}%`;
+          }
+          return 'N/A';
+        })(),
         isPercentage: true,
-        value_raw: selectedETF.totalReturn3Yr || 0,
+        value_raw: (typeof selectedETF.totalReturn3Yr === 'number' && !isNaN(selectedETF.totalReturn3Yr) && isFinite(selectedETF.totalReturn3Yr)) ? selectedETF.totalReturn3Yr : 0,
       },
       {
         label: "5Y TOTAL RETURN",
@@ -1704,7 +1743,7 @@ export default function Dashboard() {
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={(value) => {
-                          if (typeof value === 'number' && !isNaN(value)) {
+                          if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
                             return `${value.toFixed(1)}%`;
                           }
                           return '';
@@ -1725,8 +1764,9 @@ export default function Dashboard() {
                           marginBottom: "4px",
                         }}
                         formatter={(value: number | string, name: string) => {
-                          if (typeof value === 'number' && !isNaN(value)) {
-                            return [`${value.toFixed(2)}%`, name];
+                          const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                          if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                            return [`${numValue.toFixed(2)}%`, name];
                           }
                           return ['N/A', name];
                         }}

@@ -484,20 +484,24 @@ export const generateChartData = (
       
       if (chartType === "price") {
         const priceReturn = ((price - base) / base) * 100;
-        if (symbol === primarySymbol && comparison.symbols.length === 1) {
-          point.price = Number(priceReturn.toFixed(2));
-        } else {
-          point[`price_${symbol}`] = Number(priceReturn.toFixed(2));
+        if (typeof priceReturn === 'number' && !isNaN(priceReturn) && isFinite(priceReturn)) {
+          if (symbol === primarySymbol && comparison.symbols.length === 1) {
+            point.price = Number(priceReturn.toFixed(2));
+          } else {
+            point[`price_${symbol}`] = Number(priceReturn.toFixed(2));
+          }
+          hasValidData = true;
         }
-        hasValidData = true;
       } else {
         const totalReturn = ((price - base) / base) * 100;
-        if (symbol === primarySymbol && comparison.symbols.length === 1) {
-          point.price = Number(totalReturn.toFixed(2));
-        } else {
-          point[`return_${symbol}`] = Number(totalReturn.toFixed(2));
+        if (typeof totalReturn === 'number' && !isNaN(totalReturn) && isFinite(totalReturn)) {
+          if (symbol === primarySymbol && comparison.symbols.length === 1) {
+            point.price = Number(totalReturn.toFixed(2));
+          } else {
+            point[`return_${symbol}`] = Number(totalReturn.toFixed(2));
+          }
+          hasValidData = true;
         }
-        hasValidData = true;
       }
     }
     
