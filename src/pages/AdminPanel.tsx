@@ -156,7 +156,7 @@ const AdminPanel = () => {
     try {
       const data = await getSiteSettings();
       const filteredData = data.filter(
-        (setting) => setting.key !== "homepage_subtitle"
+        (setting) => setting.key !== "homepage_subtitle" && setting.key !== "homepage_banner"
       );
       setSiteSettings(filteredData);
       const values: Record<string, string> = {};
