@@ -63,7 +63,12 @@ export const PerformanceChart = ({ etf, chartType = 'totalReturn' }: Performance
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => `${value.toFixed(1)}%`}
+            tickFormatter={(value) => {
+              if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                return `${value.toFixed(1)}%`;
+              }
+              return '';
+            }}
           />
           <Tooltip
             contentStyle={{
@@ -74,7 +79,13 @@ export const PerformanceChart = ({ etf, chartType = 'totalReturn' }: Performance
               padding: "12px 16px",
             }}
             labelStyle={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}
-            formatter={(value: number) => [`${value.toFixed(2)}%`, "Return"]}
+            formatter={(value: number | string) => {
+              const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+              if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                return [`${numValue.toFixed(2)}%`, "Return"];
+              }
+              return ['N/A', "Return"];
+            }}
           />
           <Bar
             dataKey="return"

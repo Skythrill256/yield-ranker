@@ -341,7 +341,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           
           return {
             ...div,
-            equivalentWeeklyRate: equivalentWeeklyRate !== null ? Number(equivalentWeeklyRate.toFixed(4)) : null,
+            equivalentWeeklyRate: equivalentWeeklyRate !== null && typeof equivalentWeeklyRate === 'number' && !isNaN(equivalentWeeklyRate) && isFinite(equivalentWeeklyRate) ? Number(equivalentWeeklyRate.toFixed(4)) : null,
           };
         });
 
@@ -379,7 +379,12 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `$${value.toFixed(2)}`}
+                    tickFormatter={(value) => {
+                      if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                        return `$${value.toFixed(2)}`;
+                      }
+                      return '';
+                    }}
                     width={50}
                     domain={['dataMin', 'dataMax']}
                     allowDataOverflow={false}
@@ -391,13 +396,17 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       borderRadius: "8px",
                       boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                     }}
-                    formatter={(value: number, name: string) => {
-                      if (name === 'amount') {
-                        return [`$${value.toFixed(4)}`, 'Individual Payment Amount (Monthly/Weekly)'];
-                      } else if (name === 'equivalentWeeklyRate') {
-                        return [`$${value.toFixed(4)}`, 'Equivalent Weekly Rate (Rate Normalized to Weekly Payout)'];
+                    formatter={(value: number | string, name: string) => {
+                      const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                      if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                        if (name === 'amount') {
+                          return [`$${numValue.toFixed(4)}`, 'Individual Payment Amount (Monthly/Weekly)'];
+                        } else if (name === 'equivalentWeeklyRate') {
+                          return [`$${numValue.toFixed(4)}`, 'Equivalent Weekly Rate (Rate Normalized to Weekly Payout)'];
+                        }
+                        return [`$${numValue.toFixed(4)}`, name];
                       }
-                      return [`$${value.toFixed(4)}`, name];
+                      return ['N/A', name];
                     }}
                     labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   />
@@ -449,7 +458,13 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       borderRadius: "8px",
                       boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
                     }}
-                    formatter={(value: number) => [`$${value.toFixed(4)}`, 'Dividend']}
+                    formatter={(value: number | string) => {
+                      const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                      if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                        return [`$${numValue.toFixed(4)}`, 'Dividend'];
+                      }
+                      return ['N/A', 'Dividend'];
+                    }}
                     labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   />
                   <Bar dataKey="amount" fill="#3b82f6" radius={[2, 2, 0, 0]} />

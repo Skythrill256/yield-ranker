@@ -331,7 +331,12 @@ export function ReturnsComparisonChart({
               tickLine={false}
               axisLine={false}
               domain={[minValue - padding, maxValue + padding]}
-              tickFormatter={(value) => `${value.toFixed(0)}%`}
+              tickFormatter={(value) => {
+                if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                  return `${value.toFixed(0)}%`;
+                }
+                return '';
+              }}
             />
             <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
             <Tooltip
@@ -342,10 +347,14 @@ export function ReturnsComparisonChart({
                 boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                 padding: "12px 16px",
               }}
-              formatter={(value: number, name: string) => {
-                const label = name.includes('total') ? 'Total Return' : 
-                             name.includes('price') ? 'Price Return' : name;
-                return [`${value.toFixed(2)}%`, label];
+              formatter={(value: number | string, name: string) => {
+                const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                  const label = name.includes('total') ? 'Total Return' : 
+                               name.includes('price') ? 'Price Return' : name;
+                  return [`${numValue.toFixed(2)}%`, label];
+                }
+                return ['N/A', name];
               }}
               labelFormatter={(label, payload) => {
                 if (payload && payload[0]?.payload?.fullDate) {
