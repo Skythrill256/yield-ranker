@@ -35,14 +35,14 @@ const Index = () => {
   const isGuest = !profile;
   const { favorites, toggleFavorite, cleanupFavorites } = useFavorites();
   const [weights, setWeights] = useState<RankingWeights>({
-    yield: 30,
-    volatility: 30,
-    totalReturn: 40,
-    timeframe: "12mo",
+    yield: 25,
+    volatility: 25,
+    totalReturn: 50,
+    timeframe: "6mo",
   });
-  const [yieldWeight, setYieldWeight] = useState(30);
-  const [volatilityWeight, setVolatilityWeight] = useState<number>(30);
-  const [totalReturnWeight, setTotalReturnWeight] = useState(40);
+  const [yieldWeight, setYieldWeight] = useState(25);
+  const [volatilityWeight, setVolatilityWeight] = useState<number>(25);
+  const [totalReturnWeight, setTotalReturnWeight] = useState(50);
   const [totalReturnTimeframe, setTotalReturnTimeframe] = useState<
     "3mo" | "6mo" | "12mo"
   >("12mo");
