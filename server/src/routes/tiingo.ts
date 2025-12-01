@@ -219,67 +219,61 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     }
     
     // Detect frequency from actual dividend dates for each dividend
+    // This detects per-payment frequency based on days between consecutive payments
     const detectFrequencyFromDates = (records: DividendRecord[], index: number): string => {
       if (records.length < 2) {
         // Fallback to paymentsPerYear if not enough data
-        if (paymentsPerYear === 12) return 'Mo';
-        if (paymentsPerYear === 4) return 'Qtr';
-        if (paymentsPerYear === 52) return 'Week';
+        if (paymentsPerYear === 12) return 'Monthly';
+        if (paymentsPerYear === 4) return 'Quarterly';
+        if (paymentsPerYear === 52) return 'Weekly';
         if (paymentsPerYear === 1) return 'Annual';
         return `${paymentsPerYear}x/Yr`;
       }
       
-      // Sort dividends by date (ascending) for frequency detection
+      // Sort dividends by date (descending - most recent first) for frequency detection
       const sorted = [...records].sort((a, b) => 
-        new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+        new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
       );
       
-      const currentDate = new Date(records[index].ex_date);
+      // Find the index in sorted array
+      const sortedIndex = sorted.findIndex(r => r.ex_date === records[index].ex_date);
+      if (sortedIndex === -1) {
+        // Fallback if not found
+        if (actualPaymentsPerYear === 12) return 'Monthly';
+        if (actualPaymentsPerYear === 52) return 'Weekly';
+        if (actualPaymentsPerYear === 4) return 'Quarterly';
+        return 'Monthly';
+      }
+      
+      const currentDate = new Date(sorted[sortedIndex].ex_date);
       let daysBetween: number | null = null;
       
-      // Try to find next dividend
-      for (let i = 0; i < sorted.length - 1; i++) {
-        if (sorted[i].ex_date === records[index].ex_date) {
-          const nextDate = new Date(sorted[i + 1].ex_date);
-          daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-          break;
-        }
+      // Try to find previous dividend (more recent payment)
+      if (sortedIndex > 0) {
+        const prevDate = new Date(sorted[sortedIndex - 1].ex_date);
+        daysBetween = (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
       }
       
-      // If no next dividend found, try previous dividend
-      if (daysBetween === null) {
-        for (let i = sorted.length - 1; i > 0; i--) {
-          if (sorted[i].ex_date === records[index].ex_date) {
-            const prevDate = new Date(sorted[i - 1].ex_date);
-            daysBetween = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-            break;
-          }
-        }
+      // If no previous dividend found, try next dividend (older payment)
+      if (daysBetween === null && sortedIndex < sorted.length - 1) {
+        const nextDate = new Date(sorted[sortedIndex + 1].ex_date);
+        daysBetween = (currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24);
       }
       
-      // Determine frequency based on days between payments, but prefer actualPaymentsPerYear if it's clearly monthly
+      // Determine frequency based on days between payments
+      // Weekly: <= 10 days, Monthly: 11-35 days, Quarterly: 36-95 days, etc.
       if (daysBetween !== null) {
-        // If paymentsPerYear is 12 (monthly), prefer 'Mo' unless daysBetween is clearly weekly (< 7 days)
-        if (actualPaymentsPerYear === 12) {
-          if (daysBetween < 7) return 'Week';
-          return 'Mo';
-        }
-        // If paymentsPerYear is 52 (weekly), prefer 'Week'
-        if (actualPaymentsPerYear === 52) {
-          return 'Week';
-        }
-        // Otherwise use daysBetween logic
-        if (daysBetween <= 10) return 'Week';
-        if (daysBetween <= 35) return 'Mo';
-        if (daysBetween <= 95) return 'Qtr';
+        if (daysBetween <= 10) return 'Weekly';
+        if (daysBetween <= 35) return 'Monthly';
+        if (daysBetween <= 95) return 'Quarterly';
         if (daysBetween <= 185) return 'Semi-Annual';
         return 'Annual';
       }
       
       // Fallback to actualPaymentsPerYear
-      if (actualPaymentsPerYear === 12) return 'Mo';
-      if (actualPaymentsPerYear === 4) return 'Qtr';
-      if (actualPaymentsPerYear === 52) return 'Week';
+      if (actualPaymentsPerYear === 12) return 'Monthly';
+      if (actualPaymentsPerYear === 4) return 'Quarterly';
+      if (actualPaymentsPerYear === 52) return 'Weekly';
       if (actualPaymentsPerYear === 1) return 'Annual';
       return `${actualPaymentsPerYear}x/Yr`;
     };

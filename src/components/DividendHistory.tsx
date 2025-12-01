@@ -373,40 +373,29 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
             <TableHeader>
               <TableRow className="bg-slate-50">
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Year</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Amt</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap hidden sm:table-cell">Adj Amt</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Type</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap hidden md:table-cell">Frequency</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Ex-Div</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Record</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Amount</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap hidden sm:table-cell">Adj. Amount</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Dividend Type</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Frequency</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Ex-Div Date</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Record Date</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Pay Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recordsByYear.map(({ year, records }) => {
-                const isExpanded = expandedYears.has(year);
-                const displayRecords = isExpanded ? records : (showAllRecords ? records : records.slice(0, 4));
+              {recordsByYear.map(({ year, records }, yearIndex) => {
+                const yearTotal = records.reduce((sum, r) => sum + (r.adjAmount ?? r.amount), 0);
+                const sortedRecords = [...records].sort((a, b) => 
+                  new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
+                );
                 
                 return (
                   <React.Fragment key={year}>
-                    <TableRow 
-                      className="bg-slate-100 hover:bg-slate-200 cursor-pointer"
-                      onClick={() => toggleYear(year)}
-                    >
-                      <TableCell colSpan={8} className="font-semibold py-2 sm:py-3 px-2 sm:px-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm sm:text-base">{year}</span>
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5" />
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    {isExpanded && displayRecords.map((div, idx) => {
+                    {sortedRecords.map((div, idx) => {
                       const exDate = new Date(div.exDate);
                       const exDateStr = div.exDate.split('T')[0];
+                      const isFirstInYear = idx === 0;
+                      const isLastInYear = idx === sortedRecords.length - 1;
                       
                       // Try to get dates from Alpha Vantage first, fall back to Tiingo data
                       const avDates = alphaVantageDates.get(exDateStr);
@@ -419,60 +408,74 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       
                       const typeLabel = div.type === 'Special' ? 'Special' : 'Regular';
                       
-                      const frequency = div.frequency ?? (() => {
-                        if (dividendData?.paymentsPerYear === 12) return 'Mo';
-                        if (dividendData?.paymentsPerYear === 4) return 'Qtr';
-                        if (dividendData?.paymentsPerYear === 52) return 'Week';
-                        if (dividendData?.paymentsPerYear === 1) return 'Annual';
-                        return dividendData?.paymentsPerYear ? `${dividendData.paymentsPerYear}x/Yr` : '-';
-                      })();
+                      // Use frequency from API, which now detects per-payment frequency
+                      const frequency = div.frequency || 'Monthly';
                       
                       return (
-                        <TableRow key={`${year}-${idx}`} className="hover:bg-slate-50">
-                          <TableCell className="font-medium text-xs sm:text-sm px-2 sm:px-4 py-2">
-                            {exDate.getFullYear()}
-                          </TableCell>
-                          <TableCell className="font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
-                            ${div.amount.toFixed(4)}
-                          </TableCell>
-                          <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
-                            ${(div.adjAmount ?? div.amount).toFixed(4)}
-                          </TableCell>
-                          <TableCell className="px-2 sm:px-4 py-2">
-                            <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs ${
-                              typeLabel === 'Special' 
-                                ? 'bg-amber-100 text-amber-700' 
-                                : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {typeLabel}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2 hidden md:table-cell">
-                            {frequency}
-                          </TableCell>
-                          <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
-                            {exDate.toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}
-                          </TableCell>
-                          <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
-                            {recordDate && !isNaN(recordDate.getTime())
-                              ? recordDate.toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                })
-                              : '_'}
-                          </TableCell>
-                          <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
-                            {payDate && !isNaN(payDate.getTime())
-                              ? payDate.toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                })
-                              : '_'}
-                          </TableCell>
-                        </TableRow>
+                        <React.Fragment key={`${year}-${idx}`}>
+                          <TableRow className={`hover:bg-slate-50 ${isFirstInYear && yearIndex > 0 ? 'border-t-2 border-slate-300' : ''}`}>
+                            <TableCell className={`font-medium text-xs sm:text-sm px-2 sm:px-4 py-2 ${isFirstInYear ? 'font-semibold' : 'text-muted-foreground'}`}>
+                              {isFirstInYear ? year : ''}
+                            </TableCell>
+                            <TableCell className="font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
+                              ${div.amount.toFixed(4)}
+                            </TableCell>
+                            <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
+                              ${(div.adjAmount ?? div.amount).toFixed(4)}
+                            </TableCell>
+                            <TableCell className="px-2 sm:px-4 py-2">
+                              <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs ${
+                                typeLabel === 'Special' 
+                                  ? 'bg-amber-100 text-amber-700' 
+                                  : 'bg-slate-100 text-slate-700'
+                              }`}>
+                                {typeLabel}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2">
+                              {frequency}
+                            </TableCell>
+                            <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
+                              {exDate.toLocaleDateString('en-US', {
+                                month: 'numeric',
+                                day: 'numeric',
+                                year: '2-digit',
+                              })}
+                            </TableCell>
+                            <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
+                              {recordDate && !isNaN(recordDate.getTime())
+                                ? recordDate.toLocaleDateString('en-US', {
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                    year: '2-digit',
+                                  })
+                                : '_'}
+                            </TableCell>
+                            <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
+                              {payDate && !isNaN(payDate.getTime())
+                                ? payDate.toLocaleDateString('en-US', {
+                                    month: 'numeric',
+                                    day: 'numeric',
+                                    year: '2-digit',
+                                  })
+                                : '_'}
+                            </TableCell>
+                          </TableRow>
+                          {isLastInYear && (
+                            <TableRow className="bg-slate-50 border-t-2 border-slate-300">
+                              <TableCell className="font-semibold text-xs sm:text-sm px-2 sm:px-4 py-2">
+                                Subtotal {year}
+                              </TableCell>
+                              <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
+                                ${yearTotal.toFixed(4)}
+                              </TableCell>
+                              <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
+                                ${yearTotal.toFixed(4)}
+                              </TableCell>
+                              <TableCell colSpan={5} className="px-2 sm:px-4 py-2"></TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </React.Fragment>
