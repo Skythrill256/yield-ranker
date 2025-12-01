@@ -637,33 +637,33 @@ const ETFDetail = () => {
                           name,
                         ]}
                       />
-                      {/* Primary ETF with gradient Area */}
-                      <Area
-                        type="monotone"
-                        dataKey={comparisonETFs.length > 0 
-                          ? (chartType === "totalReturn" ? `return_${etf.symbol}` : `price_${etf.symbol}`)
-                          : "price"
-                        }
-                        stroke={isPositive ? "#10b981" : "#ef4444"}
-                        strokeWidth={3}
-                        fill={`url(#colorPrice-${etf.symbol})`}
-                        fillOpacity={1}
-                        dot={false}
-                        name={etf.symbol}
-                        animationDuration={500}
-                        strokeLinecap="round"
-                      />
-                      {/* Comparison ETFs as Lines */}
-                      {comparisonETFs.map((sym, index) => {
-                        const colors = ["#f97316", "#8b5cf6", "#3b82f6", "#f59e0b"];
+                      {/* Primary ETF with gradient Area (only when no comparisons) */}
+                      {comparisonETFs.length === 0 && (
+                        <Area
+                          type="monotone"
+                          dataKey="price"
+                          stroke={isPositive ? "#10b981" : "#ef4444"}
+                          strokeWidth={3}
+                          fill={`url(#colorPrice-${etf.symbol})`}
+                          fillOpacity={1}
+                          dot={false}
+                          name={etf.symbol}
+                          animationDuration={500}
+                          strokeLinecap="round"
+                        />
+                      )}
+                      {/* All ETFs as Lines (when comparing) */}
+                      {[etf.symbol, ...comparisonETFs].map((sym, index) => {
+                        const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#f59e0b"];
+                        const color = colors[index % colors.length];
                         const dataKey = chartType === "totalReturn" ? `return_${sym}` : `price_${sym}`;
                         return (
                           <Line
                             key={sym}
                             type="monotone"
                             dataKey={dataKey}
-                            stroke={colors[index % colors.length]}
-                            strokeWidth={2.5}
+                            stroke={color}
+                            strokeWidth={index === 0 ? 3 : 2.5}
                             dot={false}
                             name={sym}
                             animationDuration={500}

@@ -1600,46 +1600,53 @@ export default function Dashboard() {
                           name,
                         ]}
                       />
-                      {/* Primary ETF with gradient Area */}
-                      <Area
-                        type="monotone"
-                        dataKey={comparisonETFs.length > 0 
-                          ? (chartType === "totalReturn" ? `return_${selectedETF.symbol}` : `price_${selectedETF.symbol}`)
-                          : "price"
-                        }
-                        stroke={isPositive ? "#10b981" : "#ef4444"}
-                        strokeWidth={3}
-                        fill="url(#colorPricePrimary)"
-                        fillOpacity={1}
-                        dot={false}
-                        name={selectedETF.symbol}
-                        animationDuration={500}
-                        strokeLinecap="round"
-                      />
-                      {/* Comparison ETFs as Lines */}
-                      {comparisonETFs
-                        .filter((s) => s !== selectedETF.symbol)
-                        .map((symbol, index) => {
-                          const colors = ["#f97316", "#8b5cf6", "#3b82f6", "#f59e0b"];
-                          const dataKey =
-                            chartType === "totalReturn"
-                              ? `return_${symbol}`
-                              : `price_${symbol}`;
-                          return (
-                            <Line
-                              key={symbol}
-                              type="monotone"
-                              dataKey={dataKey}
-                              stroke={colors[index % colors.length]}
-                              strokeWidth={2.5}
-                              dot={false}
-                              name={symbol}
-                              animationDuration={500}
-                              animationBegin={(index + 1) * 100}
-                              strokeLinecap="round"
-                            />
-                          );
-                        })}
+                      {/* Primary ETF with gradient Area (only when no comparisons) */}
+                      {comparisonETFs.length === 0 && (
+                        <Area
+                          type="monotone"
+                          dataKey="price"
+                          stroke={isPositive ? "#10b981" : "#ef4444"}
+                          strokeWidth={3}
+                          fill="url(#colorPricePrimary)"
+                          fillOpacity={1}
+                          dot={false}
+                          name={selectedETF.symbol}
+                          animationDuration={500}
+                          strokeLinecap="round"
+                        />
+                      )}
+                      {/* All ETFs as Lines (when comparing) */}
+                      {[
+                        selectedETF.symbol,
+                        ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
+                      ].map((symbol, index) => {
+                        const colors = [
+                          "#3b82f6",
+                          "#f97316",
+                          "#8b5cf6",
+                          "#10b981",
+                          "#f59e0b",
+                        ];
+                        const color = colors[index % colors.length];
+                        const dataKey =
+                          chartType === "totalReturn"
+                            ? `return_${symbol}`
+                            : `price_${symbol}`;
+                        return (
+                          <Line
+                            key={symbol}
+                            type="monotone"
+                            dataKey={dataKey}
+                            stroke={color}
+                            strokeWidth={index === 0 ? 3 : 2.5}
+                            dot={false}
+                            name={symbol}
+                            animationDuration={500}
+                            animationBegin={(index + 1) * 100}
+                            strokeLinecap="round"
+                          />
+                        );
+                      })}
                     </ComposedChart>
                   ) : (
                     <div className="flex items-center justify-center h-full">

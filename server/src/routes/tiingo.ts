@@ -257,8 +257,18 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         }
       }
       
-      // Determine frequency based on days between payments
+      // Determine frequency based on days between payments, but prefer actualPaymentsPerYear if it's clearly monthly
       if (daysBetween !== null) {
+        // If paymentsPerYear is 12 (monthly), prefer 'Mo' unless daysBetween is clearly weekly (< 7 days)
+        if (actualPaymentsPerYear === 12) {
+          if (daysBetween < 7) return 'Week';
+          return 'Mo';
+        }
+        // If paymentsPerYear is 52 (weekly), prefer 'Week'
+        if (actualPaymentsPerYear === 52) {
+          return 'Week';
+        }
+        // Otherwise use daysBetween logic
         if (daysBetween <= 10) return 'Week';
         if (daysBetween <= 35) return 'Mo';
         if (daysBetween <= 95) return 'Qtr';
