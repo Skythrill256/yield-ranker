@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React,{ useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -2951,17 +2951,17 @@ export default function Dashboard() {
                                       className="tabular-nums text-xs text-primary font-medium hover:underline cursor-pointer transition-colors"
                                       title="Click to view dividend history"
                                     >
-                                      {etf.dividend.toFixed(4)}
+                                      {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
                                     </button>
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
                                     {etf.numPayments}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                    ${etf.annualDividend.toFixed(2)}
+                                    {etf.annualDividend != null ? `$${etf.annualDividend.toFixed(2)}` : 'N/A'}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center font-bold tabular-nums text-primary text-xs">
-                                    {(etf.forwardYield || 0).toFixed(1)}%
+                                    {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
                                     {(etf.standardDeviation || 0).toFixed(3)}
