@@ -940,7 +940,7 @@ export default function Dashboard() {
     }, 0);
   };
 
-  type ChartPoint = { [key: string]: number | string };
+  type ChartPoint = { [key: string]: number | string | null };
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
@@ -958,29 +958,46 @@ export default function Dashboard() {
   ];
 
   const sanitizeChartData = useCallback((data: any[]): ChartPoint[] => {
-    if (!Array.isArray(data)) return [];
-    
-    return data.map(point => {
-      const sanitized: ChartPoint = { time: point.time || '', fullDate: point.fullDate || '', timestamp: point.timestamp || 0 };
+    try {
+      if (!Array.isArray(data)) return [];
       
-      for (const key in point) {
-        if (key === 'time' || key === 'fullDate' || key === 'timestamp') continue;
-        
-        const value = point[key];
-        if (value === null || value === undefined) {
-          sanitized[key] = null;
-        } else if (typeof value === 'number') {
-          sanitized[key] = (isNaN(value) || !isFinite(value)) ? null : value;
-        } else if (typeof value === 'string') {
-          const num = parseFloat(value);
-          sanitized[key] = (isNaN(num) || !isFinite(num)) ? null : num;
-        } else {
-          sanitized[key] = null;
+      return data.map(point => {
+        if (!point || typeof point !== 'object') {
+          return { time: '', fullDate: '', timestamp: 0 };
         }
-      }
-      
-      return sanitized;
-    });
+        
+        const sanitized: ChartPoint = { 
+          time: (point.time && typeof point.time === 'string') ? point.time : '', 
+          fullDate: (point.fullDate && typeof point.fullDate === 'string') ? point.fullDate : '', 
+          timestamp: (typeof point.timestamp === 'number' && !isNaN(point.timestamp)) ? point.timestamp : 0 
+        };
+        
+        for (const key in point) {
+          if (key === 'time' || key === 'fullDate' || key === 'timestamp') continue;
+          
+          try {
+            const value = point[key];
+            if (value === null || value === undefined) {
+              sanitized[key] = null;
+            } else if (typeof value === 'number') {
+              sanitized[key] = (isNaN(value) || !isFinite(value)) ? null : value;
+            } else if (typeof value === 'string') {
+              const num = parseFloat(value);
+              sanitized[key] = (isNaN(num) || !isFinite(num)) ? null : num;
+            } else {
+              sanitized[key] = null;
+            }
+          } catch (e) {
+            sanitized[key] = null;
+          }
+        }
+        
+        return sanitized;
+      });
+    } catch (error) {
+      console.error('Error sanitizing chart data:', error);
+      return [];
+    }
   }, []);
 
   useEffect(() => {
@@ -1001,12 +1018,17 @@ export default function Dashboard() {
           selectedTimeframe
         );
         const data = generateChartData(comparison, chartType);
-        if (!data.length) {
+        if (!data || !Array.isArray(data) || !data.length) {
           setChartError("Live chart data is not available for this timeframe.");
           setChartData([]);
           return;
         }
         const sanitized = sanitizeChartData(data);
+        if (!sanitized || !Array.isArray(sanitized) || !sanitized.length) {
+          setChartError("Live chart data is not available for this timeframe.");
+          setChartData([]);
+          return;
+        }
         setChartData(sanitized);
       } catch (error) {
         setChartError("Unable to load live chart data right now.");

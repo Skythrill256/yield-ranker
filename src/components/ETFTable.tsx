@@ -165,7 +165,7 @@ export const ETFTable = ({
                 ETF DETAILS
               </th>
               <th colSpan={returnColumns.length} className="h-7 px-1.5 text-center align-middle font-bold bg-primary/10 text-primary text-sm">
-                TOTAL RETURNS
+                TOTAL RETURNS (DRIP)
               </th>
             </tr>
             <tr className="bg-slate-50">
