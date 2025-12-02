@@ -87,37 +87,37 @@ export const DisclaimerModal = () => {
                 </div>
               </div>
 
-              {/* Mobile: Condensed version with link */}
-              <div className="px-3 md:px-5 py-2 md:py-4 space-y-2 md:hidden">
-                <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-2">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <h3 className="text-xs font-bold text-amber-900">END OF DAY (EOD) DATA NOTICE</h3>
-                      <p className="text-[10px] text-amber-800 leading-tight">
-                        All data is <span className="font-bold">END OF DAY (EOD)</span> and <span className="font-bold">NOT REAL-TIME</span>. 
-                        Data may be delayed.
+              {/* Mobile: Minimal version with Terms link */}
+              <div className="px-4 md:px-5 py-3 md:py-4 space-y-3 md:hidden">
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-sm font-bold text-amber-900 mb-1">END OF DAY (EOD) DATA NOTICE</h3>
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        All data on this website is <span className="font-bold">END OF DAY (EOD)</span> data and <span className="font-bold">IS NOT REAL-TIME</span>. 
+                        Price data, dividends, and returns are updated periodically and may be delayed.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                  <div className="flex items-start gap-2">
-                    <Shield className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2.5">
+                    <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="text-xs font-bold text-blue-900 mb-0.5">IMPORTANT DISCLAIMER</h3>
-                      <p className="text-[10px] text-blue-800 leading-tight mb-1.5">
-                        We are not financial advisors. Educational information only. Not financial advice. 
-                        All investments involve risk. Consult a licensed professional.
+                      <h3 className="text-sm font-bold text-blue-900 mb-1.5">IMPORTANT DISCLAIMER</h3>
+                      <p className="text-xs text-blue-800 leading-relaxed mb-3">
+                        We are not financial advisors. This website provides educational information only and does not constitute financial advice. 
+                        All investments involve risk. You must conduct your own research and consult with a licensed professional before making investment decisions.
                       </p>
                       <Link 
                         to="/terms" 
                         target="_blank"
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 hover:text-blue-900 underline"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900 underline"
                       >
-                        View Full Terms
-                        <ExternalLink className="h-2.5 w-2.5" />
+                        View Full Terms of Service
+                        <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
                     </div>
                   </div>
@@ -216,25 +216,25 @@ export const DisclaimerModal = () => {
                 </div>
               </div>
 
-              <div className="border-t bg-blue-50 px-3 md:px-5 py-2 md:py-3">
-                <div className="flex items-start gap-2 mb-2 md:mb-2.5">
+              <div className="border-t bg-blue-50 px-4 md:px-5 py-3 md:py-3">
+                <div className="flex items-start gap-2.5 mb-3 md:mb-2.5">
                   <input
                     type="checkbox"
                     id="agree"
                     checked={hasAgreed}
                     onChange={(e) => setHasAgreed(e.target.checked)}
-                    className="mt-0.5 h-3.5 w-3.5 md:h-4 md:w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer flex-shrink-0"
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer flex-shrink-0"
                   />
-                  <label htmlFor="agree" className="text-[10px] md:text-xs text-slate-700 leading-tight md:leading-relaxed cursor-pointer">
-                    I have read and understood this disclaimer. I acknowledge all data is END OF DAY and not real-time. 
-                    I understand this is not financial advice and will consult a licensed professional. 
-                    I agree to use this website at my own risk.
+                  <label htmlFor="agree" className="text-xs md:text-xs text-slate-700 leading-relaxed cursor-pointer">
+                    I have read and understood this disclaimer in its entirety. I acknowledge that all data is END OF DAY and not real-time. 
+                    I understand this is not financial advice and I will consult with a licensed professional before making investment decisions. 
+                    I agree to use this website at my own risk and hold the site operators harmless from any losses or damages.
                   </label>
                 </div>
                 <Button
                   onClick={handleAccept}
                   disabled={!hasAgreed}
-                  className="w-full bg-primary hover:bg-primary/90 text-white py-2 md:py-2.5 text-xs md:text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                  className="w-full bg-primary hover:bg-primary/90 text-white py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
                 >
                   I Accept - Continue to Site
                 </Button>
