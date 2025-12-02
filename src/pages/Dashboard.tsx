@@ -957,6 +957,32 @@ export default function Dashboard() {
     },
   ];
 
+  const sanitizeChartData = useCallback((data: any[]): ChartPoint[] => {
+    if (!Array.isArray(data)) return [];
+    
+    return data.map(point => {
+      const sanitized: ChartPoint = { time: point.time || '', fullDate: point.fullDate || '', timestamp: point.timestamp || 0 };
+      
+      for (const key in point) {
+        if (key === 'time' || key === 'fullDate' || key === 'timestamp') continue;
+        
+        const value = point[key];
+        if (value === null || value === undefined) {
+          sanitized[key] = null;
+        } else if (typeof value === 'number') {
+          sanitized[key] = (isNaN(value) || !isFinite(value)) ? null : value;
+        } else if (typeof value === 'string') {
+          const num = parseFloat(value);
+          sanitized[key] = (isNaN(num) || !isFinite(num)) ? null : num;
+        } else {
+          sanitized[key] = null;
+        }
+      }
+      
+      return sanitized;
+    });
+  }, []);
+
   useEffect(() => {
     const buildChartData = async () => {
       if (!selectedETF) {
@@ -980,7 +1006,8 @@ export default function Dashboard() {
           setChartData([]);
           return;
         }
-        setChartData(data);
+        const sanitized = sanitizeChartData(data);
+        setChartData(sanitized);
       } catch (error) {
         setChartError("Unable to load live chart data right now.");
         setChartData([]);
@@ -989,7 +1016,7 @@ export default function Dashboard() {
       }
     };
     buildChartData();
-  }, [selectedETF, comparisonETFs, chartType, selectedTimeframe]);
+  }, [selectedETF, comparisonETFs, chartType, selectedTimeframe, sanitizeChartData]);
 
   useEffect(() => {
     if (selectedETF) {
@@ -1742,9 +1769,15 @@ export default function Dashboard() {
                         domain={chartType === "totalReturn" ? [minValue, maxValue] : [minValue, maxValue]}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(value) => {
-                          if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
-                            return `${value.toFixed(1)}%`;
+                        tickFormatter={(value: any) => {
+                          if (value === null || value === undefined) return '';
+                          const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                          if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                            try {
+                              return `${numValue.toFixed(1)}%`;
+                            } catch (e) {
+                              return '';
+                            }
                           }
                           return '';
                         }}
@@ -1763,10 +1796,17 @@ export default function Dashboard() {
                           fontSize: "12px",
                           marginBottom: "4px",
                         }}
-                        formatter={(value: number | string, name: string) => {
+                        formatter={(value: any, name: string) => {
+                          if (value === null || value === undefined) {
+                            return ['N/A', name];
+                          }
                           const numValue = typeof value === 'number' ? value : parseFloat(String(value));
                           if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
-                            return [`${numValue.toFixed(2)}%`, name];
+                            try {
+                              return [`${numValue.toFixed(2)}%`, name];
+                            } catch (e) {
+                              return ['N/A', name];
+                            }
                           }
                           return ['N/A', name];
                         }}
