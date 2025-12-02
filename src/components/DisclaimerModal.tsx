@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Shield, AlertTriangle, FileText } from "lucide-react";
+import { Shield, AlertTriangle, FileText, ExternalLink } from "lucide-react";
 import { Button } from "./ui/button";
 import { getSiteSettings } from "@/services/admin";
+import { Link } from "react-router-dom";
 
 export const DisclaimerModal = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,7 +87,50 @@ export const DisclaimerModal = () => {
                 </div>
               </div>
 
-              <div className="px-5 py-4 space-y-3 max-h-[42vh] overflow-y-auto">
+              {/* Mobile: Condensed version with link */}
+              <div className="px-5 py-4 space-y-3 md:hidden">
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="space-y-1.5">
+                      <h3 className="text-sm font-bold text-amber-900">END OF DAY (EOD) DATA NOTICE</h3>
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        All data on this website is <span className="font-bold">END OF DAY (EOD)</span> data and <span className="font-bold">IS NOT REAL-TIME</span>. 
+                        Price data, dividends, and returns are updated periodically and may be delayed.
+                      </p>
+                      {dataLastUpdated && (
+                        <p className="text-xs font-semibold text-amber-900 mt-1.5 bg-amber-100 inline-block px-2 py-0.5 rounded">
+                          Last Updated: {dataLastUpdated}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <Shield className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="text-xs font-bold text-blue-900 mb-1">IMPORTANT DISCLAIMER</h3>
+                      <p className="text-xs text-blue-800 leading-relaxed mb-2">
+                        We are not financial advisors. This website provides educational information only and does not constitute financial advice. 
+                        All investments involve risk. You must conduct your own research and consult with a licensed professional before making investment decisions.
+                      </p>
+                      <Link 
+                        to="/terms" 
+                        target="_blank"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-900 underline"
+                      >
+                        View Full Terms of Service
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop: Full version */}
+              <div className="hidden md:block px-5 py-4 space-y-3 max-h-[42vh] overflow-y-auto">
                 <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3">
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
