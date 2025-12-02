@@ -69,10 +69,17 @@ type DatabaseETF = {
 function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
   const symbol = (dbEtf.symbol || dbEtf.ticker || '').toUpperCase().trim();
   const price = dbEtf.price ?? 0;
-  const annualDiv = (dbEtf.annual_dividend ?? dbEtf.annual_div) ?? 0;
-  let forwardYield = dbEtf.forward_yield ?? 0;
   
-  if (price > 0 && annualDiv > 0 && !forwardYield) {
+  // Handle annual dividend - keep null if no data available
+  const annualDiv = dbEtf.annual_dividend ?? dbEtf.annual_div ?? null;
+  
+  // Handle forward yield:
+  // 1. Use database value if present
+  // 2. Calculate from annual dividend if available
+  // 3. Keep null if no data (shows 'N/A' in UI)
+  let forwardYield: number | null = dbEtf.forward_yield ?? null;
+  
+  if (forwardYield === null && price > 0 && annualDiv != null && annualDiv > 0) {
     forwardYield = (annualDiv / price) * 100;
   }
 
@@ -102,7 +109,7 @@ function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
     priceChangePercent: dbEtf.price_change_pct ?? null,
     dividend: (dbEtf.last_dividend ?? dbEtf.dividend) ?? 0,
     numPayments: dbEtf.payments_per_year ?? 12,
-    annualDividend: annualDiv,
+    annualDividend: annualDiv ?? null,
     forwardYield: forwardYield,
     
     // Volatility metrics

@@ -45,7 +45,7 @@ import type { TiingoPriceData, TiingoDividendData } from '../src/types/index.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const LOOKBACK_DAYS = 7; // Days to look back when forcing or first run
+const LOOKBACK_DAYS = 60; // Days to look back when forcing or first run (needs to be enough to capture dividends)
 const BATCH_SIZE = 100;
 
 // ============================================================================
