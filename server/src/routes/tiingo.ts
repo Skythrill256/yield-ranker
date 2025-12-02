@@ -21,6 +21,68 @@ import type { ChartPeriod, RankingWeights, DividendRecord } from '../types/index
 const router = Router();
 
 // ============================================================================
+// Date Estimation Utilities
+// ============================================================================
+
+/**
+ * Add business days to a date (skips weekends)
+ */
+function addBusinessDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  let added = 0;
+  while (added < days) {
+    result.setDate(result.getDate() + 1);
+    const dayOfWeek = result.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      added++;
+    }
+  }
+  return result;
+}
+
+/**
+ * Estimate record date and pay date from ex-dividend date
+ * Based on standard market patterns:
+ * - Record Date: T+1 (1 business day after ex-date)
+ * - Pay Date: Varies by frequency
+ */
+function estimateDividendDates(
+  exDate: string,
+  paymentsPerYear: number
+): { recordDate: string; payDate: string } {
+  const ex = new Date(exDate);
+  
+  // Record date is typically 1 business day after ex-date (T+1 settlement)
+  const recordDate = addBusinessDays(ex, 1);
+  
+  // Pay date varies by dividend frequency
+  let payDaysAfterEx: number;
+  if (paymentsPerYear >= 52) {
+    // Weekly: pay within 3-5 days
+    payDaysAfterEx = 4;
+  } else if (paymentsPerYear >= 12) {
+    // Monthly: pay within 7-10 days
+    payDaysAfterEx = 7;
+  } else if (paymentsPerYear >= 4) {
+    // Quarterly: pay within 14-21 days
+    payDaysAfterEx = 14;
+  } else if (paymentsPerYear >= 2) {
+    // Semi-annual: pay within 21-28 days
+    payDaysAfterEx = 21;
+  } else {
+    // Annual: pay within 28-35 days
+    payDaysAfterEx = 28;
+  }
+  
+  const payDate = addBusinessDays(ex, payDaysAfterEx);
+  
+  return {
+    recordDate: recordDate.toISOString().split('T')[0],
+    payDate: payDate.toISOString().split('T')[0],
+  };
+}
+
+// ============================================================================
 // Price Endpoints
 // ============================================================================
 
@@ -275,18 +337,30 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       annualizedDividend: lastDividend ? lastDividend * actualPaymentsPerYear : null,
       dividendGrowth,
       isLiveData,
-      dividends: dividends.map((d, idx) => ({
-        exDate: d.ex_date,
-        payDate: d.pay_date,
-        recordDate: d.record_date,
-        declareDate: d.declare_date,
-        amount: d.div_cash,
-        adjAmount: d.adj_amount ?? d.div_cash,
-        type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
-        frequency: d.frequency ?? detectFrequencyFromDates(dividends, idx),
-        description: d.description,
-        currency: d.currency ?? 'USD',
-      })),
+      dividends: dividends.map((d, idx) => {
+        // Estimate record/pay dates if missing
+        let recordDate = d.record_date;
+        let payDate = d.pay_date;
+        
+        if (!recordDate || !payDate) {
+          const estimated = estimateDividendDates(d.ex_date, actualPaymentsPerYear);
+          if (!recordDate) recordDate = estimated.recordDate;
+          if (!payDate) payDate = estimated.payDate;
+        }
+        
+        return {
+          exDate: d.ex_date,
+          payDate,
+          recordDate,
+          declareDate: d.declare_date,
+          amount: d.div_cash,
+          adjAmount: d.adj_amount ?? d.div_cash,
+          type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
+          frequency: d.frequency ?? detectFrequencyFromDates(dividends, idx),
+          description: d.description,
+          currency: d.currency ?? 'USD',
+        };
+      }),
     });
   } catch (error) {
     logger.error('Routes', `Error in dividends endpoint: ${(error as Error).message}`);

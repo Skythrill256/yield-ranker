@@ -37,7 +37,8 @@ const calculateDividendMetrics = (payouts: number[], frequency: 'weekly' | 'mont
   }
 
   let cv: number | null = null;
-  if (payouts.length >= 4) {
+  // Reduced from 4 to 2 payments minimum to show volatility for newer ETFs
+  if (payouts.length >= 2) {
     const mean = payouts.reduce((a, b) => a + b, 0) / payouts.length;
     const variance = payouts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (payouts.length - 1);
     cv = (Math.sqrt(variance) / mean) * 100;
@@ -84,16 +85,36 @@ async function main() {
       
       const frequency: 'weekly' | 'monthly' = isWeeklyPayer(ticker) ? 'weekly' : 'monthly';
       
-      const { data: dividends } = await supabase
-        .from('dividends_detail')
-        .select('div_cash, adj_amount, div_type, ex_date')
+      // First try prices_daily (primary source from Tiingo)
+      let { data: priceDividends } = await supabase
+        .from('prices_daily')
+        .select('date, div_cash')
         .eq('ticker', ticker)
-        .order('ex_date', { ascending: false });
+        .gt('div_cash', 0)
+        .order('date', { ascending: false });
       
-      const regularDividends = (dividends || []).filter(d => {
+      // Fallback to dividends_detail if no data in prices_daily
+      let dividends: any[] = [];
+      if (priceDividends && priceDividends.length > 0) {
+        dividends = priceDividends.map(p => ({
+          ex_date: p.date,
+          div_cash: p.div_cash,
+          adj_amount: p.div_cash,
+          div_type: null,
+        }));
+      } else {
+        const { data: detailDividends } = await supabase
+          .from('dividends_detail')
+          .select('div_cash, adj_amount, div_type, ex_date')
+          .eq('ticker', ticker)
+          .order('ex_date', { ascending: false });
+        dividends = detailDividends || [];
+      }
+      
+      const regularDividends = dividends.filter(d => {
         const amount = d.adj_amount ?? d.div_cash;
         if (!amount || amount <= 0) return false;
-        if (!d.div_type) return true;
+        if (!d.div_type) return true; // null type = regular
         const dtype = d.div_type.toLowerCase();
         return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
       });

@@ -136,8 +136,9 @@ function calculateDividendVolatility(
     return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
   });
 
-  // Minimum requirement: at least 4 payments (as per specification)
-  if (regularDivs.length < 4) return nullResult;
+  // Minimum requirement: at least 2 payments to calculate any variance
+  // (relaxed from 4 to show volatility for newer ETFs)
+  if (regularDivs.length < 2) return nullResult;
 
   // 2. Sort by ex_date ascending and use split-adjusted amount
   const sorted = [...regularDivs].sort(
@@ -152,7 +153,7 @@ function calculateDividendVolatility(
     }))
     .filter(d => d.amount > 0); // Ensure all amounts are positive
 
-  if (series.length < 4) return nullResult;
+  if (series.length < 2) return nullResult;
 
   // 3. Use ALL available dividend payment amounts (not just last 12, not filtered by period)
   // This allows new ETFs with 8-14 payments to show volatility
