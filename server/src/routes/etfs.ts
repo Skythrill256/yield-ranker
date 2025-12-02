@@ -635,12 +635,12 @@ router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
 });
 
 // ============================================================================
-// Dividend Dates (Alpha Vantage)
+// Dividend Dates (Tiingo Corporate Actions)
 // ============================================================================
 
 /**
  * GET /api/etfs/:ticker/dividend-dates
- * Fetch dividend record and payment dates from Alpha Vantage
+ * Fetch dividend record and payment dates from Tiingo Corporate Actions API
  */
 router.get('/:ticker/dividend-dates', async (req: Request, res: Response) => {
   try {

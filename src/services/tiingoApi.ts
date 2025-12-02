@@ -189,6 +189,8 @@ export interface DividendDates {
   paymentDate: string | null;
   declarationDate: string | null;
   amount: number;
+  frequency: string | null;
+  annualizedAmount: number | null;
 }
 
 export interface DividendDatesResponse {
@@ -320,7 +322,7 @@ export async function fetchSyncStatus(): Promise<SyncStatus> {
 }
 
 /**
- * Fetch dividend dates (record date, payment date) from Alpha Vantage
+ * Fetch dividend dates (record date, payment date) from Tiingo Corporate Actions API
  */
 export async function fetchDividendDates(
   ticker: string,

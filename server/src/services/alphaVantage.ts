@@ -1,7 +1,9 @@
 /**
- * Alpha Vantage API Service
+ * Tiingo Corporate Actions API Service
  * 
- * Fetches dividend record and payment dates from Alpha Vantage API
+ * Fetches dividend record and payment dates from Tiingo Corporate Actions API
+ * Replaces the previous Alpha Vantage implementation for better data quality
+ * and unified API usage.
  */
 
 import config from '../config/index.js';
@@ -11,12 +13,19 @@ import { logger, sleep } from '../utils/index.js';
 // Types
 // ============================================================================
 
-export interface AlphaVantageDividend {
-  ex_dividend_date: string;
-  declaration_date: string;
-  record_date: string;
-  payment_date: string;
-  amount: string;
+/**
+ * Tiingo Corporate Actions API dividend response
+ * Endpoint: /tiingo/corporate-actions/{ticker}/dividends
+ */
+export interface TiingoCorporateActionDividend {
+  exDate: string;
+  recordDate: string | null;
+  payDate: string | null;
+  declareDate: string | null;
+  distribution: number;           // Split-adjusted dividend amount
+  distributionType: string | null; // e.g., "cash", "stock"
+  distributionFrequency: string | null; // q=quarterly, sa=semi-annual, a=annual, m=monthly, w=weekly
+  splitFactor: number | null;
 }
 
 export interface DividendDates {
@@ -25,14 +34,23 @@ export interface DividendDates {
   paymentDate: string | null;
   declarationDate: string | null;
   amount: number;
+  frequency: string | null;
+  annualizedAmount: number | null;
 }
 
-interface AlphaVantageResponse {
-  symbol?: string;
-  data?: AlphaVantageDividend[];
-  Note?: string;
-  Information?: string;
-}
+// Frequency to annualization factor mapping
+const FREQUENCY_MAP: Record<string, number> = {
+  'q': 4,      // Quarterly
+  'sa': 2,    // Semi-annually
+  'a': 1,     // Annually
+  'm': 12,    // Monthly
+  'w': 52,    // Weekly
+  'bm': 24,   // Bi-monthly
+  'tm': 3,    // Tri-monthly (every 4 months)
+  'ir': 0,    // Irregular
+  'u': 0,     // Unknown
+  'c': 0,     // Continuous
+};
 
 // ============================================================================
 // Rate Limiting State
@@ -43,11 +61,11 @@ let lastRequestTime = 0;
 async function waitForRateLimit(): Promise<void> {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
-  const minDelay = config.alphaVantage.rateLimit.minDelayMs;
+  const minDelay = config.tiingo.rateLimit.minDelayMs;
   
   if (timeSinceLastRequest < minDelay) {
     const waitTime = minDelay - timeSinceLastRequest;
-    logger.debug('AlphaVantage', `Rate limiting: waiting ${waitTime}ms`);
+    logger.debug('TiingoCorporateActions', `Rate limiting: waiting ${waitTime}ms`);
     await sleep(waitTime);
   }
   
@@ -59,56 +77,89 @@ async function waitForRateLimit(): Promise<void> {
 // ============================================================================
 
 /**
- * Fetch dividend history with record and payment dates from Alpha Vantage
+ * Get annualization factor from frequency code
  */
-export async function fetchDividendDates(ticker: string): Promise<DividendDates[]> {
-  if (!config.alphaVantage.apiKey) {
-    logger.warn('AlphaVantage', 'API key not configured');
+function getAnnualizationFactor(frequency: string | null): number {
+  if (!frequency) return 0;
+  const normalizedFreq = frequency.toLowerCase().trim();
+  return FREQUENCY_MAP[normalizedFreq] ?? 0;
+}
+
+/**
+ * Fetch dividend history with record and payment dates from Tiingo Corporate Actions API
+ * This provides better data quality than the basic /tiingo/daily/{ticker}/dividends endpoint
+ */
+export async function fetchDividendDates(
+  ticker: string,
+  startDate?: string,
+  endDate?: string
+): Promise<DividendDates[]> {
+  if (!config.tiingo.apiKey) {
+    logger.warn('TiingoCorporateActions', 'Tiingo API key not configured');
     return [];
   }
 
   await waitForRateLimit();
 
-  const url = `${config.alphaVantage.baseUrl}/query?function=DIVIDENDS&symbol=${ticker.toUpperCase()}&apikey=${config.alphaVantage.apiKey}`;
+  // Build URL with optional date parameters
+  const baseUrl = `${config.tiingo.baseUrl}/tiingo/corporate-actions/${ticker.toUpperCase()}/dividends`;
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  
+  const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Token ${config.tiingo.apiKey}`,
+      },
+    });
     
+    if (response.status === 404) {
+      logger.debug('TiingoCorporateActions', `No corporate actions data for ${ticker}`);
+      return [];
+    }
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    const data = await response.json() as AlphaVantageResponse;
+    const data = await response.json() as TiingoCorporateActionDividend[];
 
-    // Check for rate limit or error messages
-    if (data.Note) {
-      logger.warn('AlphaVantage', `Rate limit note: ${data.Note}`);
+    if (!Array.isArray(data) || data.length === 0) {
+      logger.debug('TiingoCorporateActions', `No dividend data for ${ticker}`);
       return [];
     }
 
-    if (data.Information) {
-      logger.warn('AlphaVantage', `API message: ${data.Information}`);
-      return [];
-    }
+    const dividends: DividendDates[] = data.map((div) => {
+      const annualizationFactor = getAnnualizationFactor(div.distributionFrequency);
+      const annualizedAmount = annualizationFactor > 0 
+        ? div.distribution * annualizationFactor 
+        : null;
 
-    if (!data.data || !Array.isArray(data.data)) {
-      logger.debug('AlphaVantage', `No dividend data for ${ticker}`);
-      return [];
-    }
+      return {
+        exDate: div.exDate,
+        recordDate: div.recordDate || null,
+        paymentDate: div.payDate || null,
+        declarationDate: div.declareDate || null,
+        amount: div.distribution || 0,
+        frequency: div.distributionFrequency || null,
+        annualizedAmount,
+      };
+    });
 
-    const dividends: DividendDates[] = data.data.map((div) => ({
-      exDate: div.ex_dividend_date,
-      recordDate: div.record_date || null,
-      paymentDate: div.payment_date || null,
-      declarationDate: div.declaration_date || null,
-      amount: parseFloat(div.amount) || 0,
-    }));
+    // Sort by ex-date descending (most recent first)
+    dividends.sort((a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime());
 
-    logger.debug('AlphaVantage', `Fetched ${dividends.length} dividend records for ${ticker}`);
+    logger.debug('TiingoCorporateActions', `Fetched ${dividends.length} dividend records for ${ticker}`);
     return dividends;
 
   } catch (error) {
-    logger.error('AlphaVantage', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
+    logger.error('TiingoCorporateActions', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
     return [];
   }
 }
@@ -137,10 +188,48 @@ export async function getUpcomingDividend(ticker: string): Promise<DividendDates
 }
 
 /**
- * Health check for Alpha Vantage API
+ * Get annualized adjusted dividends for CV calculation
+ * Based on the methodology: CV = (SD / Mean) * 100
  */
-export async function alphaVantageHealthCheck(): Promise<boolean> {
-  if (!config.alphaVantage.apiKey) {
+export async function getAnnualizedAdjustedDividends(
+  ticker: string,
+  startDate: string,
+  endDate: string
+): Promise<{ series: number[]; cv: number | null; mean: number | null; stdDev: number | null }> {
+  const dividends = await fetchDividendDates(ticker, startDate, endDate);
+  
+  // Filter to only include regular dividends with valid frequency
+  const annualizedSeries = dividends
+    .filter(div => div.annualizedAmount !== null && div.annualizedAmount > 0)
+    .map(div => div.annualizedAmount as number);
+
+  if (annualizedSeries.length < 2) {
+    return { series: annualizedSeries, cv: null, mean: null, stdDev: null };
+  }
+
+  // Calculate mean
+  const mean = annualizedSeries.reduce((sum, val) => sum + val, 0) / annualizedSeries.length;
+  
+  if (mean === 0) {
+    return { series: annualizedSeries, cv: null, mean: 0, stdDev: null };
+  }
+
+  // Calculate sample standard deviation (ddof=1)
+  const squaredDiffs = annualizedSeries.map(val => Math.pow(val - mean, 2));
+  const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / (annualizedSeries.length - 1);
+  const stdDev = Math.sqrt(variance);
+
+  // Calculate CV as percentage
+  const cv = (stdDev / mean) * 100;
+
+  return { series: annualizedSeries, cv, mean, stdDev };
+}
+
+/**
+ * Health check for Tiingo Corporate Actions API
+ */
+export async function tiingoCorporateActionsHealthCheck(): Promise<boolean> {
+  if (!config.tiingo.apiKey) {
     return false;
   }
 
@@ -151,3 +240,6 @@ export async function alphaVantageHealthCheck(): Promise<boolean> {
     return false;
   }
 }
+
+// Legacy alias for backward compatibility
+export const alphaVantageHealthCheck = tiingoCorporateActionsHealthCheck;

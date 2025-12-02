@@ -54,7 +54,7 @@ type TimeRange = '1Y' | '3Y' | '5Y' | '10Y' | '20Y' | 'ALL';
 
 export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps) {
   const [dividendData, setDividendData] = useState<DividendData | null>(null);
-  const [alphaVantageDates, setAlphaVantageDates] = useState<Map<string, DividendDates>>(new Map());
+  const [corporateActionDates, setCorporateActionDates] = useState<Map<string, DividendDates>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAllRecords, setShowAllRecords] = useState(false);
@@ -174,22 +174,22 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       setError(null);
       
       try {
-        // Fetch Tiingo dividend data and Alpha Vantage dates in parallel
-        const [tiingoData, avDatesResponse] = await Promise.all([
+        // Fetch Tiingo dividend data and corporate actions dates in parallel
+        const [tiingoData, corpActionsResponse] = await Promise.all([
           fetchDividends(ticker, 10),
           fetchDividendDates(ticker).catch(() => ({ dividends: [] as DividendDates[] }))
         ]);
         
         setDividendData(tiingoData);
         
-        // Create a map of ex-date to Alpha Vantage dates for quick lookup
+        // Create a map of ex-date to corporate actions dates for quick lookup
         const datesMap = new Map<string, DividendDates>();
-        avDatesResponse.dividends.forEach((div: DividendDates) => {
+        corpActionsResponse.dividends.forEach((div: DividendDates) => {
           // Normalize date format for matching
           const exDate = div.exDate.split('T')[0];
           datesMap.set(exDate, div);
         });
-        setAlphaVantageDates(datesMap);
+        setCorporateActionDates(datesMap);
         
         if (tiingoData.dividends.length > 0) {
           const firstYear = new Date(tiingoData.dividends[0].exDate).getFullYear();
@@ -551,21 +551,21 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       const isFirstInYear = idx === 0;
                       const isLastInYear = idx === sortedRecords.length - 1;
                       
-                      // Try to get dates from Alpha Vantage first, fall back to Tiingo data
-                      const avDates = alphaVantageDates.get(exDateStr);
+                      // Try to get dates from Tiingo Corporate Actions first, fall back to basic Tiingo data
+                      const corpActionDates = corporateActionDates.get(exDateStr);
                       let payDate: Date | null = null;
                       let recordDate: Date | null = null;
                       
-                      if (avDates?.paymentDate) {
-                        const pd = new Date(avDates.paymentDate);
+                      if (corpActionDates?.paymentDate) {
+                        const pd = new Date(corpActionDates.paymentDate);
                         if (!isNaN(pd.getTime())) payDate = pd;
                       } else if (div.payDate) {
                         const pd = new Date(div.payDate);
                         if (!isNaN(pd.getTime())) payDate = pd;
                       }
                       
-                      if (avDates?.recordDate) {
-                        const rd = new Date(avDates.recordDate);
+                      if (corpActionDates?.recordDate) {
+                        const rd = new Date(corpActionDates.recordDate);
                         if (!isNaN(rd.getTime())) recordDate = rd;
                       } else if (div.recordDate) {
                         const rd = new Date(div.recordDate);
@@ -694,7 +694,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-          })} • Source: Tiingo{alphaVantageDates.size > 0 ? ' + Alpha Vantage' : ''}
+          })} • Source: Tiingo{corporateActionDates.size > 0 ? ' (Corporate Actions)' : ''}
         </p>
       </div>
     </Card>
