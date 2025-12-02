@@ -12,17 +12,14 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   BarChart,
   Bar,
-  LineChart,
   Line,
   ComposedChart,
   CartesianGrid,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Cell,
-  Area,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
