@@ -295,10 +295,10 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         const chartData = dividends.map((div, index, array) => {
           let equivalentWeeklyRate: number | null = null;
           
-          // Ensure amount is a valid number
-          const amount = typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0
+          // Ensure amount is a valid number - use adjAmount as fallback if amount is 0/null
+          const amount = (typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
             ? div.amount
-            : (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0
+            : ((typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
               ? div.adjAmount
               : 0);
           
@@ -342,8 +342,16 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           }
           
           return {
-            ...div,
-            amount: amount, // Ensure amount is always a valid number
+            exDate: div.exDate,
+            amount: Number(amount.toFixed(4)), // Ensure amount is always a valid number with proper precision
+            adjAmount: div.adjAmount,
+            payDate: div.payDate,
+            recordDate: div.recordDate,
+            declareDate: div.declareDate,
+            type: div.type,
+            frequency: div.frequency,
+            description: div.description,
+            currency: div.currency,
             equivalentWeeklyRate: equivalentWeeklyRate !== null && typeof equivalentWeeklyRate === 'number' && !isNaN(equivalentWeeklyRate) && isFinite(equivalentWeeklyRate) ? Number(equivalentWeeklyRate.toFixed(4)) : null,
           };
         }).filter(item => item.amount > 0); // Filter out any items with zero or invalid amounts
