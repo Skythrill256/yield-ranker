@@ -25,6 +25,7 @@ import {
   calculateStdDev,
   normalize,
 } from '../utils/index.js';
+import { logger } from '../utils/index.js';
 import type {
   ETFMetrics,
   ReturnData,
