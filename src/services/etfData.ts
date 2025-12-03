@@ -248,6 +248,7 @@ type ComparisonResponse = {
     [symbol: string]: {
       timestamps: number[];
       closes: number[];
+      adjCloses?: number[];
     };
   };
 };
@@ -290,10 +291,11 @@ export const fetchComparisonData = async (
   const responseData = json.data || {};
   for (const ticker of transformedData.symbols) {
     const tickerData = responseData[ticker] || responseData[ticker.toUpperCase()] || responseData[ticker.toLowerCase()];
-    if (tickerData && tickerData.timestamps && tickerData.adjCloses) {
+    if (tickerData && tickerData.timestamps) {
       transformedData.data[ticker.toUpperCase()] = {
         timestamps: tickerData.timestamps,
-        closes: tickerData.adjCloses,
+        closes: tickerData.closes || tickerData.adjCloses || [],
+        adjCloses: tickerData.adjCloses || tickerData.closes || [],
       };
     }
   }
@@ -363,22 +365,29 @@ export const generateChartData = (
   
   for (const symbol of comparison.symbols) {
     const series = comparison.data[symbol];
-    if (!series || !series.timestamps || !series.closes) continue;
+    if (!series || !series.timestamps) continue;
     
-    for (let i = 0; i < series.timestamps.length; i++) {
+    // Use closes for price return, adjCloses for total return
+    const prices = chartType === "price" 
+      ? (series.closes || [])
+      : (series.adjCloses || series.closes || []);
+    
+    if (!prices || prices.length === 0) continue;
+    
+    for (let i = 0; i < series.timestamps.length && i < prices.length; i++) {
       const ts = series.timestamps[i];
-      const close = series.closes[i];
+      const price = prices[i];
       
-      if (close == null || isNaN(close) || close <= 0) continue;
+      if (price == null || isNaN(price) || price <= 0) continue;
       
       if (!firstValidPrice[symbol]) {
-        firstValidPrice[symbol] = close;
+        firstValidPrice[symbol] = price;
       }
       
       if (!timestampToData.has(ts)) {
         timestampToData.set(ts, new Map());
       }
-      timestampToData.get(ts)!.set(symbol, close);
+      timestampToData.get(ts)!.set(symbol, price);
     }
   }
   

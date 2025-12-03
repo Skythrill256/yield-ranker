@@ -2641,33 +2641,26 @@ export default function Dashboard() {
                           <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
                             Covered Call Option ETFs
                           </h3>
-                          <span className="text-xs text-muted-foreground leading-tight flex items-center gap-1">
-                            {lastDataUpdate ? (
-                              <>
-                                <Clock className="h-3 w-3" />
-                                Last updated: {lastDataUpdate}
-                                <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                              </>
-                            ) : (
-                              <>
-                                Last updated: {lastDataUpdate || 'N/A'}
-                                <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                              </>
-                            )}
+                          <span className="text-xs text-muted-foreground leading-tight flex flex-col gap-0.5">
+                            <span className="flex items-center gap-1">
+                              {lastDataUpdate ? (
+                                <>
+                                  <Clock className="h-3 w-3" />
+                                  Last updated: {lastDataUpdate}
+                                  <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
+                                </>
+                              ) : (
+                                <>
+                                  Last updated: {lastDataUpdate || 'N/A'}
+                                  <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
+                                </>
+                              )}
+                            </span>
+                            <span>Records: {displayedETFs.length}</span>
                           </span>
                         </div>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto md:flex-nowrap">
-                          {/* Search */}
-                          <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                              placeholder="Search ETFs..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
-                            />
-                          </div>
-                          {/* Current Rankings Display */}
+                        <div className="flex flex-col gap-2">
+                          {/* Current Rankings Display - Above button */}
                           {isPremium && (
                             <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 sm:gap-2 flex-wrap">
                               <span className="font-medium">Ranking:</span>
@@ -2680,45 +2673,57 @@ export default function Dashboard() {
                               <span>{totalReturnTimeframe.toUpperCase()}</span>
                             </div>
                           )}
-                          {/* Customize Rankings */}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              if (isGuest) {
-                                setShowUpgradeModal(true);
-                              } else {
-                                setShowRankingPanel(true);
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto md:flex-nowrap">
+                            {/* Search */}
+                            <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Search ETFs..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
+                              />
+                            </div>
+                            {/* Customize Rankings */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (isGuest) {
+                                  setShowUpgradeModal(true);
+                                } else {
+                                  setShowRankingPanel(true);
+                                }
+                              }}
+                              className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
+                            >
+                              <Sliders className="h-4 w-4 mr-2" />
+                              Customize Rankings
+                            </Button>
+                            {/* Favorites - Rightmost */}
+                            <Button
+                              variant={showFavoritesOnly ? "default" : "outline"}
+                              size="sm"
+                              onClick={() =>
+                                setShowFavoritesOnly(!showFavoritesOnly)
                               }
-                            }}
-                            className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
-                          >
-                            <Sliders className="h-4 w-4 mr-2" />
-                            Customize Rankings
-                          </Button>
-                          {/* Favorites - Rightmost */}
-                          <Button
-                            variant={showFavoritesOnly ? "default" : "outline"}
-                            size="sm"
-                            onClick={() =>
-                              setShowFavoritesOnly(!showFavoritesOnly)
-                            }
-                            className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
-                              showFavoritesOnly
-                                ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
-                                : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                            }`}
-                          >
-                            <Star
-                              className={`h-4 w-4 mr-2 ${
+                              className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
                                 showFavoritesOnly
-                                  ? "fill-white"
-                                  : "fill-yellow-400"
+                                  ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
+                                  : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
                               }`}
-                            />
-                            {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
-                            {favorites.size > 0 && `(${favorites.size})`}
-                          </Button>
+                            >
+                              <Star
+                                className={`h-4 w-4 mr-2 ${
+                                  showFavoritesOnly
+                                    ? "fill-white"
+                                    : "fill-yellow-400"
+                                }`}
+                              />
+                              {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
+                              {favorites.size > 0 && `(${favorites.size})`}
+                            </Button>
+                          </div>
                         </div>
                       </div>
 
@@ -2912,12 +2917,12 @@ export default function Dashboard() {
                                   </td>
                                   <td
                                     className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${
-                                      etf.price > etf.ipoPrice
+                                      etf.ipoPrice && etf.price > etf.ipoPrice
                                         ? "bg-green-100 text-green-700"
                                         : ""
                                     }`}
                                   >
-                                    ${etf.ipoPrice.toFixed(2)}
+                                    {etf.ipoPrice != null ? `$${etf.ipoPrice.toFixed(2)}` : 'N/A'}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-foreground">
                                     ${etf.price.toFixed(2)}

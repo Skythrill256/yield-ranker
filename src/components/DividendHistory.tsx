@@ -270,7 +270,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       </div>
 
       {getFilteredDividends.length > 0 && (() => {
-        const dividends = getFilteredDividends.slice().reverse().slice(-50);
+        const dividends = getFilteredDividends.slice().reverse();
         
         // Detect if frequency changed using actual frequency field from API
         const frequencies = dividends

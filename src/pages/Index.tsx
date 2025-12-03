@@ -466,10 +466,12 @@ const Index = () => {
                       <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
                     </>
                   )}
+                  <br />
+                  <span>Records: {filteredETFs.length}</span>
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
-                {/* Current Rankings Display */}
+              <div className="flex flex-col gap-2">
+                {/* Current Rankings Display - Above button */}
                 {isPremium && (
                   <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 sm:gap-2 flex-wrap">
                     <span className="font-medium">Ranking:</span>
@@ -482,43 +484,45 @@ const Index = () => {
                     <span>{totalReturnTimeframe.toUpperCase()}</span>
                   </div>
                 )}
-                {/* Customize Rankings */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (isGuest) {
-                      setShowUpgradeModal(true);
-                    } else {
-                      setShowRankingPanel(true);
-                    }
-                  }}
-                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
-                >
-                  <Sliders className="h-4 w-4 mr-2" />
-                  Customize Rankings
-                </Button>
-                {/* Favorites - Rightmost - Only show for premium users */}
-                {isPremium && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
+                  {/* Customize Rankings */}
                   <Button
-                    variant={showFavoritesOnly ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
-                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
-                      showFavoritesOnly
-                        ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
-                        : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                    }`}
+                    onClick={() => {
+                      if (isGuest) {
+                        setShowUpgradeModal(true);
+                      } else {
+                        setShowRankingPanel(true);
+                      }
+                    }}
+                    className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
                   >
-                    <Star
-                      className={`h-4 w-4 mr-2 ${
-                        showFavoritesOnly ? "fill-white" : "fill-yellow-400"
-                      }`}
-                    />
-                    {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
-                    {favorites.size > 0 && `(${favorites.size})`}
+                    <Sliders className="h-4 w-4 mr-2" />
+                    Customize Rankings
                   </Button>
-                )}
+                  {/* Favorites - Rightmost - Only show for premium users */}
+                  {isPremium && (
+                    <Button
+                      variant={showFavoritesOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                      className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
+                        showFavoritesOnly
+                          ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
+                          : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
+                      }`}
+                    >
+                      <Star
+                        className={`h-4 w-4 mr-2 ${
+                          showFavoritesOnly ? "fill-white" : "fill-yellow-400"
+                        }`}
+                      />
+                      {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
+                      {favorites.size > 0 && `(${favorites.size})`}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
 

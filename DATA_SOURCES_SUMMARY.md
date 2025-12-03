@@ -65,3 +65,5 @@ These metrics are calculated automatically using the data above:
 **Manual Entry Required:** Only 6 fields via Excel upload
 **Automatic Updates:** Prices and dividends update daily via Tiingo API
 
+
+
