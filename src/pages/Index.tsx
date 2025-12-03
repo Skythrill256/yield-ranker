@@ -453,35 +453,27 @@ const Index = () => {
                 <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
                   Covered Call Option ETFs
                 </h3>
-                <p className="text-xs text-muted-foreground leading-tight">
+                <div className="text-xs text-muted-foreground leading-tight space-y-0.5">
                   {lastDataUpdate ? (
-                    <>
-                      <Clock className="h-3 w-3 inline mr-1" />
-                      Last updated: {lastDataUpdate}
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>Last updated: {lastDataUpdate}</span>
                       <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      Last updated: {lastDataUpdate || 'N/A'}
+                    <div>
+                      <span>Last updated: {lastDataUpdate || 'N/A'}</span>
                       <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                    </>
+                    </div>
                   )}
-                  <br />
-                  <span>Records: {filteredETFs.length}</span>
-                </p>
+                  <div>Records: {filteredETFs.length}</div>
+                </div>
               </div>
               <div className="flex flex-col gap-2">
                 {/* Current Rankings Display - Above button */}
                 {isPremium && (
-                  <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 sm:gap-2 flex-wrap">
-                    <span className="font-medium">Ranking:</span>
-                    <span>Yield {yieldWeight}%</span>
-                    <span>•</span>
-                    <span>Volatility {volatilityWeight}%</span>
-                    <span>•</span>
-                    <span>Return {totalReturnWeight}%</span>
-                    <span>•</span>
-                    <span>{totalReturnTimeframe.toUpperCase()}</span>
+                  <div className="text-xs sm:text-sm text-muted-foreground font-medium">
+                    {yieldWeight} {volatilityWeight} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
                   </div>
                 )}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
@@ -501,6 +493,29 @@ const Index = () => {
                     <Sliders className="h-4 w-4 mr-2" />
                     Customize Rankings
                   </Button>
+                  {/* Total Return / Price Return Toggle */}
+                  <div className="inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden">
+                    <button
+                      onClick={() => setReturnView("total")}
+                      className={`px-3 sm:px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                        returnView === "total"
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white"
+                      }`}
+                    >
+                      Total Returns
+                    </button>
+                    <button
+                      onClick={() => setReturnView("price")}
+                      className={`px-3 sm:px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                        returnView === "price"
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100 bg-white"
+                      }`}
+                    >
+                      Price Returns
+                    </button>
+                  </div>
                   {/* Favorites - Rightmost - Only show for premium users */}
                   {isPremium && (
                     <Button
