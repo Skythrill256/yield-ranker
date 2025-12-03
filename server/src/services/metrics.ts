@@ -19,6 +19,7 @@ import {
 import {
   getDateDaysAgo,
   getDateYearsAgo,
+  formatDate,
   calculateReturn,
   calculateMean,
   calculateStdDev,
@@ -274,36 +275,134 @@ function calculateDividendVolatility(
 // ============================================================================
 
 /**
+ * Find the first available price on or after the start date
+ * Returns null if no price exists within a reasonable window (30 days) after start date
+ */
+function findStartPrice(prices: PriceRecord[], startDate: string): PriceRecord | null {
+  if (prices.length === 0) return null;
+  
+  // Prices are already sorted by date ascending
+  // Find first price on or after start date
+  const startPrice = prices.find(p => p.date >= startDate);
+  
+  if (startPrice) return startPrice;
+  
+  // If no price on/after start date, check if we have a price within 30 days
+  // This handles cases where start date falls on a weekend/holiday
+  const startDateObj = new Date(startDate);
+  const maxDate = new Date(startDateObj);
+  maxDate.setDate(maxDate.getDate() + 30);
+  const maxDateStr = formatDate(maxDate);
+  
+  const nearStartPrice = prices.find(p => p.date >= startDate && p.date <= maxDateStr);
+  return nearStartPrice || null;
+}
+
+/**
+ * Find the last available price on or before the end date
+ * Returns null if no price exists within a reasonable window (30 days) before end date
+ */
+function findEndPrice(prices: PriceRecord[], endDate: string): PriceRecord | null {
+  if (prices.length === 0) return null;
+  
+  // Prices are already sorted by date ascending
+  // Filter to prices on or before end date, then get the last one
+  const validPrices = prices.filter(p => p.date <= endDate);
+  
+  if (validPrices.length > 0) {
+    return validPrices[validPrices.length - 1];
+  }
+  
+  // If no price on/before end date, check if we have a price within 30 days before
+  // This handles cases where end date falls on a weekend/holiday
+  const endDateObj = new Date(endDate);
+  const minDate = new Date(endDateObj);
+  minDate.setDate(minDate.getDate() - 30);
+  const minDateStr = formatDate(minDate);
+  
+  const nearEndPrice = prices.filter(p => p.date >= minDateStr && p.date <= endDate).pop();
+  return nearEndPrice || null;
+}
+
+/**
  * Calculate Total Return WITH DRIP using adjusted close prices.
  * Formula: TR_with_DRIP = (P_adj_end / P_adj_start) - 1
+ * Uses the first available price on/after startDate and last available price on/before endDate
  */
-function calculateTotalReturnDrip(prices: PriceRecord[]): number | null {
+function calculateTotalReturnDrip(
+  prices: PriceRecord[],
+  startDate: string,
+  endDate: string
+): number | null {
   if (prices.length < 2) return null;
   
-  const startPrice = prices[0].adj_close;
-  const endPrice = prices[prices.length - 1].adj_close;
+  const startRecord = findStartPrice(prices, startDate);
+  const endRecord = findEndPrice(prices, endDate);
   
-  if (!startPrice || !endPrice || startPrice <= 0) return null;
-  return ((endPrice / startPrice) - 1) * 100;
+  if (!startRecord || !endRecord) return null;
+  
+  const startPrice = startRecord.adj_close;
+  const endPrice = endRecord.adj_close;
+  
+  if (!startPrice || !endPrice || startPrice <= 0 || endPrice <= 0) return null;
+  
+  // Ensure we're not dividing by zero and dates are valid
+  if (startRecord.date > endRecord.date) return null;
+  
+  // Calculate return
+  const returnValue = ((endPrice / startPrice) - 1) * 100;
+  
+  // Sanity check: returns should be reasonable (between -99% and 10000%)
+  // This catches calculation errors or data issues
+  if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
+    logger.warn('Metrics', `Unreasonable total return calculated: ${returnValue}% (start: ${startPrice}, end: ${endPrice}, dates: ${startRecord.date} to ${endRecord.date})`);
+    return null;
+  }
+  
+  return returnValue;
 }
 
 /**
  * Calculate Price Return using unadjusted close prices.
  * Formula: PriceReturn = (P_close_end / P_close_start) - 1
+ * Uses the first available price on/after startDate and last available price on/before endDate
  */
-function calculatePriceReturn(prices: PriceRecord[]): number | null {
+function calculatePriceReturn(
+  prices: PriceRecord[],
+  startDate: string,
+  endDate: string
+): number | null {
   if (prices.length < 2) return null;
   
-  const startPrice = prices[0].close;
-  const endPrice = prices[prices.length - 1].close;
+  const startRecord = findStartPrice(prices, startDate);
+  const endRecord = findEndPrice(prices, endDate);
   
-  if (!startPrice || !endPrice || startPrice <= 0) return null;
-  return ((endPrice / startPrice) - 1) * 100;
+  if (!startRecord || !endRecord) return null;
+  
+  const startPrice = startRecord.close;
+  const endPrice = endRecord.close;
+  
+  if (!startPrice || !endPrice || startPrice <= 0 || endPrice <= 0) return null;
+  
+  // Ensure we're not dividing by zero and dates are valid
+  if (startRecord.date > endRecord.date) return null;
+  
+  // Calculate return
+  const returnValue = ((endPrice / startPrice) - 1) * 100;
+  
+  // Sanity check: returns should be reasonable (between -99% and 10000%)
+  if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
+    logger.warn('Metrics', `Unreasonable price return calculated: ${returnValue}% (start: ${startPrice}, end: ${endPrice}, dates: ${startRecord.date} to ${endRecord.date})`);
+    return null;
+  }
+  
+  return returnValue;
 }
 
 /**
  * Calculate Total Return WITHOUT DRIP (dividends not reinvested).
  * Formula: TR_without_DRIP = ((P_close_end - P_close_start) + TotalDividends) / P_close_start
+ * Uses the first available price on/after startDate and last available price on/before endDate
  */
 function calculateTotalReturnNoDrip(
   prices: PriceRecord[],
@@ -313,17 +412,34 @@ function calculateTotalReturnNoDrip(
 ): number | null {
   if (prices.length < 2) return null;
   
-  const startPrice = prices[0].close;
-  const endPrice = prices[prices.length - 1].close;
+  const startRecord = findStartPrice(prices, startDate);
+  const endRecord = findEndPrice(prices, endDate);
   
-  if (!startPrice || !endPrice || startPrice <= 0) return null;
+  if (!startRecord || !endRecord) return null;
   
-  // Sum dividends paid between start and end dates
+  const startPrice = startRecord.close;
+  const endPrice = endRecord.close;
+  
+  if (!startPrice || !endPrice || startPrice <= 0 || endPrice <= 0) return null;
+  
+  // Ensure dates are valid
+  if (startRecord.date > endRecord.date) return null;
+  
+  // Sum dividends paid between start and end dates (inclusive)
   const totalDividends = dividends
     .filter(d => d.ex_date >= startDate && d.ex_date <= endDate)
-    .reduce((sum, d) => sum + d.div_cash, 0);
+    .reduce((sum, d) => sum + (d.div_cash || 0), 0);
   
-  return (((endPrice - startPrice) + totalDividends) / startPrice) * 100;
+  // Calculate return
+  const returnValue = (((endPrice - startPrice) + totalDividends) / startPrice) * 100;
+  
+  // Sanity check: returns should be reasonable (between -99% and 10000%)
+  if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
+    logger.warn('Metrics', `Unreasonable total return (no DRIP) calculated: ${returnValue}% (start: ${startPrice}, end: ${endPrice}, dividends: ${totalDividends}, dates: ${startRecord.date} to ${endRecord.date})`);
+    return null;
+  }
+  
+  return returnValue;
 }
 
 interface FullReturnData {
@@ -339,12 +455,23 @@ async function calculateReturnsForPeriod(
 ): Promise<FullReturnData> {
   const startDate = getDateDaysAgo(days);
   const endDate = getDateDaysAgo(0);
-  const prices = await getPriceHistory(ticker, startDate);
+  
+  // Get prices from startDate to endDate (inclusive)
+  // We fetch a bit earlier to ensure we have data, then filter
+  const bufferDays = Math.min(7, Math.floor(days * 0.1)); // 10% buffer or 7 days, whichever is less
+  const fetchStartDate = getDateDaysAgo(days + bufferDays);
+  const prices = await getPriceHistory(ticker, fetchStartDate, endDate);
+  
+  // Filter prices to only include those within our actual date range
+  const filteredPrices = prices.filter(p => p.date >= startDate && p.date <= endDate);
+  
+  // If we don't have enough filtered prices, use all prices but ensure we have valid start/end
+  const pricesToUse = filteredPrices.length >= 2 ? filteredPrices : prices;
   
   return {
-    priceDrip: calculateTotalReturnDrip(prices),
-    priceReturn: calculatePriceReturn(prices),
-    priceNoDrip: calculateTotalReturnNoDrip(prices, dividends, startDate, endDate),
+    priceDrip: calculateTotalReturnDrip(pricesToUse, startDate, endDate),
+    priceReturn: calculatePriceReturn(pricesToUse, startDate, endDate),
+    priceNoDrip: calculateTotalReturnNoDrip(pricesToUse, dividends, startDate, endDate),
   };
 }
 
