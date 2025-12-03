@@ -441,30 +441,109 @@ interface FullReturnData {
   priceNoDrip: number | null;  // Total return without DRIP
 }
 
+/**
+ * Get the proper start date for a period using calendar-based calculation.
+ * This matches how financial sites calculate returns (e.g., 1Y = exactly 1 year ago).
+ */
+function getPeriodStartDate(period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y'): string {
+  const now = new Date();
+  
+  switch (period) {
+    case '1W':
+      // 1 week = 7 calendar days ago
+      now.setDate(now.getDate() - 7);
+      break;
+    case '1M':
+      // 1 month ago (same date)
+      now.setMonth(now.getMonth() - 1);
+      break;
+    case '3M':
+      // 3 months ago
+      now.setMonth(now.getMonth() - 3);
+      break;
+    case '6M':
+      // 6 months ago
+      now.setMonth(now.getMonth() - 6);
+      break;
+    case '1Y':
+      // 1 year ago (exactly)
+      now.setFullYear(now.getFullYear() - 1);
+      break;
+    case '3Y':
+      // 3 years ago
+      now.setFullYear(now.getFullYear() - 3);
+      break;
+  }
+  
+  return formatDate(now);
+}
+
+/**
+ * Calculate returns for a specific period using calendar-based dates.
+ * 
+ * Key improvements:
+ * 1. Uses calendar-based periods (1Y = 1 year ago, not 365 days)
+ * 2. End date is the most recent available trading day in the database
+ * 3. Start date finds the nearest trading day to the target period start
+ */
 async function calculateReturnsForPeriod(
   ticker: string,
-  days: number,
+  period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y',
   dividends: DividendRecord[]
 ): Promise<FullReturnData> {
-  const startDate = getDateDaysAgo(days);
-  const endDate = getDateDaysAgo(0);
+  // Get the most recent price to determine actual end date
+  const latestPrices = await getLatestPrice(ticker, 1);
+  if (latestPrices.length === 0) {
+    return { priceDrip: null, priceReturn: null, priceNoDrip: null };
+  }
   
-  // Get prices from startDate to endDate (inclusive)
-  // We fetch a bit earlier to ensure we have data, then filter
-  const bufferDays = Math.min(7, Math.floor(days * 0.1)); // 10% buffer or 7 days, whichever is less
-  const fetchStartDate = getDateDaysAgo(days + bufferDays);
+  // Use the actual latest trading day as end date (not today if it's a weekend)
+  const endDate = latestPrices[latestPrices.length - 1].date;
+  
+  // Calculate start date based on the end date (not today)
+  // This ensures we're measuring exactly 1 year, 6 months, etc. from the last trading day
+  const endDateObj = new Date(endDate);
+  let startDateObj = new Date(endDate);
+  
+  switch (period) {
+    case '1W':
+      startDateObj.setDate(endDateObj.getDate() - 7);
+      break;
+    case '1M':
+      startDateObj.setMonth(endDateObj.getMonth() - 1);
+      break;
+    case '3M':
+      startDateObj.setMonth(endDateObj.getMonth() - 3);
+      break;
+    case '6M':
+      startDateObj.setMonth(endDateObj.getMonth() - 6);
+      break;
+    case '1Y':
+      startDateObj.setFullYear(endDateObj.getFullYear() - 1);
+      break;
+    case '3Y':
+      startDateObj.setFullYear(endDateObj.getFullYear() - 3);
+      break;
+  }
+  
+  const startDate = formatDate(startDateObj);
+  
+  // Fetch prices with a buffer to ensure we find the nearest trading day
+  // Buffer: 10 trading days (~2 weeks) before the target start date
+  const bufferDate = new Date(startDateObj);
+  bufferDate.setDate(bufferDate.getDate() - 14);
+  const fetchStartDate = formatDate(bufferDate);
+  
   const prices = await getPriceHistory(ticker, fetchStartDate, endDate);
   
-  // Filter prices to only include those within our actual date range
-  const filteredPrices = prices.filter(p => p.date >= startDate && p.date <= endDate);
-  
-  // If we don't have enough filtered prices, use all prices but ensure we have valid start/end
-  const pricesToUse = filteredPrices.length >= 2 ? filteredPrices : prices;
+  if (prices.length < 2) {
+    return { priceDrip: null, priceReturn: null, priceNoDrip: null };
+  }
   
   return {
-    priceDrip: calculateTotalReturnDrip(pricesToUse, startDate, endDate),
-    priceReturn: calculatePriceReturn(pricesToUse, startDate, endDate),
-    priceNoDrip: calculateTotalReturnNoDrip(pricesToUse, dividends, startDate, endDate),
+    priceDrip: calculateTotalReturnDrip(prices, startDate, endDate),
+    priceReturn: calculatePriceReturn(prices, startDate, endDate),
+    priceNoDrip: calculateTotalReturnNoDrip(prices, dividends, startDate, endDate),
   };
 }
 
@@ -589,14 +668,14 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     forwardYield = (annualizedDividend / currentPrice) * 100;
   }
   
-  // Calculate returns for all periods
+  // Calculate returns for all periods using calendar-based dates
   const [ret1W, ret1M, ret3M, ret6M, ret1Y, ret3Y] = await Promise.all([
-    calculateReturnsForPeriod(upperTicker, 7, dividends),
-    calculateReturnsForPeriod(upperTicker, 30, dividends),
-    calculateReturnsForPeriod(upperTicker, 90, dividends),
-    calculateReturnsForPeriod(upperTicker, 180, dividends),
-    calculateReturnsForPeriod(upperTicker, 365, dividends),
-    calculateReturnsForPeriod(upperTicker, 1095, dividends),
+    calculateReturnsForPeriod(upperTicker, '1W', dividends),
+    calculateReturnsForPeriod(upperTicker, '1M', dividends),
+    calculateReturnsForPeriod(upperTicker, '3M', dividends),
+    calculateReturnsForPeriod(upperTicker, '6M', dividends),
+    calculateReturnsForPeriod(upperTicker, '1Y', dividends),
+    calculateReturnsForPeriod(upperTicker, '3Y', dividends),
   ]);
   
   return {
