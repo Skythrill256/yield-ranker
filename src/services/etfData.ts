@@ -3,7 +3,9 @@ import { ETF } from "@/types/etf";
 // ...existing code...
 
 const dataCache = new Map<string, { data: ETF; timestamp: number }>();
-const CACHE_DURATION = 30000;
+// Cache duration: 10 seconds to ensure fresh data while reducing API calls
+// Data is updated daily from Tiingo at 8:00 PM EST via daily_update.ts script
+const CACHE_DURATION = 10000;
 
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL || '';
 
