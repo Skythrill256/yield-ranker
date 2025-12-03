@@ -103,15 +103,15 @@ function isWeeklyPayerTicker(ticker: string): boolean {
 }
 
 /**
- * Calculate dividend volatility using actual dividend payment amounts.
- * Industry-standard approach (YCharts, Portfolio Visualizer, etc.):
- * 1. Filter out special dividends
- * 2. Use ACTUAL dividend payment amounts (not annualized)
- * 3. Trim high/low outliers (10% from each end) if enough data
- * 4. Calculate Mean, SD, and CV from actual payment amounts
+ * Calculate dividend volatility using the exact formula:
+ * Dividend Volatility = (Standard Deviation of last 12 monthly dividends) ÷ (Average of last 12 monthly dividends) × 100
  * 
- * This gives true volatility of dividend payments, which is what investors care about.
- * Annualizing payments before calculating CV artificially reduces volatility.
+ * Step-by-step:
+ * 1. Collect the last 12 actual dividend payments (ex-date dividends, not announced ones)
+ * 2. Calculate the average of those 12 dividends
+ * 3. Calculate the standard deviation of those same 12 dividends
+ * 4. Dividend Volatility (%) = (standard deviation ÷ average) × 100
+ * 5. Round to 1 decimal place
  */
 function calculateDividendVolatility(
   dividends: DividendRecord[],
@@ -128,7 +128,11 @@ function calculateDividendVolatility(
   };
 
   // 1. Filter to regular dividends only (exclude special dividends) and filter out zero/null amounts
+  // Use ex-date dividends (ex_date field), not announced ones
   const regularDivs = dividends.filter(d => {
+    // Must have ex_date (ex-date dividend, not just announced)
+    if (!d.ex_date) return false;
+    
     const amount = d.adj_amount ?? d.div_cash;
     if (!amount || amount <= 0) return false; // Exclude zero/null amounts
     
@@ -137,104 +141,66 @@ function calculateDividendVolatility(
     return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
   });
 
-  // Minimum requirement: at least 2 payments to calculate any variance
-  // (relaxed from 4 to show volatility for newer ETFs)
+  // Need at least 2 payments to calculate variance
   if (regularDivs.length < 2) return nullResult;
 
-  // 2. Sort by ex_date ascending and use split-adjusted amount
+  // 2. Sort by ex_date descending (most recent first) to get last 12
   const sorted = [...regularDivs].sort(
-    (a, b) => new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+    (a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
   );
 
-  // Build date-indexed series with amounts (ensure amounts are valid)
-  const series: { date: Date; amount: number }[] = sorted
-    .map(d => ({
-      date: new Date(d.ex_date),
-      amount: d.adj_amount ?? d.div_cash ?? 0,
-    }))
-    .filter(d => d.amount > 0); // Ensure all amounts are positive
+  // 3. Take the last 12 actual dividend payments (most recent 12)
+  const last12Dividends = sorted.slice(0, 12);
 
-  if (series.length < 2) return nullResult;
+  // Build array of amounts from last 12 dividends
+  const dividendAmounts = last12Dividends
+    .map(d => {
+      const amount = d.adj_amount ?? d.div_cash ?? 0;
+      return amount;
+    })
+    .filter(amount => amount > 0); // Ensure all amounts are positive
 
-  // 3. Use ALL available dividend payment amounts (not just last 12, not filtered by period)
-  // This allows new ETFs with 8-14 payments to show volatility
-  const actualDividendAmounts = series.map(d => d.amount);
+  // Need at least 2 payments to calculate
+  if (dividendAmounts.length < 2) return nullResult;
 
-  // 4. Calculate statistics on ACTUAL dividend amounts (not annualized)
-  const n = actualDividendAmounts.length;
-  const mean = calculateMean(actualDividendAmounts);
-  const sd = calculateStdDev(actualDividendAmounts); // Already uses sample std dev (ddof=1)
+  // 4. Calculate the average of those 12 dividends
+  const average = calculateMean(dividendAmounts);
   
-  // Check for valid mean (avoid division by zero)
-  if (mean <= 0.0001 || sd < 0 || isNaN(mean) || isNaN(sd) || !isFinite(mean) || !isFinite(sd)) {
+  // 5. Calculate the standard deviation of those same 12 dividends
+  const standardDeviation = calculateStdDev(dividendAmounts);
+  
+  // Check for valid values (avoid division by zero)
+  if (average <= 0.0001 || standardDeviation < 0 || isNaN(average) || isNaN(standardDeviation) || !isFinite(average) || !isFinite(standardDeviation)) {
     return nullResult;
   }
   
-  // 5. Calculate CV (Coefficient of Variation) = SD / Mean
-  // CV% = CV * 100
-  // This measures relative volatility of ACTUAL dividend payments
-  let cv = sd / mean;
-  let cvPercent = cv * 100;
+  // 6. Calculate Dividend Volatility (%) = (standard deviation ÷ average) × 100
+  const cvPercent = (standardDeviation / average) * 100;
+  const cv = cvPercent / 100;
   
-  // 6. Detect if this is a weekly payer and annualize volatility for comparability
-  // Weekly payers need to be annualized: multiply by sqrt(52/12) ≈ 2.08
-  // Detection: use ticker-based detection first (most reliable), then fall back to date-based
-  let isWeeklyPayer = false;
+  // 7. Round to 1 decimal place
+  const roundedCVPercent = Math.round(cvPercent * 10) / 10;
+  const roundedCV = roundedCVPercent / 100;
   
-  // Primary detection: use ticker-based list (most reliable)
-  if (ticker && isWeeklyPayerTicker(ticker)) {
-    isWeeklyPayer = true;
-  } else if (series.length >= 2) {
-    // Secondary detection: calculate average days between payments
-    let totalDays = 0;
-    let dayCount = 0;
-    for (let i = 0; i < series.length - 1; i++) {
-      const days = (series[i + 1].date.getTime() - series[i].date.getTime()) / (1000 * 60 * 60 * 24);
-      if (days > 0 && days < 400) { // Reasonable range
-        totalDays += days;
-        dayCount++;
-      }
-    }
-    if (dayCount > 0) {
-      const avgDaysBetween = totalDays / dayCount;
-      // Weekly: <= 10 days between payments OR if we have 40+ payments (likely weekly)
-      isWeeklyPayer = avgDaysBetween <= 10 || actualDividendAmounts.length >= 40;
-    } else if (actualDividendAmounts.length >= 40) {
-      // Fallback: if we have 40+ payments, assume weekly
-      isWeeklyPayer = true;
-    }
-  } else if (actualDividendAmounts.length >= 40) {
-    // Fallback: if we have 40+ payments, assume weekly
-    isWeeklyPayer = true;
-  }
-  
-  // Annualize weekly payers: multiply by sqrt(52/12) ≈ 2.08
-  // This makes weekly volatility comparable to monthly volatility
-  // THIS IS THE CRITICAL LINE THAT WAS MISSING FOR SOME FUNDS
-  if (isWeeklyPayer) {
-    const annualizationFactor = Math.sqrt(52 / 12); // ≈ 2.08
-    cvPercent = cvPercent * annualizationFactor;
-    cv = cvPercent / 100;
-  }
-  
-  // Round to 1 decimal place (professional standard)
-  cvPercent = Math.round(cvPercent * 10) / 10;
-  cv = cvPercent / 100;
-  
-  // Annual dividend: calculate from mean of actual payments and average frequency
-  // Detect overall frequency pattern to estimate annual dividend
+  // Calculate annual dividend from the average of last 12 payments
+  // Detect frequency from the payment dates
   let estimatedAnnualDividend: number | null = null;
-  if (series.length >= 2) {
+  if (last12Dividends.length >= 2) {
     // Calculate average days between payments
     let totalDays = 0;
     let dayCount = 0;
-    for (let i = 0; i < series.length - 1; i++) {
-      const days = (series[i + 1].date.getTime() - series[i].date.getTime()) / (1000 * 60 * 60 * 24);
+    const sortedByDate = [...last12Dividends].sort(
+      (a, b) => new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+    );
+    
+    for (let i = 0; i < sortedByDate.length - 1; i++) {
+      const days = (new Date(sortedByDate[i + 1].ex_date).getTime() - new Date(sortedByDate[i].ex_date).getTime()) / (1000 * 60 * 60 * 24);
       if (days > 0 && days < 400) { // Reasonable range
         totalDays += days;
         dayCount++;
       }
     }
+    
     if (dayCount > 0) {
       const avgDaysBetween = totalDays / dayCount;
       let paymentsPerYear: number;
@@ -244,29 +210,27 @@ function calculateDividendVolatility(
       else if (avgDaysBetween <= 185) paymentsPerYear = 2; // Semi-annual
       else paymentsPerYear = 1; // Annual
       
-      estimatedAnnualDividend = mean * paymentsPerYear;
+      estimatedAnnualDividend = average * paymentsPerYear;
     }
   }
   
-  const annualDividend = estimatedAnnualDividend;
-  
   // Generate volatility index label
   let volatilityIndex: string | null = null;
-  if (cvPercent !== null) {
-    if (cvPercent < 5) volatilityIndex = 'Very Low';
-    else if (cvPercent < 10) volatilityIndex = 'Low';
-    else if (cvPercent < 20) volatilityIndex = 'Moderate';
-    else if (cvPercent < 30) volatilityIndex = 'High';
+  if (roundedCVPercent !== null) {
+    if (roundedCVPercent < 5) volatilityIndex = 'Very Low';
+    else if (roundedCVPercent < 10) volatilityIndex = 'Low';
+    else if (roundedCVPercent < 20) volatilityIndex = 'Moderate';
+    else if (roundedCVPercent < 30) volatilityIndex = 'High';
     else volatilityIndex = 'Very High';
   }
 
   return {
-    annualDividend,
-    dividendSD: sd,
-    dividendCV: cv,
-    dividendCVPercent: cvPercent,
+    annualDividend: estimatedAnnualDividend,
+    dividendSD: standardDeviation,
+    dividendCV: roundedCV,
+    dividendCVPercent: roundedCVPercent,
     volatilityIndex,
-    dataPoints: actualDividendAmounts.length,
+    dataPoints: dividendAmounts.length,
   };
 }
 
