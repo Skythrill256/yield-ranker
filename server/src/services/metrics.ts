@@ -270,15 +270,49 @@ function calculateDividendVolatility(
 /**
  * Find the first available price on or after the start date
  * Returns null if no price exists within a reasonable window (30 days) after start date
+ * Also validates that we have sufficient historical data for the requested period
  */
-function findStartPrice(prices: PriceRecord[], startDate: string): PriceRecord | null {
+function findStartPrice(
+  prices: PriceRecord[], 
+  startDate: string, 
+  requestedDays?: number
+): PriceRecord | null {
   if (prices.length === 0) return null;
   
   // Prices are already sorted by date ascending
   // Find first price on or after start date
   const startPrice = prices.find(p => p.date >= startDate);
   
-  if (startPrice) return startPrice;
+  if (startPrice) {
+    // Validate that we have sufficient data for the requested period
+    if (requestedDays !== undefined) {
+      const startDateObj = new Date(startDate);
+      const actualStartDateObj = new Date(startPrice.date);
+      const daysDifference = Math.abs((actualStartDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // If the first available price is more than 60 days after the requested start date,
+      // or if we don't have at least 80% of the requested period's data, return null
+      const maxAllowedGap = Math.min(60, Math.floor(requestedDays * 0.1)); // 10% of period or 60 days, whichever is less
+      const minRequiredDays = Math.floor(requestedDays * 0.8); // Need at least 80% of requested period
+      
+      if (daysDifference > maxAllowedGap) {
+        logger.debug('Metrics', `Insufficient data: first price is ${daysDifference} days after requested start date (max allowed: ${maxAllowedGap} days)`);
+        return null;
+      }
+      
+      // Check if we have enough data points for the requested period
+      const endDate = prices[prices.length - 1]?.date;
+      if (endDate) {
+        const actualPeriodDays = Math.abs((new Date(endDate).getTime() - actualStartDateObj.getTime()) / (1000 * 60 * 60 * 24));
+        if (actualPeriodDays < minRequiredDays) {
+          logger.debug('Metrics', `Insufficient data: only ${actualPeriodDays} days of data available (minimum required: ${minRequiredDays} days)`);
+          return null;
+        }
+      }
+    }
+    
+    return startPrice;
+  }
   
   // If no price on/after start date, check if we have a price within 30 days
   // This handles cases where start date falls on a weekend/holiday
@@ -288,6 +322,18 @@ function findStartPrice(prices: PriceRecord[], startDate: string): PriceRecord |
   const maxDateStr = formatDate(maxDate);
   
   const nearStartPrice = prices.find(p => p.date >= startDate && p.date <= maxDateStr);
+  
+  if (nearStartPrice && requestedDays !== undefined) {
+    // Validate data sufficiency for near price too
+    const actualStartDateObj = new Date(nearStartPrice.date);
+    const daysDifference = Math.abs((actualStartDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+    const maxAllowedGap = Math.min(60, Math.floor(requestedDays * 0.1));
+    
+    if (daysDifference > maxAllowedGap) {
+      return null;
+    }
+  }
+  
   return nearStartPrice || null;
 }
 
@@ -325,11 +371,12 @@ function findEndPrice(prices: PriceRecord[], endDate: string): PriceRecord | nul
 function calculateTotalReturnDrip(
   prices: PriceRecord[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  requestedDays?: number
 ): number | null {
   if (prices.length < 2) return null;
   
-  const startRecord = findStartPrice(prices, startDate);
+  const startRecord = findStartPrice(prices, startDate, requestedDays);
   const endRecord = findEndPrice(prices, endDate);
   
   if (!startRecord || !endRecord) return null;
@@ -363,11 +410,12 @@ function calculateTotalReturnDrip(
 function calculatePriceReturn(
   prices: PriceRecord[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  requestedDays?: number
 ): number | null {
   if (prices.length < 2) return null;
   
-  const startRecord = findStartPrice(prices, startDate);
+  const startRecord = findStartPrice(prices, startDate, requestedDays);
   const endRecord = findEndPrice(prices, endDate);
   
   if (!startRecord || !endRecord) return null;
@@ -401,11 +449,12 @@ function calculateTotalReturnNoDrip(
   prices: PriceRecord[],
   dividends: DividendRecord[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  requestedDays?: number
 ): number | null {
   if (prices.length < 2) return null;
   
-  const startRecord = findStartPrice(prices, startDate);
+  const startRecord = findStartPrice(prices, startDate, requestedDays);
   const endRecord = findEndPrice(prices, endDate);
   
   if (!startRecord || !endRecord) return null;
@@ -462,9 +511,9 @@ async function calculateReturnsForPeriod(
   const pricesToUse = filteredPrices.length >= 2 ? filteredPrices : prices;
   
   return {
-    priceDrip: calculateTotalReturnDrip(pricesToUse, startDate, endDate),
-    priceReturn: calculatePriceReturn(pricesToUse, startDate, endDate),
-    priceNoDrip: calculateTotalReturnNoDrip(pricesToUse, dividends, startDate, endDate),
+    priceDrip: calculateTotalReturnDrip(pricesToUse, startDate, endDate, days),
+    priceReturn: calculatePriceReturn(pricesToUse, startDate, endDate, days),
+    priceNoDrip: calculateTotalReturnNoDrip(pricesToUse, dividends, startDate, endDate, days),
   };
 }
 
