@@ -56,6 +56,41 @@ export function ReturnsComparisonChart({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [finalReturns, setFinalReturns] = useState<Record<string, { total: number; price: number }>>({});
+  const [chartHeight, setChartHeight] = useState(400);
+
+  // Calculate chart height for mobile landscape/portrait
+  useEffect(() => {
+    const calculateChartHeight = () => {
+      const height = window.innerHeight;
+      const width = window.innerWidth;
+      const isLandscape = width > height;
+
+      // Mobile landscape (horizontal) - show more data
+      if (width < 1024 && isLandscape && height < 600) {
+        setChartHeight(Math.max(300, Math.min(400, height * 0.5)));
+      }
+      // Mobile portrait
+      else if (width < 640) {
+        setChartHeight(280);
+      }
+      // Tablet
+      else if (width < 1024) {
+        setChartHeight(350);
+      }
+      // Desktop
+      else {
+        setChartHeight(400);
+      }
+    };
+
+    calculateChartHeight();
+    window.addEventListener("resize", calculateChartHeight);
+    window.addEventListener("orientationchange", calculateChartHeight);
+    return () => {
+      window.removeEventListener("resize", calculateChartHeight);
+      window.removeEventListener("orientationchange", calculateChartHeight);
+    };
+  }, []);
 
   // Load chart data
   useEffect(() => {
@@ -315,7 +350,7 @@ export function ReturnsComparisonChart({
           </div>
         )}
         
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis

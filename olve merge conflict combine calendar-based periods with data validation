@@ -1,0 +1,132 @@
+[1mdiff --cc server/src/services/metrics.ts[m
+[1mindex 5dafe47,0160f06..0000000[m
+[1m--- a/server/src/services/metrics.ts[m
+[1m+++ b/server/src/services/metrics.ts[m
+[36m@@@ -490,30 -442,109 +491,115 @@@[m [minterface FullReturnData [m
+    priceNoDrip: number | null;  // Total return without DRIP[m
+  }[m
+  [m
+[32m+ /**[m
+[32m+  * Get the proper start date for a period using calendar-based calculation.[m
+[32m+  * This matches how financial sites calculate returns (e.g., 1Y = exactly 1 year ago).[m
+[32m+  */[m
+[32m+ function getPeriodStartDate(period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y'): string {[m
+[32m+   const now = new Date();[m
+[32m+   [m
+[32m+   switch (period) {[m
+[32m+     case '1W':[m
+[32m+       // 1 week = 7 calendar days ago[m
+[32m+       now.setDate(now.getDate() - 7);[m
+[32m+       break;[m
+[32m+     case '1M':[m
+[32m+       // 1 month ago (same date)[m
+[32m+       now.setMonth(now.getMonth() - 1);[m
+[32m+       break;[m
+[32m+     case '3M':[m
+[32m+       // 3 months ago[m
+[32m+       now.setMonth(now.getMonth() - 3);[m
+[32m+       break;[m
+[32m+     case '6M':[m
+[32m+       // 6 months ago[m
+[32m+       now.setMonth(now.getMonth() - 6);[m
+[32m+       break;[m
+[32m+     case '1Y':[m
+[32m+       // 1 year ago (exactly)[m
+[32m+       now.setFullYear(now.getFullYear() - 1);[m
+[32m+       break;[m
+[32m+     case '3Y':[m
+[32m+       // 3 years ago[m
+[32m+       now.setFullYear(now.getFullYear() - 3);[m
+[32m+       break;[m
+[32m+   }[m
+[32m+   [m
+[32m+   return formatDate(now);[m
+[32m+ }[m
+[32m+ [m
+[32m+ /**[m
+[32m+  * Calculate returns for a specific period using calendar-based dates.[m
+[32m+  * [m
+[32m+  * Key improvements:[m
+[32m+  * 1. Uses calendar-based periods (1Y = 1 year ago, not 365 days)[m
+[32m+  * 2. End date is the most recent available trading day in the database[m
+[32m+  * 3. Start date finds the nearest trading day to the target period start[m
+[32m+  */[m
+  async function calculateReturnsForPeriod([m
+    ticker: string,[m
+[31m-   days: number,[m
+[32m+   period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y',[m
+    dividends: DividendRecord[][m
+  ): Promise<FullReturnData> {[m
+[31m-   const startDate = getDateDaysAgo(days);[m
+[31m-   const endDate = getDateDaysAgo(0);[m
+[32m+   // Get the most recent price to determine actual end date[m
+[32m+   const latestPrices = await getLatestPrice(ticker, 1);[m
+[32m+   if (latestPrices.length === 0) {[m
+[32m+     return { priceDrip: null, priceReturn: null, priceNoDrip: null };[m
+[32m+   }[m
+    [m
+[31m-   // Get prices from startDate to endDate (inclusive)[m
+[31m-   // We fetch a bit earlier to ensure we have data, then filter[m
+[31m-   const bufferDays = Math.min(7, Math.floor(days * 0.1)); // 10% buffer or 7 days, whichever is less[m
+[31m-   const fetchStartDate = getDateDaysAgo(days + bufferDays);[m
+[31m-   const prices = await getPriceHistory(ticker, fetchStartDate, endDate);[m
+[32m+   // Use the actual latest trading day as end date (not today if it's a weekend)[m
+[32m+   const endDate = latestPrices[latestPrices.length - 1].date;[m
+    [m
+[31m-   // Filter prices to only include those within our actual date range[m
+[31m-   const filteredPrices = prices.filter(p => p.date >= startDate && p.date <= endDate);[m
+[32m+   // Calculate start date based on the end date (not today)[m
+[32m+   // This ensures we're measuring exactly 1 year, 6 months, etc. from the last trading day[m
+[32m+   const endDateObj = new Date(endDate);[m
+[32m+   let startDateObj = new Date(endDate);[m
+    [m
+[31m-   // If we don't have enough filtered prices, use all prices but ensure we have valid start/end[m
+[31m-   const pricesToUse = filteredPrices.length >= 2 ? filteredPrices : prices;[m
+[32m+   switch (period) {[m
+[32m+     case '1W':[m
+[32m+       startDateObj.setDate(endDateObj.getDate() - 7);[m
+[32m+       break;[m
+[32m+     case '1M':[m
+[32m+       startDateObj.setMonth(endDateObj.getMonth() - 1);[m
+[32m+       break;[m
+[32m+     case '3M':[m
+[32m+       startDateObj.setMonth(endDateObj.getMonth() - 3);[m
+[32m+       break;[m
+[32m+     case '6M':[m
+[32m+       startDateObj.setMonth(endDateObj.getMonth() - 6);[m
+[32m+       break;[m
+[32m+     case '1Y':[m
+[32m+       startDateObj.setFullYear(endDateObj.getFullYear() - 1);[m
+[32m+       break;[m
+[32m+     case '3Y':[m
+[32m+       startDateObj.setFullYear(endDateObj.getFullYear() - 3);[m
+[32m+       break;[m
+[32m+   }[m
+[32m+   [m
+[32m+   const startDate = formatDate(startDateObj);[m
+[32m+   [m
+[32m+   // Fetch prices with a buffer to ensure we find the nearest trading day[m
+[32m+   // Buffer: 10 trading days (~2 weeks) before the target start date[m
+[32m+   const bufferDate = new Date(startDateObj);[m
+[32m+   bufferDate.setDate(bufferDate.getDate() - 14);[m
+[32m+   const fetchStartDate = formatDate(bufferDate);[m
+[32m+   [m
+[32m+   const prices = await getPriceHistory(ticker, fetchStartDate, endDate);[m
+[32m+   [m
+[32m+   if (prices.length < 2) {[m
+[32m+     return { priceDrip: null, priceReturn: null, priceNoDrip: null };[m
+[32m+   }[m
+    [m
+    return {[m
+[32m++<<<<<<< HEAD[m
+[32m +    priceDrip: calculateTotalReturnDrip(pricesToUse, startDate, endDate, days),[m
+[32m +    priceReturn: calculatePriceReturn(pricesToUse, startDate, endDate, days),[m
+[32m +    priceNoDrip: calculateTotalReturnNoDrip(pricesToUse, dividends, startDate, endDate, days),[m
+[32m++=======[m
+[32m+     priceDrip: calculateTotalReturnDrip(prices, startDate, endDate),[m
+[32m+     priceReturn: calculatePriceReturn(prices, startDate, endDate),[m
+[32m+     priceNoDrip: calculateTotalReturnNoDrip(prices, dividends, startDate, endDate),[m
+[32m++>>>>>>> d4ffac03887be777fb2ce2d192ecb069eda1d9ba[m
+    };[m
+  }[m
+  [m

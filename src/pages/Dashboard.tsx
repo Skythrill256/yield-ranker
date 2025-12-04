@@ -435,11 +435,11 @@ export default function Dashboard() {
       const width = window.innerWidth;
       const isLandscape = width > height;
 
-      // Mobile landscape (horizontal)
+      // Mobile landscape (horizontal) - show more data
       if (width < 1024 && isLandscape && height < 600) {
-        setChartHeight(Math.min(250, height * 0.4));
+        setChartHeight(Math.max(300, Math.min(400, height * 0.5)));
       }
-      // Mobile portrait or larger screens
+      // Mobile portrait
       else if (width < 640) {
         setChartHeight(280);
       }
@@ -1799,7 +1799,7 @@ export default function Dashboard() {
                 <div className="flex flex-col lg:flex-row gap-4">
                   {/* Chart Area */}
                   <div className="flex-1 min-w-0 order-2 lg:order-1">
-                    <ResponsiveContainer width="100%" height={400}>
+                    <ResponsiveContainer width="100%" height={chartHeight}>
                       {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
                         <ComposedChart 
                           key={`chart-${selectedETF.symbol}-${chartType}-${selectedTimeframe}`}
@@ -1952,8 +1952,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Right Side - Return Percentages Legend */}
-                <div className="w-full lg:w-52 flex-shrink-0 bg-slate-50 rounded-lg p-4 border border-slate-200 order-1 lg:order-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                <div className="w-full lg:w-52 flex-shrink-0 bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200 order-1 lg:order-2">
+                  <h4 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 sm:mb-3">
                     {chartType === "totalReturn" ? "Total Return" : "Price Return"} ({selectedTimeframe})
                   </h4>
                   
@@ -1962,7 +1962,7 @@ export default function Dashboard() {
                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {[
                         selectedETF.symbol,
                         ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
@@ -2026,19 +2026,19 @@ export default function Dashboard() {
                         const isPositiveReturn = returnValue !== null && returnValue >= 0;
                         
                         return (
-                          <div key={sym} className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div key={sym} className="flex items-center justify-between gap-2 sm:gap-3 py-1">
+                            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-shrink">
                               <div 
-                                className="w-3 h-3 rounded-full" 
+                                className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0" 
                                 style={{ backgroundColor: color }}
                               />
-                              <span className="font-semibold text-sm">{sym}</span>
+                              <span className="font-semibold text-xs sm:text-sm truncate">{sym}</span>
                             </div>
-                            <span className={`font-bold text-sm ${
+                            <span className={`font-bold text-xs sm:text-sm tabular-nums whitespace-nowrap flex-shrink-0 ${
                               isPositiveReturn ? "text-green-600" : "text-red-600"
                             }`}>
                               {returnValue != null && typeof returnValue === 'number' && !isNaN(returnValue) && isFinite(returnValue)
-                                ? `${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(2)}%`
+                                ? `${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(1)}%`
                                 : 'N/A'
                               }
                             </span>

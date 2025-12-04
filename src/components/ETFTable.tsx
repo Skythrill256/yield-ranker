@@ -157,7 +157,7 @@ export const ETFTable = ({
   return (
     <div className="rounded-lg sm:rounded-xl border-2 border-border/50 shadow-card bg-card overflow-hidden">
       <RadioGroup value={selectedSymbol} onValueChange={handleSelectionChange}>
-        <div className="max-h-[calc(100vh-150px)] sm:max-h-[calc(100vh-200px)] overflow-auto touch-auto">
+        <div className="max-h-[calc(100vh-150px)] sm:max-h-[calc(100vh-200px)] overflow-x-auto overflow-y-auto touch-auto">
           <table className="w-full caption-bottom text-xs min-w-max">
           <thead className="sticky top-0 z-50 bg-slate-50 shadow-sm border-b-2 border-slate-200">
             <tr className="bg-slate-50">
@@ -169,7 +169,7 @@ export const ETFTable = ({
               </th>
             </tr>
             <tr className="bg-slate-50">
-              <th className="h-7 px-1.5 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
+              <th className="h-7 px-1.5 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
                 <Tooltip delayDuration={200}>
                   <TooltipTrigger asChild>
                     <button
@@ -189,7 +189,7 @@ export const ETFTable = ({
                   </TooltipContent>
                 </Tooltip>
               </th>
-              <th className="h-7 px-1.5 text-left sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs">
+              <th className="h-7 px-1.5 sm:px-2 text-left sticky left-[28px] z-30 bg-slate-50 border-r border-slate-200 text-xs shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]">
                 <SortButton field="symbol">Symbol</SortButton>
               </th>
               <th className="h-7 px-1.5 text-left bg-slate-50 text-xs">
@@ -277,7 +277,7 @@ export const ETFTable = ({
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
                   <td 
-                    className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 border-r border-slate-200 transition-all cursor-pointer"
+                    className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 bg-white border-r border-slate-200 transition-all cursor-pointer shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]"
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleFavorite(etf.symbol);
@@ -294,20 +294,20 @@ export const ETFTable = ({
                   </td>
                   <td
                     data-symbol-cell
-                    className="py-1 px-1.5 align-middle sticky left-0 z-10 border-r border-slate-200 font-bold text-primary text-xs transition-all"
+                    className="py-1 px-1.5 sm:px-2 align-middle sticky left-[28px] z-10 bg-white border-r border-slate-200 font-bold text-primary text-xs transition-all shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]"
                   >
                     <button
                       onClick={() => navigate(`/etf/${etf.symbol}`)}
-                      className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1"
+                      className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap"
                       title={`View ${etf.symbol} details and charts`}
                     >
                       {etf.symbol}
                     </button>
                   </td>
-                  <td className="py-1 px-1.5 align-middle text-xs text-muted-foreground uppercase font-medium">
+                  <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
                     {etf.issuer}
                   </td>
-                  <td className="py-1 px-1.5 align-middle max-w-[120px] truncate text-xs text-muted-foreground">
+                  <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[120px] sm:max-w-[150px] truncate text-xs text-muted-foreground min-w-[100px] sm:min-w-[120px]">
                     {etf.description}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center text-xs text-muted-foreground">
@@ -381,7 +381,7 @@ export const ETFTable = ({
                     return (
                       <td
                         key={`${etf.symbol}-${String(col.key)}`}
-                        className={`py-1 px-1.5 align-middle text-center font-bold tabular-nums text-xs ${valueClass} ${
+                        className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[60px] sm:min-w-[70px] ${
                           colIndex === returnColumns.length - 1
                             ? "border-r-2 border-slate-300"
                             : ""
