@@ -471,8 +471,13 @@ const Index = () => {
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
-                  {/* Customize Rankings with ranking numbers positioned below */}
-                  <div className="flex flex-col items-center">
+                  {/* Customize Rankings with ranking numbers positioned above without affecting alignment */}
+                  <div className="relative">
+                    {isPremium && (
+                      <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
+                        {yieldWeight} {volatilityWeight} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
+                      </div>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -488,11 +493,6 @@ const Index = () => {
                       <Sliders className="h-4 w-4 mr-2" />
                       Customize Rankings
                     </Button>
-                    {isPremium && (
-                      <div className="text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap mt-0.5">
-                        {yieldWeight} {volatilityWeight} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
-                      </div>
-                    )}
                   </div>
                   {/* Total Return / Price Return Toggle - 50/50 split with blue background */}
                   <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
