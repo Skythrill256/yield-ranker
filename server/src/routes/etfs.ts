@@ -16,7 +16,7 @@ import type { ETFStaticRecord } from '../types/index.js';
 import { calculateMetrics } from '../services/metrics.js';
 import { fetchDividendDates, getLatestDividendDates } from '../services/alphaVantage.js';
 
-const router = Router();
+const router: Router = Router();
 
 // ============================================================================
 // File Upload Configuration

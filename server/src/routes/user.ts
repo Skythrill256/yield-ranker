@@ -8,7 +8,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { getSupabase } from '../services/database.js';
 import { logger } from '../utils/index.js';
 
-const router = Router();
+const router: Router = Router();
 
 // ============================================================================
 // Types
