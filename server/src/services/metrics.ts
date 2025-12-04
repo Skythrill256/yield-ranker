@@ -725,11 +725,12 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     actualPaymentsPerYear = 12;
   }
   
-  // Calculate annual dividend: simple calculation using last dividend * payments per year
-  // This uses the CURRENT payment frequency, not a mixed count
+  // Calculate annual dividend: Div × #Pmt
+  // Use the database payments_per_year value, not the detected frequency
+  // Formula: Annual Div = Dividend per payment × Number of payments per year
   let annualizedDividend: number | null = null;
-  if (lastDividend && lastDividend > 0 && actualPaymentsPerYear > 0) {
-    annualizedDividend = lastDividend * actualPaymentsPerYear;
+  if (lastDividend && lastDividend > 0 && paymentsPerYear > 0) {
+    annualizedDividend = lastDividend * paymentsPerYear;
   }
   
   // Calculate forward yield
