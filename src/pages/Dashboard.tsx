@@ -1972,7 +1972,8 @@ export default function Dashboard() {
                         const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
                         const color = colors[index % colors.length];
                         
-                        const compareETF = rankedETFs.find((e) => e.symbol === sym);
+                        // Use the same data source as the table (uniqueSymbolETFs) to ensure consistency
+                        const compareETF = uniqueSymbolETFs.find((e) => e.symbol === sym) || rankedETFs.find((e) => e.symbol === sym);
                         let returnValue: number | null = null;
                         
                         if (compareETF) {
