@@ -2986,7 +2986,17 @@ export default function Dashboard() {
                                     {etf.numPayments}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                    {etf.annualDividend != null ? `$${etf.annualDividend.toFixed(2)}` : 'N/A'}
+                                    {(() => {
+                                      // Calculate Annual Div = Div × #Pmt to ensure accuracy
+                                      const calculatedAnnualDiv = etf.dividend && etf.numPayments 
+                                        ? etf.dividend * etf.numPayments 
+                                        : null;
+                                      // Use calculated value if available, fallback to database value
+                                      const annualDiv = calculatedAnnualDiv ?? etf.annualDividend;
+                                      return annualDiv != null && annualDiv > 0 
+                                        ? `$${annualDiv.toFixed(2)}` 
+                                        : 'N/A';
+                                    })()}
                                   </td>
                                   <td className="py-0.5 px-1 align-middle text-center font-bold tabular-nums text-primary text-xs">
                                     {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
