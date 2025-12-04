@@ -2023,9 +2023,17 @@ export default function Dashboard() {
                   <div className="text-center p-3 bg-slate-50 rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">Annual Dividend</p>
                     <p className="text-xl font-bold text-green-600">
-                      {selectedETF.annualDividend != null && typeof selectedETF.annualDividend === 'number' && !isNaN(selectedETF.annualDividend) && isFinite(selectedETF.annualDividend)
-                        ? `$${selectedETF.annualDividend.toFixed(2)}`
-                        : 'N/A'}
+                      {(() => {
+                        // Calculate Annual Div = Div × #Pmt to ensure accuracy
+                        const calculatedAnnualDiv = selectedETF.dividend && selectedETF.numPayments 
+                          ? selectedETF.dividend * selectedETF.numPayments 
+                          : null;
+                        // Use calculated value if available, fallback to database value
+                        const annualDiv = calculatedAnnualDiv ?? selectedETF.annualDividend;
+                        return annualDiv != null && typeof annualDiv === 'number' && !isNaN(annualDiv) && isFinite(annualDiv) && annualDiv > 0
+                          ? `$${annualDiv.toFixed(2)}`
+                          : 'N/A';
+                      })()}
                     </p>
                   </div>
                   <div className="text-center p-3 bg-slate-50 rounded-lg">
