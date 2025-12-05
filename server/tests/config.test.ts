@@ -14,7 +14,7 @@ describe('Configuration', () => {
       NODE_ENV: 'test',
       SUPABASE_URL: 'https://test.supabase.co',
       SUPABASE_SERVICE_ROLE_KEY: 'test-service-key-12345678901234567890',
-      TIINGO_API_KEY: 'test-tiingo-api-key-12345678901234567890',
+      FMP_API_KEY: 'test-fmp-api-key-12345678901234567890',
       PORT: '4001',
     };
   });
@@ -31,7 +31,7 @@ describe('Configuration', () => {
     it('should have required environment variables', () => {
       expect(process.env.SUPABASE_URL).toBeDefined();
       expect(process.env.SUPABASE_SERVICE_ROLE_KEY).toBeDefined();
-      expect(process.env.TIINGO_API_KEY).toBeDefined();
+      expect(process.env.FMP_API_KEY).toBeDefined();
     });
   });
 
@@ -49,18 +49,18 @@ describe('Configuration', () => {
       expect(config.supabase.serviceKey).toBeDefined();
     });
 
-    it('should have tiingo configuration', async () => {
+    it('should have fmp configuration', async () => {
       const { config } = await import('../src/config/index.js');
-      expect(config.tiingo).toBeDefined();
-      expect(config.tiingo.apiKey).toBeDefined();
-      expect(config.tiingo.baseUrl).toBe('https://api.tiingo.com');
+      expect(config.fmp).toBeDefined();
+      expect(config.fmp.apiKey).toBeDefined();
+      expect(config.fmp.baseUrl).toBe('https://financialmodelingprep.com');
     });
 
     it('should have rate limit configuration', async () => {
       const { config } = await import('../src/config/index.js');
-      expect(config.tiingo.rateLimit).toBeDefined();
-      expect(config.tiingo.rateLimit.requestsPerHour).toBeGreaterThan(0);
-      expect(config.tiingo.rateLimit.minDelayMs).toBeGreaterThan(0);
+      expect(config.fmp.rateLimit).toBeDefined();
+      expect(config.fmp.rateLimit.requestsPerDay).toBeGreaterThan(0);
+      expect(config.fmp.rateLimit.minDelayMs).toBeGreaterThan(0);
     });
 
     it('should have upload configuration', async () => {

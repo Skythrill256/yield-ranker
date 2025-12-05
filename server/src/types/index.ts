@@ -3,63 +3,69 @@
  */
 
 // ============================================================================
-// Tiingo API Types
+// FMP API Types
 // ============================================================================
 
-export interface TiingoPriceData {
+export interface FMPPriceData {
   date: string;
   open: number;
   high: number;
   low: number;
   close: number;
   volume: number;
-  adjOpen: number;
-  adjHigh: number;
-  adjLow: number;
   adjClose: number;
-  adjVolume: number;
-  divCash: number;
-  splitFactor: number;
+  adjOpen?: number;
+  adjHigh?: number;
+  adjLow?: number;
+  adjVolume?: number;
+  unadjustedVolume?: number;
+  change: number;
+  changePercent: number;
+  vwap: number;
+  label: string;
+  changeOverTime: number;
 }
 
-export interface TiingoDividendData {
-  exDate: string;
-  paymentDate: string | null;  // Tiingo API uses paymentDate, not payDate
+export interface FMPDividendData {
+  date: string;           // Ex-dividend date
+  label: string;
+  adjDividend: number;    // Split-adjusted dividend
+  dividend: number;       // Original dividend amount
   recordDate: string | null;
-  declareDate: string | null;
-  divCash: number;
-  splitFactor: number;
+  paymentDate: string | null;
+  declarationDate: string | null;
 }
 
-export interface TiingoMetaData {
-  ticker: string;
+export interface FMPQuote {
+  symbol: string;
   name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  exchangeCode: string;
+  price: number;
+  changesPercentage: number;
+  change: number;
+  dayLow: number;
+  dayHigh: number;
+  yearHigh: number;
+  yearLow: number;
+  marketCap: number;
+  priceAvg50: number;
+  priceAvg200: number;
+  exchange: string;
+  volume: number;
+  avgVolume: number;
+  open: number;
+  previousClose: number;
+  eps: number;
+  pe: number;
+  earningsAnnouncement: string | null;
+  sharesOutstanding: number;
+  timestamp: number;
 }
 
-// Tiingo IEX Real-time Quote Data
-export interface TiingoIEXQuote {
-  ticker: string;
-  timestamp: string;
-  lastSaleTimestamp: string;
-  quoteTimestamp: string;
-  last: number;
-  lastSize: number;
-  tngoLast: number;
-  prevClose: number;
-  open: number;
-  high: number;
-  low: number;
-  mid: number;
-  volume: number;
-  bidSize: number;
-  bidPrice: number;
-  askSize: number;
-  askPrice: number;
-}
+// Legacy type aliases for backward compatibility in routes
+export type TiingoPriceData = FMPPriceData & { adjClose: number; divCash: number; splitFactor: number };
+export type TiingoDividendData = FMPDividendData & { exDate: string; divCash: number; splitFactor: number };
+export type TiingoIEXQuote = FMPQuote & { ticker: string; tngoLast: number; prevClose: number; lastSaleTimestamp: string };
+export type TiingoMetaData = FMPQuote;
 
 // ============================================================================
 // Database Record Types
@@ -109,26 +115,26 @@ export interface ETFStaticRecord {
   payments_per_year: number | null;
   ipo_price: number | null;
   default_rank_weights: Record<string, number> | null;
-  
+
   // Live price fields
   price: number | null;
   price_change: number | null;
   price_change_pct: number | null;
-  
+
   // Dividend + frequency fields
   last_dividend: number | null;
   annual_dividend: number | null;   // Rolling 365-day sum
   forward_yield: number | null;
-  
+
   // Volatility metrics (frequency-proof)
   dividend_sd: number | null;
   dividend_cv: number | null;
   dividend_cv_percent: number | null;
   dividend_volatility_index: string | null;
-  
+
   // Ranking
   weighted_rank: number | null;
-  
+
   // Total Return WITH DRIP
   tr_drip_3y: number | null;
   tr_drip_12m: number | null;
@@ -136,7 +142,7 @@ export interface ETFStaticRecord {
   tr_drip_3m: number | null;
   tr_drip_1m: number | null;
   tr_drip_1w: number | null;
-  
+
   // Price Return (non-DRIP)
   price_return_3y: number | null;
   price_return_12m: number | null;
@@ -144,7 +150,7 @@ export interface ETFStaticRecord {
   price_return_3m: number | null;
   price_return_1m: number | null;
   price_return_1w: number | null;
-  
+
   // Total Return WITHOUT DRIP
   tr_nodrip_3y: number | null;
   tr_nodrip_12m: number | null;
@@ -152,11 +158,11 @@ export interface ETFStaticRecord {
   tr_nodrip_3m: number | null;
   tr_nodrip_1m: number | null;
   tr_nodrip_1w: number | null;
-  
+
   // 52-week range
   week_52_high: number | null;
   week_52_low: number | null;
-  
+
   // Metadata
   last_updated: string | null;
   data_source: string | null;
@@ -193,22 +199,22 @@ export interface ETFMetrics {
   priceChangePercent: number | null;
   week52High: number | null;
   week52Low: number | null;
-  
+
   // Dividend data
   lastDividend: number | null;
   annualizedDividend: number | null;  // Rolling 365-day sum
   paymentsPerYear: number;
   forwardYield: number | null;        // annual_dividend / price
-  
+
   // Volatility metrics (frequency-proof)
   dividendSD: number | null;          // SD of rolling 365D annualized series
   dividendCV: number | null;          // CV as decimal (e.g., 0.18)
   dividendCVPercent: number | null;   // CV as percentage (e.g., 18.0)
   dividendVolatilityIndex: string | null;
-  
+
   // Weighted ranking
   weightedRank: number | null;
-  
+
   // Total Return WITH DRIP (using adjClose ratio)
   totalReturnDrip: {
     '1W': number | null;
@@ -218,7 +224,7 @@ export interface ETFMetrics {
     '1Y': number | null;
     '3Y': number | null;
   };
-  
+
   // Price Return (non-DRIP, using unadjusted close)
   priceReturn: {
     '1W': number | null;
@@ -228,7 +234,7 @@ export interface ETFMetrics {
     '1Y': number | null;
     '3Y': number | null;
   };
-  
+
   // Optional: Total Return WITHOUT DRIP
   totalReturnNoDrip: {
     '1W': number | null;
@@ -238,7 +244,7 @@ export interface ETFMetrics {
     '1Y': number | null;
     '3Y': number | null;
   } | null;
-  
+
   // Legacy combined returns for backward compatibility
   returns: {
     '1W': ReturnData;
@@ -248,7 +254,7 @@ export interface ETFMetrics {
     '1Y': ReturnData;
     '3Y': ReturnData;
   };
-  
+
   calculatedAt: string;
   dataSource: string;
 }

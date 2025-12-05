@@ -74,10 +74,10 @@ const Index = () => {
           return true;
         });
         setEtfData(deduplicated);
-        
+
         // Clean up favorites to remove symbols that no longer exist
         cleanupFavorites(deduplicated.map(etf => etf.symbol));
-        
+
         // Format the last updated timestamp to match ETFDetail format
         if (result.lastUpdatedTimestamp) {
           const date = new Date(result.lastUpdatedTimestamp);
@@ -390,9 +390,8 @@ const Index = () => {
         toast({
           variant: "destructive",
           title: "Failed to save",
-          description: `Error: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
+          description: `Error: ${error instanceof Error ? error.message : "Unknown error"
+            }`,
         });
       }
     }
@@ -458,12 +457,12 @@ const Index = () => {
                     <div className="flex items-center gap-1 mb-1">
                       <Clock className="h-3 w-3" />
                       <span>Last updated: {lastDataUpdate}</span>
-                      <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
+                      <span className="ml-2 text-primary font-medium">Source: FMP</span>
                     </div>
                   ) : (
                     <div className="mb-1">
                       <span>Last updated: {lastDataUpdate || 'N/A'}</span>
-                      <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
+                      <span className="ml-2 text-primary font-medium">Source: FMP</span>
                     </div>
                   )}
                   <div className="mt-1">Records: {filteredETFs.length}</div>
@@ -496,29 +495,26 @@ const Index = () => {
                   </div>
                   {/* Total Return / Price Return Toggle - 50/50 split with blue background */}
                   <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
-                    <div 
-                      className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${
-                        returnView === "total" ? 'w-1/2' : 'w-1/2 translate-x-full'
-                      }`}
+                    <div
+                      className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${returnView === "total" ? 'w-1/2' : 'w-1/2 translate-x-full'
+                        }`}
                       style={{ zIndex: 0 }}
                     />
                     <button
                       onClick={() => setReturnView("total")}
-                      className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 ${
-                        returnView === "total"
+                      className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 ${returnView === "total"
                           ? "text-white"
                           : "text-slate-600 hover:text-slate-900"
-                      }`}
+                        }`}
                     >
                       Total Returns
                     </button>
                     <button
                       onClick={() => setReturnView("price")}
-                      className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 ${
-                        returnView === "price"
+                      className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 ${returnView === "price"
                           ? "text-white"
                           : "text-slate-600 hover:text-slate-900"
-                      }`}
+                        }`}
                     >
                       Price Returns
                     </button>
@@ -529,16 +525,14 @@ const Index = () => {
                       variant={showFavoritesOnly ? "default" : "outline"}
                       size="sm"
                       onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                      className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
-                        showFavoritesOnly
+                      className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${showFavoritesOnly
                           ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                           : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                      }`}
+                        }`}
                     >
                       <Star
-                        className={`h-4 w-4 mr-2 ${
-                          showFavoritesOnly ? "fill-white" : "fill-yellow-400"
-                        }`}
+                        className={`h-4 w-4 mr-2 ${showFavoritesOnly ? "fill-white" : "fill-yellow-400"
+                          }`}
                       />
                       {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
                       {favorites.size > 0 && `(${favorites.size})`}
@@ -556,7 +550,7 @@ const Index = () => {
                     Loading ETF Data
                   </h3>
                   <p className="text-sm text-muted-foreground text-center max-w-md">
-                    Fetching latest prices and data from Finnhub...
+                    Fetching latest prices and data from FMP...
                   </p>
                 </div>
               ) : etfData.length === 0 ? (
@@ -711,31 +705,28 @@ const Index = () => {
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => handleTimeframeChange("3mo")}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                          totalReturnTimeframe === "3mo"
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "3mo"
                             ? "bg-primary text-white"
                             : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                        }`}
+                          }`}
                       >
                         3 Mo
                       </button>
                       <button
                         onClick={() => handleTimeframeChange("6mo")}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                          totalReturnTimeframe === "6mo"
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "6mo"
                             ? "bg-primary text-white"
                             : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                        }`}
+                          }`}
                       >
                         6 Mo
                       </button>
                       <button
                         onClick={() => handleTimeframeChange("12mo")}
-                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                          totalReturnTimeframe === "12mo"
+                        className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "12mo"
                             ? "bg-primary text-white"
                             : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                        }`}
+                          }`}
                       >
                         12 Mo
                       </button>
@@ -748,9 +739,8 @@ const Index = () => {
                     </span>
                     <div className="flex items-center gap-3">
                       <span
-                        className={`text-3xl font-bold tabular-nums ${
-                          isValid ? "text-primary" : "text-destructive"
-                        }`}
+                        className={`text-3xl font-bold tabular-nums ${isValid ? "text-primary" : "text-destructive"
+                          }`}
                       >
                         {isNaN(totalWeight) ? 0 : totalWeight}%
                       </span>

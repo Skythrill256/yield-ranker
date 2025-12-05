@@ -1,7 +1,7 @@
 /**
  * backfill_dividend_dates.ts - Backfill Record/Pay Dates for Dividends
  * 
- * This script fetches record_date and pay_date from Tiingo API
+ * This script fetches record_date and pay_date from FMP API
  * for existing dividend records that are missing these fields.
  * 
  * Usage: npx tsx scripts/backfill_dividend_dates.ts [--ticker SYMBOL] [--dry-run]
@@ -20,8 +20,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-import { fetchDividendHistory } from '../src/services/tiingo.js';
-import type { TiingoDividendData } from '../src/types/index.js';
+import { fetchDividendHistory } from '../src/services/fmp.js';
+import type { FMPDividendData } from '../src/types/index.js';
 
 // ============================================================================
 // Configuration
@@ -51,7 +51,7 @@ function parseArgs(): CliOptions {
   const options: CliOptions = {
     dryRun: false,
   };
-  
+
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--ticker':
@@ -72,7 +72,7 @@ Options:
         process.exit(0);
     }
   }
-  
+
   return options;
 }
 
@@ -105,18 +105,18 @@ async function getTickersWithMissingDates(specificTicker?: string): Promise<stri
     .from('dividends_detail')
     .select('ticker')
     .or('record_date.is.null,pay_date.is.null');
-  
+
   if (specificTicker) {
     query = query.eq('ticker', specificTicker);
   }
-  
+
   const { data, error } = await query;
-  
+
   if (error) {
     log('ERROR', `Failed to fetch tickers: ${error.message}`);
     return [];
   }
-  
+
   // Get unique tickers
   const tickers = [...new Set((data || []).map(d => d.ticker))];
   return tickers;
@@ -137,12 +137,12 @@ async function getDividendsWithMissingDates(ticker: string): Promise<Array<{
     .eq('ticker', ticker)
     .or('record_date.is.null,pay_date.is.null')
     .order('ex_date', { ascending: false });
-  
+
   if (error) {
     log('ERROR', `Failed to fetch dividends for ${ticker}: ${error.message}`);
     return [];
   }
-  
+
   return data || [];
 }
 
@@ -151,59 +151,59 @@ async function getDividendsWithMissingDates(ticker: string): Promise<Array<{
  */
 async function updateDividendDates(
   ticker: string,
-  tiingoDividends: TiingoDividendData[],
+  fmpDividends: FMPDividendData[],
   dryRun: boolean
 ): Promise<number> {
   const dbDividends = await getDividendsWithMissingDates(ticker);
-  
+
   if (dbDividends.length === 0) {
     log('DEBUG', `No dividends with missing dates for ${ticker}`);
     return 0;
   }
-  
-  // Create a map of Tiingo dividends by ex_date
-  const tiingoMap = new Map<string, TiingoDividendData>();
-  tiingoDividends.forEach(d => {
-    const exDate = d.exDate.split('T')[0];
-    tiingoMap.set(exDate, d);
+
+  // Create a map of FMP dividends by ex_date
+  const fmpMap = new Map<string, FMPDividendData>();
+  fmpDividends.forEach(d => {
+    const exDate = d.date.split('T')[0];
+    fmpMap.set(exDate, d);
   });
-  
+
   let updated = 0;
-  
+
   for (const dbDiv of dbDividends) {
     const exDate = dbDiv.ex_date.split('T')[0];
-    const tiingoDiv = tiingoMap.get(exDate);
-    
-    if (!tiingoDiv) {
-      log('DEBUG', `No Tiingo data for ${ticker} ex_date ${exDate}`);
+    const fmpDiv = fmpMap.get(exDate);
+
+    if (!fmpDiv) {
+      log('DEBUG', `No FMP data for ${ticker} ex_date ${exDate}`);
       continue;
     }
-    
+
     const updates: Record<string, string | null> = {};
-    
-    if (!dbDiv.record_date && tiingoDiv.recordDate) {
-      updates.record_date = tiingoDiv.recordDate;
+
+    if (!dbDiv.record_date && fmpDiv.recordDate) {
+      updates.record_date = fmpDiv.recordDate;
     }
-    
-    if (!dbDiv.pay_date && tiingoDiv.paymentDate) {
-      updates.pay_date = tiingoDiv.paymentDate;
+
+    if (!dbDiv.pay_date && fmpDiv.paymentDate) {
+      updates.pay_date = fmpDiv.paymentDate;
     }
-    
+
     if (Object.keys(updates).length === 0) {
       continue;
     }
-    
+
     if (dryRun) {
       log('INFO', `[DRY-RUN] Would update ${ticker} ex_date ${exDate}: ${JSON.stringify(updates)}`);
       updated++;
       continue;
     }
-    
+
     const { error } = await supabase
       .from('dividends_detail')
       .update(updates)
       .eq('id', dbDiv.id);
-    
+
     if (error) {
       log('ERROR', `Failed to update ${ticker} ex_date ${exDate}: ${error.message}`);
     } else {
@@ -211,7 +211,7 @@ async function updateDividendDates(
       updated++;
     }
   }
-  
+
   return updated;
 }
 
@@ -225,25 +225,25 @@ async function processTicker(ticker: string, dryRun: boolean): Promise<{
 }> {
   try {
     log('INFO', `Processing ${ticker}...`);
-    
-    // Fetch dividend history from Tiingo (last 5 years)
+
+    // Fetch dividend history from FMP (last 5 years)
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 5);
     const startDateStr = startDate.toISOString().split('T')[0];
-    
-    const tiingoDividends = await fetchDividendHistory(ticker, startDateStr);
-    
-    if (tiingoDividends.length === 0) {
-      log('WARN', `No Tiingo dividend data for ${ticker}`);
+
+    const fmpDividends = await fetchDividendHistory(ticker, startDateStr);
+
+    if (fmpDividends.length === 0) {
+      log('WARN', `No FMP dividend data for ${ticker}`);
       return { ticker, updated: 0 };
     }
-    
-    log('DEBUG', `Fetched ${tiingoDividends.length} dividends from Tiingo for ${ticker}`);
-    
-    const updated = await updateDividendDates(ticker, tiingoDividends, dryRun);
-    
+
+    log('DEBUG', `Fetched ${fmpDividends.length} dividends from FMP for ${ticker}`);
+
+    const updated = await updateDividendDates(ticker, fmpDividends, dryRun);
+
     log('INFO', `${ticker}: Updated ${updated} dividend records`);
-    
+
     return { ticker, updated };
   } catch (error) {
     const message = (error as Error).message;
@@ -258,7 +258,7 @@ async function processTicker(ticker: string, dryRun: boolean): Promise<{
 
 async function main(): Promise<void> {
   const options = parseArgs();
-  
+
   log('INFO', '='.repeat(60));
   log('INFO', 'Dividend Dates Backfill Script');
   log('INFO', `Mode: ${options.dryRun ? 'DRY-RUN' : 'LIVE'}`);
@@ -266,56 +266,56 @@ async function main(): Promise<void> {
     log('INFO', `Ticker: ${options.ticker}`);
   }
   log('INFO', '='.repeat(60));
-  
+
   // Validate environment
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     log('ERROR', 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
     process.exit(1);
   }
-  
+
   // Get tickers to process
   const tickers = await getTickersWithMissingDates(options.ticker);
-  
+
   if (tickers.length === 0) {
     log('INFO', 'No tickers with missing dividend dates found');
     process.exit(0);
   }
-  
+
   log('INFO', `Found ${tickers.length} tickers with missing dates: ${tickers.join(', ')}`);
-  
+
   // Process each ticker
   const results: Array<{ ticker: string; updated: number; error?: string }> = [];
-  
+
   for (let i = 0; i < tickers.length; i++) {
     const ticker = tickers[i];
     log('INFO', `[${i + 1}/${tickers.length}] Processing ${ticker}...`);
-    
+
     const result = await processTicker(ticker, options.dryRun);
     results.push(result);
-    
+
     // Rate limiting: wait 500ms between tickers
     if (i < tickers.length - 1) {
       await sleep(500);
     }
   }
-  
+
   // Summary
   log('INFO', '='.repeat(60));
   log('INFO', 'SUMMARY');
   log('INFO', '='.repeat(60));
-  
+
   const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
   const errors = results.filter(r => r.error);
-  
+
   log('INFO', `Total tickers processed: ${results.length}`);
   log('INFO', `Total dividend records updated: ${totalUpdated}`);
   log('INFO', `Errors: ${errors.length}`);
-  
+
   if (errors.length > 0) {
     log('WARN', 'Tickers with errors:');
     errors.forEach(e => log('WARN', `  ${e.ticker}: ${e.error}`));
   }
-  
+
   log('INFO', 'Backfill complete!');
 }
 

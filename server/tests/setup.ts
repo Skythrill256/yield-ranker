@@ -11,7 +11,7 @@ import { vi, beforeAll, afterAll, afterEach } from 'vitest';
 process.env.NODE_ENV = 'test';
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
-process.env.TIINGO_API_KEY = 'test-tiingo-api-key';
+process.env.FMP_API_KEY = 'test-fmp-api-key-12345678901234567890';
 process.env.PORT = '4001';
 
 // ============================================================================
@@ -93,7 +93,7 @@ const createMockQuery = (tableName: string) => {
     },
     then: (resolve: any) => {
       let result = mockSupabaseData[tableName as keyof typeof mockSupabaseData] || [];
-      
+
       // Apply filters
       Object.entries(filters).forEach(([key, value]) => {
         if (key.endsWith('_gte')) {
@@ -106,12 +106,12 @@ const createMockQuery = (tableName: string) => {
           result = result.filter((item: any) => item[key] === value);
         }
       });
-      
+
       // Apply limit
       if (limitCount > 0) {
         result = result.slice(0, limitCount);
       }
-      
+
       // Return single or array
       if (isSingle) {
         resolve(createMockSupabaseResponse(result[0] || null));
@@ -139,58 +139,68 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 // ============================================================================
-// Mock Fetch for Tiingo API
+// Mock Fetch for FMP API
 // ============================================================================
 
-export const mockTiingoResponses: Record<string, any> = {
-  '/tiingo/daily/SPY': {
-    ticker: 'SPY',
-    name: 'SPDR S&P 500 ETF Trust',
-    description: 'S&P 500 ETF',
-    startDate: '1993-01-29',
-    endDate: '2024-01-01',
-    exchangeCode: 'ARCA',
-  },
-  '/tiingo/daily/SPY/prices': [
+export const mockFMPResponses: Record<string, any> = {
+  '/stable/quote': [
     {
-      date: '2024-01-02T00:00:00+00:00',
-      open: 470.0,
-      high: 475.0,
-      low: 468.0,
-      close: 472.5,
+      symbol: 'SPY',
+      name: 'SPDR S&P 500 ETF Trust',
+      price: 472.5,
+      changesPercentage: 0.5,
+      change: 2.35,
+      dayLow: 468.0,
+      dayHigh: 475.0,
+      yearHigh: 500.0,
+      yearLow: 400.0,
       volume: 50000000,
-      adjOpen: 470.0,
-      adjHigh: 475.0,
-      adjLow: 468.0,
-      adjClose: 472.5,
-      adjVolume: 50000000,
-      divCash: 0,
-      splitFactor: 1,
+      avgVolume: 45000000,
+      open: 470.0,
+      previousClose: 470.15,
+      exchange: 'ARCA',
+      timestamp: Date.now(),
     },
+  ],
+  '/stable/historical-price-eod/full': [
     {
-      date: '2024-01-03T00:00:00+00:00',
+      date: '2024-01-03',
       open: 472.5,
       high: 478.0,
       low: 471.0,
       close: 476.0,
       volume: 45000000,
-      adjOpen: 472.5,
-      adjHigh: 478.0,
-      adjLow: 471.0,
       adjClose: 476.0,
-      adjVolume: 45000000,
-      divCash: 0,
-      splitFactor: 1,
+      change: 3.5,
+      changePercent: 0.74,
+      vwap: 474.0,
+      label: 'January 03, 24',
+      changeOverTime: 0.0074,
+    },
+    {
+      date: '2024-01-02',
+      open: 470.0,
+      high: 475.0,
+      low: 468.0,
+      close: 472.5,
+      volume: 50000000,
+      adjClose: 472.5,
+      change: 2.5,
+      changePercent: 0.53,
+      vwap: 471.0,
+      label: 'January 02, 24',
+      changeOverTime: 0.0053,
     },
   ],
-  '/tiingo/daily/SPY/dividends': [
+  '/stable/dividends': [
     {
-      exDate: '2024-01-15T00:00:00+00:00',
-      paymentDate: '2024-01-20T00:00:00+00:00',
-      recordDate: '2024-01-16T00:00:00+00:00',
-      declareDate: '2024-01-10T00:00:00+00:00',
-      divCash: 1.75,
-      splitFactor: 1,
+      date: '2024-01-15',
+      label: 'January 15, 24',
+      adjDividend: 1.75,
+      dividend: 1.75,
+      recordDate: '2024-01-16',
+      paymentDate: '2024-01-20',
+      declarationDate: '2024-01-10',
     },
   ],
 };
@@ -199,12 +209,16 @@ const originalFetch = global.fetch;
 
 global.fetch = vi.fn((url: string | URL | Request, options?: RequestInit) => {
   const urlStr = url.toString();
-  
-  // Check if it's a Tiingo API call
-  if (urlStr.includes('api.tiingo.com')) {
-    const path = new URL(urlStr).pathname;
-    const mockData = mockTiingoResponses[path];
-    
+
+  // Check if it's an FMP API call
+  if (urlStr.includes('financialmodelingprep.com')) {
+    const urlObj = new URL(urlStr);
+    const path = urlObj.pathname;
+    const symbol = urlObj.searchParams.get('symbol') || urlObj.searchParams.get('symbols');
+
+    // Find mock data by path
+    const mockData = mockFMPResponses[path];
+
     if (mockData) {
       return Promise.resolve({
         ok: true,
@@ -214,7 +228,7 @@ global.fetch = vi.fn((url: string | URL | Request, options?: RequestInit) => {
         headers: new Headers(),
       } as Response);
     }
-    
+
     return Promise.resolve({
       ok: false,
       status: 404,
@@ -223,7 +237,7 @@ global.fetch = vi.fn((url: string | URL | Request, options?: RequestInit) => {
       headers: new Headers(),
     } as Response);
   }
-  
+
   // Fall back to original fetch for other URLs
   return originalFetch(url, options);
 }) as any;

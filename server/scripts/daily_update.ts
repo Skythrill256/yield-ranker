@@ -34,10 +34,10 @@ import {
   fetchDividendHistory,
   healthCheck,
   getRateLimitStatus,
-} from '../src/services/tiingo.js';
+} from '../src/services/fmp.js';
 import { calculateMetrics } from '../src/services/metrics.js';
 import { batchUpdateETFMetrics } from '../src/services/database.js';
-import type { TiingoPriceData, TiingoDividendData } from '../src/types/index.js';
+import type { FMPPriceData, FMPDividendData } from '../src/types/index.js';
 
 // ============================================================================
 // Configuration
@@ -70,7 +70,7 @@ function parseArgs(): CliOptions {
     force: false,
     dryRun: false,
   };
-  
+
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--ticker':
@@ -95,7 +95,7 @@ Options:
         process.exit(0);
     }
   }
-  
+
   return options;
 }
 
@@ -140,21 +140,21 @@ async function getActiveTickers(): Promise<string[]> {
     .from('etf_static')
     .select('ticker')
     .order('ticker');
-  
+
   if (error) {
     // Fallback to etfs table
     const { data: etfsData, error: etfsError } = await supabase
       .from('etfs')
       .select('symbol')
       .order('symbol');
-    
+
     if (etfsError) {
       throw new Error(`Failed to fetch tickers: ${etfsError.message}`);
     }
-    
+
     return (etfsData || []).map((row: { symbol: string }) => row.symbol);
   }
-  
+
   return (data || []).map((row: { ticker: string }) => row.ticker);
 }
 
@@ -171,11 +171,11 @@ async function getLastSyncDate(
     .eq('ticker', ticker)
     .eq('data_type', dataType)
     .single();
-  
+
   if (error || !data?.last_data_date) {
     return null;
   }
-  
+
   return data.last_data_date;
 }
 
@@ -190,11 +190,11 @@ async function getLastPriceDate(ticker: string): Promise<string | null> {
     .order('date', { ascending: false })
     .limit(1)
     .single();
-  
+
   if (error || !data) {
     return null;
   }
-  
+
   return data.date;
 }
 
@@ -203,11 +203,11 @@ async function getLastPriceDate(ticker: string): Promise<string | null> {
  */
 async function upsertPrices(
   ticker: string,
-  prices: TiingoPriceData[],
+  prices: FMPPriceData[],
   dryRun: boolean
 ): Promise<number> {
   if (prices.length === 0) return 0;
-  
+
   const records = prices.map(p => ({
     ticker,
     date: p.date.split('T')[0],
@@ -217,38 +217,38 @@ async function upsertPrices(
     close: p.close,
     adj_close: p.adjClose,
     volume: p.volume,
-    adj_open: p.adjOpen,
-    adj_high: p.adjHigh,
-    adj_low: p.adjLow,
-    adj_volume: p.adjVolume,
-    div_cash: p.divCash,
-    split_factor: p.splitFactor,
+    adj_open: p.adjOpen || p.open,
+    adj_high: p.adjHigh || p.high,
+    adj_low: p.adjLow || p.low,
+    adj_volume: p.adjVolume || p.volume,
+    div_cash: 0,  // FMP doesn't include divCash in price data
+    split_factor: 1,
   }));
-  
+
   if (dryRun) {
     console.log(`  [DRY RUN] Would upsert ${records.length} price records`);
     return records.length;
   }
-  
+
   let upserted = 0;
-  
+
   for (let i = 0; i < records.length; i += BATCH_SIZE) {
     const batch = records.slice(i, i + BATCH_SIZE);
-    
+
     const { error } = await supabase
       .from('prices_daily')
       .upsert(batch, {
         onConflict: 'ticker,date',
         ignoreDuplicates: false,
       });
-    
+
     if (error) {
       console.error(`  Error upserting prices for ${ticker}:`, error.message);
     } else {
       upserted += batch.length;
     }
   }
-  
+
   return upserted;
 }
 
@@ -257,38 +257,38 @@ async function upsertPrices(
  */
 async function upsertDividends(
   ticker: string,
-  dividends: TiingoDividendData[],
+  dividends: FMPDividendData[],
   dryRun: boolean
 ): Promise<number> {
   if (dividends.length === 0) return 0;
-  
+
   const records = dividends.map(d => ({
     ticker,
-    ex_date: d.exDate.split('T')[0],
+    ex_date: d.date.split('T')[0],
     pay_date: d.paymentDate?.split('T')[0] || null,
     record_date: d.recordDate?.split('T')[0] || null,
-    declare_date: d.declareDate?.split('T')[0] || null,
-    div_cash: d.divCash,
-    split_factor: d.splitFactor,
+    declare_date: d.declarationDate?.split('T')[0] || null,
+    div_cash: d.dividend,
+    split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
   }));
-  
+
   if (dryRun) {
     console.log(`  [DRY RUN] Would upsert ${records.length} dividend records`);
     return records.length;
   }
-  
+
   const { error } = await supabase
     .from('dividends_detail')
     .upsert(records, {
       onConflict: 'ticker,ex_date',
       ignoreDuplicates: false,
     });
-  
+
   if (error) {
     console.error(`  Error upserting dividends for ${ticker}:`, error.message);
     return 0;
   }
-  
+
   return records.length;
 }
 
@@ -317,7 +317,7 @@ async function updateSyncLog(
     }, {
       onConflict: 'ticker,data_type',
     });
-  
+
   if (error) {
     console.error(`  Error updating sync log:`, error.message);
   }
@@ -341,11 +341,11 @@ async function updateTicker(
   dryRun: boolean
 ): Promise<UpdateResult> {
   console.log(`\n[Update] ${ticker}`);
-  
+
   try {
     // Determine start date for price fetch
     let priceStartDate: string;
-    
+
     if (force) {
       priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
       console.log(`  Force mode: fetching from ${priceStartDate}`);
@@ -363,7 +363,7 @@ async function updateTicker(
         console.log(`  Initial: fetching from ${priceStartDate}`);
       }
     }
-    
+
     // Skip if start date is today or in the future
     if (priceStartDate >= getTodayDate()) {
       console.log(`  Already up to date`);
@@ -375,32 +375,32 @@ async function updateTicker(
         message: 'Already up to date',
       };
     }
-    
+
     // Fetch and upsert prices
     const prices = await fetchPriceHistory(ticker, priceStartDate);
     const pricesAdded = await upsertPrices(ticker, prices, dryRun);
-    
+
     const lastPriceRecordDate = prices.length > 0
       ? prices[prices.length - 1].date.split('T')[0]
       : null;
-    
+
     if (!dryRun) {
       await updateSyncLog(ticker, 'prices', lastPriceRecordDate, pricesAdded, 'success');
     }
-    
+
     // Fetch and upsert dividends (always check recent dividends)
     const dividendStartDate = getDateDaysAgo(30); // Check last 30 days for dividends
     const dividends = await fetchDividendHistory(ticker, dividendStartDate);
     const dividendsAdded = await upsertDividends(ticker, dividends, dryRun);
-    
+
     const lastDividendDate = dividends.length > 0
-      ? dividends[dividends.length - 1].exDate.split('T')[0]
+      ? dividends[dividends.length - 1].date.split('T')[0]
       : null;
-    
+
     if (!dryRun) {
       await updateSyncLog(ticker, 'dividends', lastDividendDate, dividendsAdded, 'success');
     }
-    
+
     // Step 3: Recompute metrics (annualized dividend, SD/CV, returns)
     // This is the key step per Section 2.4 of the PDF:
     // - Recompute annualized dividend series → annual_dividend, SD, CV
@@ -454,20 +454,20 @@ async function updateTicker(
         console.error(`  ⚠️ Metrics calculation failed:`, metricsError instanceof Error ? metricsError.message : metricsError);
       }
     }
-    
+
     console.log(`  ✓ ${pricesAdded} prices, ${dividendsAdded} dividends`);
-    
+
     return {
       ticker,
       pricesAdded,
       dividendsAdded,
       status: 'success',
     };
-    
+
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error(`  ✗ Error: ${message}`);
-    
+
     return {
       ticker,
       pricesAdded: 0,
@@ -484,33 +484,33 @@ async function updateTicker(
 
 async function main(): Promise<void> {
   const startTime = Date.now();
-  
+
   console.log('============================================');
-  console.log('Tiingo Daily Update Script');
+  console.log('FMP Daily Update Script');
   console.log(`Run Time: ${new Date().toISOString()}`);
   console.log('============================================');
-  
+
   const options = parseArgs();
-  
+
   console.log('\nConfiguration:');
   console.log(`  Ticker: ${options.ticker || 'ALL'}`);
   console.log(`  Force Resync: ${options.force}`);
   console.log(`  Dry Run: ${options.dryRun}`);
-  
+
   // Check if market was open today
   if (isMarketClosed()) {
     console.log('\n⚠️  Note: Market is closed today (weekend). Data may not have changed.');
   }
-  
+
   // Verify API connectivity
-  console.log('\n[Update] Checking Tiingo API...');
+  console.log('\n[Update] Checking FMP API...');
   const apiHealthy = await healthCheck();
   if (!apiHealthy) {
-    console.error('[Update] ERROR: Cannot connect to Tiingo API');
+    console.error('[Update] ERROR: Cannot connect to FMP API');
     process.exit(1);
   }
   console.log('[Update] API connection OK');
-  
+
   // Get tickers to update
   let tickers: string[];
   if (options.ticker) {
@@ -518,23 +518,23 @@ async function main(): Promise<void> {
   } else {
     tickers = await getActiveTickers();
   }
-  
+
   console.log(`\n[Update] Processing ${tickers.length} ticker(s)...`);
-  
+
   // Process tickers
   const results: UpdateResult[] = [];
-  
+
   for (const ticker of tickers) {
     const result = await updateTicker(ticker, options.force, options.dryRun);
     results.push(result);
-    
+
     // Progress update every 10 tickers
     if (results.length % 10 === 0) {
       const status = getRateLimitStatus();
-      console.log(`\n[Update] Progress: ${results.length}/${tickers.length} | API: ${status.requestsThisHour}/${status.hourlyLimit}`);
+      console.log(`\n[Update] Progress: ${results.length}/${tickers.length} | API: ${status.requestsToday}/${status.dailyLimit}`);
     }
   }
-  
+
   // Summary
   const elapsedMs = Date.now() - startTime;
   const successful = results.filter(r => r.status === 'success').length;
@@ -542,7 +542,7 @@ async function main(): Promise<void> {
   const errors = results.filter(r => r.status === 'error').length;
   const totalPrices = results.reduce((sum, r) => sum + r.pricesAdded, 0);
   const totalDividends = results.reduce((sum, r) => sum + r.dividendsAdded, 0);
-  
+
   console.log('\n============================================');
   console.log('Update Complete');
   console.log('============================================');
@@ -553,11 +553,11 @@ async function main(): Promise<void> {
   console.log(`  Prices Added: ${totalPrices}`);
   console.log(`  Dividends Added: ${totalDividends}`);
   console.log(`  Duration: ${(elapsedMs / 1000).toFixed(1)}s`);
-  
+
   if (options.dryRun) {
     console.log('\n  [DRY RUN] No data was actually written.');
   }
-  
+
   // Log errors for debugging
   if (errors > 0) {
     console.log('\nTickers with errors:');
@@ -565,7 +565,7 @@ async function main(): Promise<void> {
       .filter(r => r.status === 'error')
       .forEach(r => console.log(`  - ${r.ticker}: ${r.message}`));
   }
-  
+
   // Exit with error code if any failures
   if (errors > 0) {
     process.exit(1);

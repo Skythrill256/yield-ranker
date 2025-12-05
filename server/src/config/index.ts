@@ -20,22 +20,21 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 interface Config {
   env: 'development' | 'production' | 'test';
   port: number;
-  
+
   supabase: {
     url: string;
     serviceKey: string;
   };
-  
-  tiingo: {
+
+  fmp: {
     apiKey: string;
     baseUrl: string;
     rateLimit: {
-      requestsPerHour: number;
       requestsPerDay: number;
       minDelayMs: number;
     };
   };
-  
+
   alphaVantage: {
     apiKey: string;
     baseUrl: string;
@@ -44,13 +43,13 @@ interface Config {
       minDelayMs: number;
     };
   };
-  
+
   upload: {
     maxFileSize: number;
     allowedMimeTypes: string[];
     tempDir: string;
   };
-  
+
   cors: {
     origins: string[];
   };
@@ -82,22 +81,21 @@ function optionalEnvNumber(key: string, defaultValue: number): number {
 export const config: Config = {
   env: (process.env.NODE_ENV as Config['env']) || 'development',
   port: optionalEnvNumber('PORT', 4000),
-  
+
   supabase: {
     url: requireEnv('SUPABASE_URL'),
     serviceKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   },
-  
-  tiingo: {
-    apiKey: requireEnv('TIINGO_API_KEY'),
-    baseUrl: 'https://api.tiingo.com',
+
+  fmp: {
+    apiKey: requireEnv('FMP_API_KEY'),
+    baseUrl: 'https://financialmodelingprep.com',
     rateLimit: {
-      requestsPerHour: optionalEnvNumber('TIINGO_RATE_LIMIT_HOURLY', 500),
-      requestsPerDay: optionalEnvNumber('TIINGO_RATE_LIMIT_DAILY', 5000),
-      minDelayMs: optionalEnvNumber('TIINGO_MIN_DELAY_MS', 200),
+      requestsPerDay: optionalEnvNumber('FMP_RATE_LIMIT_DAILY', 250),
+      minDelayMs: optionalEnvNumber('FMP_MIN_DELAY_MS', 200),
     },
   },
-  
+
   alphaVantage: {
     apiKey: process.env.ALPHA_VANTAGE_API_KEY || '',
     baseUrl: 'https://www.alphavantage.co',
@@ -106,7 +104,7 @@ export const config: Config = {
       minDelayMs: 12000, // 12 seconds between requests for free tier
     },
   },
-  
+
   upload: {
     maxFileSize: optionalEnvNumber('UPLOAD_MAX_SIZE', 10 * 1024 * 1024), // 10MB
     allowedMimeTypes: [
@@ -115,9 +113,9 @@ export const config: Config = {
     ],
     tempDir: path.resolve(__dirname, '../../uploads'),
   },
-  
+
   cors: {
-    origins: process.env.CORS_ORIGINS 
+    origins: process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
       : ['http://localhost:5173', 'http://localhost:3000'],
   },
@@ -129,15 +127,15 @@ export const config: Config = {
 
 export function validateConfig(): void {
   const errors: string[] = [];
-  
+
   if (!config.supabase.url.startsWith('https://')) {
     errors.push('SUPABASE_URL must start with https://');
   }
-  
-  if (config.tiingo.apiKey.length < 20) {
-    errors.push('TIINGO_API_KEY appears invalid (too short)');
+
+  if (config.fmp.apiKey.length < 20) {
+    errors.push('FMP_API_KEY appears invalid (too short)');
   }
-  
+
   if (errors.length > 0) {
     throw new Error(`Configuration errors:\n${errors.join('\n')}`);
   }

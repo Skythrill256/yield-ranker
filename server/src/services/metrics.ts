@@ -9,14 +9,16 @@
  */
 
 import {
-  getLatestPrice,
-  getPriceHistory,
-  getDividendHistory,
-  getDividendsFromPrices,
   getETFStatic,
   getAllTickers,
 } from './database.js';
-import { fetchRealtimePrice, fetchRealtimePricesBatch } from './tiingo.js';
+import {
+  fetchRealtimePrice,
+  fetchRealtimePricesBatch,
+  getPriceHistoryFromAPI as getPriceHistory,
+  getLatestPriceFromAPI as getLatestPrice,
+  getDividendsFromAPI as getDividendHistory,
+} from './fmp.js';
 import {
   getDateDaysAgo,
   getDateYearsAgo,
@@ -60,7 +62,7 @@ function detectFrequency(
   index: number
 ): 'weekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual' {
   if (index === 0 && dividends.length === 1) return 'quarterly';
-  
+
   if (index < dividends.length - 1) {
     const daysBetween = (dividends[index + 1].date.getTime() - dividends[index].date.getTime()) / (1000 * 60 * 60 * 24);
     if (daysBetween <= 10) return 'weekly';
@@ -69,7 +71,7 @@ function detectFrequency(
     if (daysBetween <= 185) return 'semi-annual';
     return 'annual';
   }
-  
+
   if (index > 0) {
     const daysBetween = (dividends[index].date.getTime() - dividends[index - 1].date.getTime()) / (1000 * 60 * 60 * 24);
     if (daysBetween <= 10) return 'weekly';
@@ -78,7 +80,7 @@ function detectFrequency(
     if (daysBetween <= 185) return 'semi-annual';
     return 'annual';
   }
-  
+
   return 'quarterly';
 }
 
@@ -100,7 +102,7 @@ function getAnnualizationFactor(frequency: 'weekly' | 'monthly' | 'quarterly' | 
  * Helper function to detect if a ticker is a weekly payer
  */
 function isWeeklyPayerTicker(ticker: string): boolean {
-  const weeklyTickers = ['TSLY','NVDY','MSTY','CONY','GOOY','AMZY','APLY','QQQY','IWMY','QDTE','XDTE','SDTY','QDTY','RDTY','YMAX','YMAG','ULTY','LFGY','YETH','RDTE','PLTW','TSLW','HOOW','GOOW','METW','AMZW','AMDW','AVGW','MSTW','NFLW','COIW','WPAY','XBTY','YBIT','HOOY','CVNY','PLTY','NVYY','CHPY','GPTY','MAGY','TQQY','TSYY','YSPY','AZYY','PLYY','AMYY','COYY','TSII','NVII','HOII','COII','PLTI','BRKW','MSFW'];
+  const weeklyTickers = ['TSLY', 'NVDY', 'MSTY', 'CONY', 'GOOY', 'AMZY', 'APLY', 'QQQY', 'IWMY', 'QDTE', 'XDTE', 'SDTY', 'QDTY', 'RDTY', 'YMAX', 'YMAG', 'ULTY', 'LFGY', 'YETH', 'RDTE', 'PLTW', 'TSLW', 'HOOW', 'GOOW', 'METW', 'AMZW', 'AMDW', 'AVGW', 'MSTW', 'NFLW', 'COIW', 'WPAY', 'XBTY', 'YBIT', 'HOOY', 'CVNY', 'PLTY', 'NVYY', 'CHPY', 'GPTY', 'MAGY', 'TQQY', 'TSYY', 'YSPY', 'AZYY', 'PLYY', 'AMYY', 'COYY', 'TSII', 'NVII', 'HOII', 'COII', 'PLTI', 'BRKW', 'MSFW'];
   return weeklyTickers.includes(ticker.toUpperCase()) || ticker.toUpperCase().endsWith('Y');
 }
 
@@ -274,33 +276,33 @@ function calculateDividendVolatility(
  * Also validates that we have sufficient historical data for the requested period
  */
 function findStartPrice(
-  prices: PriceRecord[], 
-  startDate: string, 
+  prices: PriceRecord[],
+  startDate: string,
   requestedDays?: number
 ): PriceRecord | null {
   if (prices.length === 0) return null;
-  
+
   // Prices are already sorted by date ascending
   // Find first price on or after start date
   const startPrice = prices.find(p => p.date >= startDate);
-  
+
   if (startPrice) {
     // Validate that we have sufficient data for the requested period
     if (requestedDays !== undefined) {
       const startDateObj = new Date(startDate);
       const actualStartDateObj = new Date(startPrice.date);
       const daysDifference = Math.abs((actualStartDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       // If the first available price is more than 60 days after the requested start date,
       // or if we don't have at least 80% of the requested period's data, return null
       const maxAllowedGap = Math.min(60, Math.floor(requestedDays * 0.1)); // 10% of period or 60 days, whichever is less
       const minRequiredDays = Math.floor(requestedDays * 0.8); // Need at least 80% of requested period
-      
+
       if (daysDifference > maxAllowedGap) {
         logger.debug('Metrics', `Insufficient data: first price is ${daysDifference} days after requested start date (max allowed: ${maxAllowedGap} days)`);
         return null;
       }
-      
+
       // Check if we have enough data points for the requested period
       // This ensures we don't use short period data for longer period calculations
       const endDate = prices[prices.length - 1]?.date;
@@ -310,7 +312,7 @@ function findStartPrice(
           logger.debug('Metrics', `Insufficient data: only ${actualPeriodDays} days of data available (minimum required: ${minRequiredDays} days for ${requestedDays}-day period)`);
           return null;
         }
-        
+
         // Additional check: ensure the actual period is at least 70% of requested period
         // This prevents using 3-month data for 6-month, 12-month, or 3-year calculations
         const periodRatio = actualPeriodDays / requestedDays;
@@ -320,30 +322,30 @@ function findStartPrice(
         }
       }
     }
-    
+
     return startPrice;
   }
-  
+
   // If no price on/after start date, check if we have a price within 30 days
   // This handles cases where start date falls on a weekend/holiday
   const startDateObj = new Date(startDate);
   const maxDate = new Date(startDateObj);
   maxDate.setDate(maxDate.getDate() + 30);
   const maxDateStr = formatDate(maxDate);
-  
+
   const nearStartPrice = prices.find(p => p.date >= startDate && p.date <= maxDateStr);
-  
+
   if (nearStartPrice && requestedDays !== undefined) {
     // Validate data sufficiency for near price too
     const actualStartDateObj = new Date(nearStartPrice.date);
     const daysDifference = Math.abs((actualStartDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
     const maxAllowedGap = Math.min(60, Math.floor(requestedDays * 0.1));
-    
+
     if (daysDifference > maxAllowedGap) {
       return null;
     }
   }
-  
+
   return nearStartPrice || null;
 }
 
@@ -353,22 +355,22 @@ function findStartPrice(
  */
 function findEndPrice(prices: PriceRecord[], endDate: string): PriceRecord | null {
   if (prices.length === 0) return null;
-  
+
   // Prices are already sorted by date ascending
   // Filter to prices on or before end date, then get the last one
   const validPrices = prices.filter(p => p.date <= endDate);
-  
+
   if (validPrices.length > 0) {
     return validPrices[validPrices.length - 1];
   }
-  
+
   // If no price on/before end date, check if we have a price within 30 days before
   // This handles cases where end date falls on a weekend/holiday
   const endDateObj = new Date(endDate);
   const minDate = new Date(endDateObj);
   minDate.setDate(minDate.getDate() - 30);
   const minDateStr = formatDate(minDate);
-  
+
   const nearEndPrice = prices.filter(p => p.date >= minDateStr && p.date <= endDate).pop();
   return nearEndPrice || null;
 }
@@ -385,30 +387,30 @@ function calculateTotalReturnDrip(
   requestedDays?: number
 ): number | null {
   if (prices.length < 2) return null;
-  
+
   const startRecord = findStartPrice(prices, startDate, requestedDays);
   const endRecord = findEndPrice(prices, endDate);
-  
+
   if (!startRecord || !endRecord) return null;
-  
+
   const startPrice = startRecord.adj_close;
   const endPrice = endRecord.adj_close;
-  
+
   if (!startPrice || !endPrice || startPrice <= 0 || endPrice <= 0) return null;
-  
+
   // Ensure we're not dividing by zero and dates are valid
   if (startRecord.date > endRecord.date) return null;
-  
+
   // Calculate return
   const returnValue = ((endPrice / startPrice) - 1) * 100;
-  
+
   // Sanity check: returns should be reasonable (between -99% and 10000%)
   // This catches calculation errors or data issues
   if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
     logger.warn('Metrics', `Unreasonable total return calculated: ${returnValue}% (start: ${startPrice}, end: ${endPrice}, dates: ${startRecord.date} to ${endRecord.date})`);
     return null;
   }
-  
+
   return returnValue;
 }
 
@@ -424,29 +426,29 @@ function calculatePriceReturn(
   requestedDays?: number
 ): number | null {
   if (prices.length < 2) return null;
-  
+
   const startRecord = findStartPrice(prices, startDate, requestedDays);
   const endRecord = findEndPrice(prices, endDate);
-  
+
   if (!startRecord || !endRecord) return null;
-  
+
   const startPrice = startRecord.close;
   const endPrice = endRecord.close;
-  
+
   if (!startPrice || !endPrice || startPrice <= 0 || endPrice <= 0) return null;
-  
+
   // Ensure we're not dividing by zero and dates are valid
   if (startRecord.date > endRecord.date) return null;
-  
+
   // Calculate return
   const returnValue = ((endPrice / startPrice) - 1) * 100;
-  
+
   // Sanity check: returns should be reasonable (between -99% and 10000%)
   if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
     logger.warn('Metrics', `Unreasonable price return calculated: ${returnValue}% (start: ${startPrice}, end: ${endPrice}, dates: ${startRecord.date} to ${endRecord.date})`);
     return null;
   }
-  
+
   return returnValue;
 }
 
@@ -463,34 +465,34 @@ function calculateTotalReturnNoDrip(
   requestedDays?: number
 ): number | null {
   if (prices.length < 2) return null;
-  
+
   const startRecord = findStartPrice(prices, startDate, requestedDays);
   const endRecord = findEndPrice(prices, endDate);
-  
+
   if (!startRecord || !endRecord) return null;
-  
+
   const startPrice = startRecord.close;
   const endPrice = endRecord.close;
-  
+
   if (!startPrice || !endPrice || startPrice <= 0 || endPrice <= 0) return null;
-  
+
   // Ensure dates are valid
   if (startRecord.date > endRecord.date) return null;
-  
+
   // Sum dividends paid between start and end dates (inclusive)
   const totalDividends = dividends
     .filter(d => d.ex_date >= startDate && d.ex_date <= endDate)
     .reduce((sum, d) => sum + (d.div_cash || 0), 0);
-  
+
   // Calculate return
   const returnValue = (((endPrice - startPrice) + totalDividends) / startPrice) * 100;
-  
+
   // Sanity check: returns should be reasonable (between -99% and 10000%)
   if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
     logger.warn('Metrics', `Unreasonable total return (no DRIP) calculated: ${returnValue}% (start: ${startPrice}, end: ${endPrice}, dividends: ${totalDividends}, dates: ${startRecord.date} to ${endRecord.date})`);
     return null;
   }
-  
+
   return returnValue;
 }
 
@@ -506,7 +508,7 @@ interface FullReturnData {
  */
 function getPeriodStartDate(period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y'): string {
   const now = new Date();
-  
+
   switch (period) {
     case '1W':
       // 1 week = 7 calendar days ago
@@ -533,7 +535,7 @@ function getPeriodStartDate(period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y'): st
       now.setFullYear(now.getFullYear() - 3);
       break;
   }
-  
+
   return formatDate(now);
 }
 
@@ -555,15 +557,15 @@ async function calculateReturnsForPeriod(
   if (latestPrices.length === 0) {
     return { priceDrip: null, priceReturn: null, priceNoDrip: null };
   }
-  
+
   // Use the actual latest trading day as end date (not today if it's a weekend)
   const endDate = latestPrices[latestPrices.length - 1].date;
-  
+
   // Calculate start date based on the end date (not today)
   // This ensures we're measuring exactly 1 year, 6 months, etc. from the last trading day
   const endDateObj = new Date(endDate);
   let startDateObj = new Date(endDate);
-  
+
   switch (period) {
     case '1W':
       startDateObj.setDate(endDateObj.getDate() - 7);
@@ -584,21 +586,21 @@ async function calculateReturnsForPeriod(
       startDateObj.setFullYear(endDateObj.getFullYear() - 3);
       break;
   }
-  
+
   const startDate = formatDate(startDateObj);
-  
+
   // Fetch prices with a buffer to ensure we find the nearest trading day
   // Buffer: 10 trading days (~2 weeks) before the target start date
   const bufferDate = new Date(startDateObj);
   bufferDate.setDate(bufferDate.getDate() - 14);
   const fetchStartDate = formatDate(bufferDate);
-  
+
   const prices = await getPriceHistory(ticker, fetchStartDate, endDate);
-  
+
   if (prices.length < 2) {
     return { priceDrip: null, priceReturn: null, priceNoDrip: null };
   }
-  
+
   // Convert period to approximate days for validation
   const periodDaysMap: Record<string, number> = {
     '1W': 7,
@@ -609,7 +611,7 @@ async function calculateReturnsForPeriod(
     '3Y': 1095,
   };
   const requestedDays = periodDaysMap[period];
-  
+
   return {
     priceDrip: calculateTotalReturnDrip(prices, startDate, endDate, requestedDays),
     priceReturn: calculatePriceReturn(prices, startDate, endDate, requestedDays),
@@ -623,22 +625,22 @@ async function calculateReturnsForPeriod(
 
 export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   const upperTicker = ticker.toUpperCase();
-  
+
   // Get static data
   const staticData = await getETFStatic(upperTicker);
   const paymentsPerYear = staticData?.payments_per_year ?? 12;
-  
+
   // Get recent prices
   const recentPrices = await getLatestPrice(upperTicker, 2);
-  
+
   let currentPrice: number | null = null;
   let previousClose: number | null = null;
   let priceChange: number | null = null;
   let priceChangePercent: number | null = null;
-  
+
   if (recentPrices.length >= 1) {
     currentPrice = recentPrices[recentPrices.length - 1].close;
-    
+
     if (recentPrices.length >= 2 && currentPrice) {
       previousClose = recentPrices[recentPrices.length - 2].close;
       if (previousClose) {
@@ -647,64 +649,53 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       }
     }
   }
-  
+
   // Get 52-week range
   const yearPrices = await getPriceHistory(upperTicker, getDateYearsAgo(1));
   const closes = yearPrices
     .map(p => p.close)
     .filter((c): c is number => c !== null && c > 0);
-  
+
   const week52High = closes.length > 0 ? Math.max(...closes) : null;
   const week52Low = closes.length > 0 ? Math.min(...closes) : null;
-  
-  // Get dividend data - prefer prices_daily.div_cash, fallback to dividends_detail
+
+  // Get dividend data directly from FMP API
   // Get more history (up to 2 years) to ensure we have enough data for DVI calculation
-  let dividends = await getDividendsFromPrices(upperTicker);
-  if (dividends.length === 0) {
-    dividends = await getDividendHistory(upperTicker);
-  }
-  
-  // If still no dividends, try getting from a longer period (2 years)
-  if (dividends.length === 0) {
-    const twoYearsAgo = getDateYearsAgo(2);
-    dividends = await getDividendsFromPrices(upperTicker, twoYearsAgo);
-    if (dividends.length === 0) {
-      dividends = await getDividendHistory(upperTicker, twoYearsAgo);
-    }
-  }
-  
+  const twoYearsAgo = getDateYearsAgo(2);
+  let dividends = await getDividendHistory(upperTicker, twoYearsAgo);
+
   // Calculate frequency-proof dividend volatility using 12-month period
   // Pass ticker for accurate weekly payer detection
   const volMetrics = calculateDividendVolatility(dividends, 12, upperTicker);
-  
+
   // Get regular dividends for last dividend and payment count
   const regularDivs = dividends.filter(d => {
     if (!d.div_type) return true;
     const dtype = d.div_type.toLowerCase();
     return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
   });
-  
+
   // Sort by date descending to get most recent
   const sortedRegular = [...regularDivs].sort(
     (a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
   );
-  
+
   let lastDividend: number | null = null;
   if (sortedRegular.length > 0) {
     lastDividend = sortedRegular[0].adj_amount ?? sortedRegular[0].div_cash;
   }
-  
+
   // Determine actual payments per year based on CURRENT payment frequency
   // For ETFs that change frequency (e.g., MSTY from monthly to weekly), we need to detect
   // the current frequency from the most recent payments, not count all payments in the year
   let actualPaymentsPerYear: number;
-  
+
   if (sortedRegular.length >= 2) {
     // Detect current frequency from most recent payments
     const mostRecent = sortedRegular[0];
     const secondMostRecent = sortedRegular[1];
     const daysBetween = (new Date(mostRecent.ex_date).getTime() - new Date(secondMostRecent.ex_date).getTime()) / (1000 * 60 * 60 * 24);
-    
+
     // Determine frequency based on days between most recent payments
     if (daysBetween <= 10) {
       actualPaymentsPerYear = 52; // Weekly
@@ -724,7 +715,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     // Fallback to monthly if no data available
     actualPaymentsPerYear = 12;
   }
-  
+
   // Calculate annual dividend: Div × #Pmt
   // Use the database payments_per_year value, not the detected frequency
   // Formula: Annual Div = Dividend per payment × Number of payments per year
@@ -732,13 +723,13 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   if (lastDividend && lastDividend > 0 && paymentsPerYear > 0) {
     annualizedDividend = lastDividend * paymentsPerYear;
   }
-  
+
   // Calculate forward yield
   let forwardYield: number | null = null;
   if (currentPrice && currentPrice > 0 && annualizedDividend) {
     forwardYield = (annualizedDividend / currentPrice) * 100;
   }
-  
+
   // Calculate returns for all periods using calendar-based dates
   const [ret1W, ret1M, ret3M, ret6M, ret1Y, ret3Y] = await Promise.all([
     calculateReturnsForPeriod(upperTicker, '1W', dividends),
@@ -748,7 +739,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     calculateReturnsForPeriod(upperTicker, '1Y', dividends),
     calculateReturnsForPeriod(upperTicker, '3Y', dividends),
   ]);
-  
+
   return {
     ticker: upperTicker,
     name: staticData?.description ?? null,
@@ -761,22 +752,22 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     priceChangePercent,
     week52High,
     week52Low,
-    
+
     // Dividend data
     lastDividend,
     annualizedDividend,
     paymentsPerYear: actualPaymentsPerYear,
     forwardYield,
-    
+
     // Volatility metrics (frequency-proof)
     dividendSD: volMetrics.dividendSD,
     dividendCV: volMetrics.dividendCV,
     dividendCVPercent: volMetrics.dividendCVPercent,
     dividendVolatilityIndex: volMetrics.volatilityIndex,
-    
+
     // Weighted ranking (calculated separately)
     weightedRank: null,
-    
+
     // Total Return WITH DRIP
     totalReturnDrip: {
       '1W': ret1W.priceDrip,
@@ -786,7 +777,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '1Y': ret1Y.priceDrip,
       '3Y': ret3Y.priceDrip,
     },
-    
+
     // Price Return
     priceReturn: {
       '1W': ret1W.priceReturn,
@@ -796,7 +787,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '1Y': ret1Y.priceReturn,
       '3Y': ret3Y.priceReturn,
     },
-    
+
     // Total Return WITHOUT DRIP
     totalReturnNoDrip: {
       '1W': ret1W.priceNoDrip,
@@ -806,7 +797,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '1Y': ret1Y.priceNoDrip,
       '3Y': ret3Y.priceNoDrip,
     },
-    
+
     // Legacy combined returns for backward compatibility
     returns: {
       '1W': { price: ret1W.priceReturn, total: ret1W.priceDrip },
@@ -816,7 +807,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '1Y': { price: ret1Y.priceReturn, total: ret1Y.priceDrip },
       '3Y': { price: ret3Y.priceReturn, total: ret3Y.priceDrip },
     },
-    
+
     calculatedAt: new Date().toISOString(),
     dataSource: 'Tiingo',
   };
@@ -832,12 +823,12 @@ export async function getChartData(
 ): Promise<ChartDataPoint[]> {
   const startDate = periodToStartDate(period);
   const prices = await getPriceHistory(ticker, startDate);
-  
+
   if (prices.length === 0) return [];
-  
+
   const firstClose = prices[0].close ?? 0;
   const firstAdjClose = prices[0].adj_close ?? 0;
-  
+
   return prices.map(p => ({
     date: p.date,
     timestamp: new Date(p.date).getTime() / 1000,
@@ -875,7 +866,7 @@ export async function calculateRankings(
   weights: RankingWeights = { yield: 34, totalReturn: 33, volatility: 33 }
 ): Promise<RankedETF[]> {
   const tickers = await getAllTickers();
-  
+
   // Calculate metrics for all tickers
   const metricsPromises = tickers.map(async (ticker) => {
     try {
@@ -890,49 +881,49 @@ export async function calculateRankings(
       return { ticker, yield: null, totalReturn: null, volatility: null };
     }
   });
-  
+
   const allMetrics = await Promise.all(metricsPromises);
-  
+
   // Filter out tickers with no data
   const validMetrics = allMetrics.filter(
     m => m.yield !== null || m.totalReturn !== null
   );
-  
+
   // Calculate min/max for normalization
   const yields = validMetrics.map(m => m.yield).filter((v): v is number => v !== null);
   const returns = validMetrics.map(m => m.totalReturn).filter((v): v is number => v !== null);
   const vols = validMetrics.map(m => m.volatility).filter((v): v is number => v !== null);
-  
+
   const minYield = yields.length ? Math.min(...yields) : 0;
   const maxYield = yields.length ? Math.max(...yields) : 1;
   const minReturn = returns.length ? Math.min(...returns) : 0;
   const maxReturn = returns.length ? Math.max(...returns) : 1;
   const minVol = vols.length ? Math.min(...vols) : 0;
   const maxVol = vols.length ? Math.max(...vols) : 1;
-  
+
   // Calculate composite scores
   const totalWeight = weights.yield + weights.totalReturn + weights.volatility;
-  
+
   const ranked = validMetrics.map(m => {
     const normYield = m.yield !== null
       ? normalize(m.yield, minYield, maxYield)
       : 0.5;
-    
+
     const normReturn = m.totalReturn !== null
       ? normalize(m.totalReturn, minReturn, maxReturn)
       : 0.5;
-    
+
     // Invert volatility (lower is better)
     const normVol = m.volatility !== null
       ? normalize(m.volatility, minVol, maxVol, true)
       : 0.5;
-    
+
     const score = (
       normYield * weights.yield +
       normReturn * weights.totalReturn +
       normVol * weights.volatility
     ) / totalWeight;
-    
+
     return {
       ticker: m.ticker,
       yield: m.yield,
@@ -947,11 +938,11 @@ export async function calculateRankings(
       rank: 0,
     };
   });
-  
+
   // Sort by score and assign ranks
   ranked.sort((a, b) => b.compositeScore - a.compositeScore);
   ranked.forEach((r, i) => { r.rank = i + 1; });
-  
+
   return ranked;
 }
 
@@ -1009,7 +1000,7 @@ async function calculateRealtimeReturnForPeriod(
   // Calculate start date based on today (not the last trading day)
   const today = new Date();
   let startDateObj = new Date(today);
-  
+
   switch (period) {
     case '1W':
       startDateObj.setDate(today.getDate() - 7);
@@ -1030,27 +1021,27 @@ async function calculateRealtimeReturnForPeriod(
       startDateObj.setFullYear(today.getFullYear() - 3);
       break;
   }
-  
+
   const startDate = formatDate(startDateObj);
-  
+
   // Fetch historical price with buffer
   const bufferDate = new Date(startDateObj);
   bufferDate.setDate(bufferDate.getDate() - 14);
   const fetchStartDate = formatDate(bufferDate);
-  
+
   const prices = await getPriceHistory(ticker, fetchStartDate, formatDate(today));
-  
+
   if (prices.length === 0) {
     return { priceReturn: null, totalReturnDrip: null };
   }
-  
+
   // Find the start price (first price on or after startDate)
   const startRecord = findStartPrice(prices, startDate);
-  
+
   if (!startRecord) {
     return { priceReturn: null, totalReturnDrip: null };
   }
-  
+
   // Calculate Price Return: (current - start) / start * 100
   let priceReturn: number | null = null;
   if (startRecord.close && startRecord.close > 0) {
@@ -1059,7 +1050,7 @@ async function calculateRealtimeReturnForPeriod(
       priceReturn = null;
     }
   }
-  
+
   // Calculate Total Return DRIP: (current_adj / start_adj) - 1 * 100
   // For realtime, we approximate adj_close by using the ratio from the last known day
   let totalReturnDrip: number | null = null;
@@ -1069,7 +1060,7 @@ async function calculateRealtimeReturnForPeriod(
       totalReturnDrip = null;
     }
   }
-  
+
   return { priceReturn, totalReturnDrip };
 }
 
@@ -1079,35 +1070,35 @@ async function calculateRealtimeReturnForPeriod(
  */
 export async function calculateRealtimeReturns(ticker: string): Promise<RealtimeReturns | null> {
   const upperTicker = ticker.toUpperCase();
-  
+
   // Get realtime price from IEX
   const realtimeData = await fetchRealtimePrice(upperTicker);
-  
+
   if (!realtimeData) {
     logger.warn('Metrics', `No realtime price available for ${upperTicker}`);
     return null;
   }
-  
+
   const { price: currentPrice, prevClose, timestamp, isRealtime } = realtimeData;
-  
+
   // Calculate price change
   const priceChange = prevClose > 0 ? currentPrice - prevClose : 0;
   const priceChangePercent = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
-  
+
   // Get the latest stored prices to calculate adj_close ratio
   const latestPrices = await getLatestPrice(upperTicker, 1);
   let adjCloseRatio = 1;
-  
+
   if (latestPrices.length > 0) {
     const lastPrice = latestPrices[0];
     if (lastPrice.close && lastPrice.adj_close && lastPrice.close > 0) {
       adjCloseRatio = lastPrice.adj_close / lastPrice.close;
     }
   }
-  
+
   // Approximate current adjusted price
   const currentAdjPrice = currentPrice * adjCloseRatio;
-  
+
   // Calculate returns for all periods
   const [ret1W, ret1M, ret3M, ret6M, ret1Y, ret3Y] = await Promise.all([
     calculateRealtimeReturnForPeriod(upperTicker, '1W', currentPrice, currentAdjPrice),
@@ -1117,7 +1108,7 @@ export async function calculateRealtimeReturns(ticker: string): Promise<Realtime
     calculateRealtimeReturnForPeriod(upperTicker, '1Y', currentPrice, currentAdjPrice),
     calculateRealtimeReturnForPeriod(upperTicker, '3Y', currentPrice, currentAdjPrice),
   ]);
-  
+
   return {
     ticker: upperTicker,
     currentPrice,
@@ -1151,37 +1142,37 @@ export async function calculateRealtimeReturns(ticker: string): Promise<Realtime
  */
 export async function calculateRealtimeReturnsBatch(tickers: string[]): Promise<Map<string, RealtimeReturns>> {
   const results = new Map<string, RealtimeReturns>();
-  
+
   if (tickers.length === 0) return results;
-  
+
   // Batch fetch realtime prices
   const realtimePrices = await fetchRealtimePricesBatch(tickers);
-  
+
   // Calculate returns for each ticker that has realtime data
   const promises = tickers.map(async (ticker) => {
     const upperTicker = ticker.toUpperCase();
     const realtimeData = realtimePrices.get(upperTicker);
-    
+
     if (!realtimeData) return;
-    
+
     const { price: currentPrice, prevClose, timestamp, isRealtime } = realtimeData;
-    
+
     const priceChange = prevClose > 0 ? currentPrice - prevClose : 0;
     const priceChangePercent = prevClose > 0 ? ((currentPrice - prevClose) / prevClose) * 100 : 0;
-    
+
     // Get the latest stored prices to calculate adj_close ratio
     const latestPrices = await getLatestPrice(upperTicker, 1);
     let adjCloseRatio = 1;
-    
+
     if (latestPrices.length > 0) {
       const lastPrice = latestPrices[0];
       if (lastPrice.close && lastPrice.adj_close && lastPrice.close > 0) {
         adjCloseRatio = lastPrice.adj_close / lastPrice.close;
       }
     }
-    
+
     const currentAdjPrice = currentPrice * adjCloseRatio;
-    
+
     const [ret1W, ret1M, ret3M, ret6M, ret1Y, ret3Y] = await Promise.all([
       calculateRealtimeReturnForPeriod(upperTicker, '1W', currentPrice, currentAdjPrice),
       calculateRealtimeReturnForPeriod(upperTicker, '1M', currentPrice, currentAdjPrice),
@@ -1190,7 +1181,7 @@ export async function calculateRealtimeReturnsBatch(tickers: string[]): Promise<
       calculateRealtimeReturnForPeriod(upperTicker, '1Y', currentPrice, currentAdjPrice),
       calculateRealtimeReturnForPeriod(upperTicker, '3Y', currentPrice, currentAdjPrice),
     ]);
-    
+
     results.set(upperTicker, {
       ticker: upperTicker,
       currentPrice,
@@ -1217,8 +1208,8 @@ export async function calculateRealtimeReturnsBatch(tickers: string[]): Promise<
       },
     });
   });
-  
+
   await Promise.all(promises);
-  
+
   return results;
 }
