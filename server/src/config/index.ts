@@ -59,7 +59,9 @@ interface Config {
 function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
-    throw new Error(`Missing required environment variable: ${key}`);
+    // Don't throw during import - log warning and return empty string
+    console.error(`[CONFIG ERROR] Missing required environment variable: ${key}`);
+    return '';
   }
   return value;
 }
@@ -128,11 +130,20 @@ export const config: Config = {
 export function validateConfig(): void {
   const errors: string[] = [];
 
-  if (!config.supabase.url.startsWith('https://')) {
+  // Check for required environment variables
+  if (!config.supabase.url) {
+    errors.push('SUPABASE_URL is missing');
+  } else if (!config.supabase.url.startsWith('https://')) {
     errors.push('SUPABASE_URL must start with https://');
   }
 
-  if (config.tiingo.apiKey.length < 20) {
+  if (!config.supabase.serviceKey) {
+    errors.push('SUPABASE_SERVICE_ROLE_KEY is missing');
+  }
+
+  if (!config.tiingo.apiKey) {
+    errors.push('TIINGO_API_KEY is missing');
+  } else if (config.tiingo.apiKey.length < 20) {
     errors.push('TIINGO_API_KEY appears invalid (too short)');
   }
 

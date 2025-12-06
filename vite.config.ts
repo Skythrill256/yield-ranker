@@ -27,10 +27,12 @@ export default defineConfig(({ mode }) => {
       },
       dedupe: ["react", "react-dom"],
     },
-    // Use empty string for API_BASE_URL so frontend uses relative paths
-    // The Vite proxy will forward /api/* requests to the backend
+    // In production, call Railway backend directly
+    // In development, use empty string (Vite proxy handles it)
     define: {
-      'import.meta.env.VITE_API_URL': JSON.stringify(''),
+      'import.meta.env.VITE_API_URL': mode === 'production'
+        ? JSON.stringify('https://stunning-adaptation-production-8960.up.railway.app')
+        : JSON.stringify(''),
     },
   };
 });
