@@ -35,7 +35,7 @@ import {
   healthCheck,
   getRateLimitStatus,
 } from '../src/services/tiingo.js';
-import { calculateMetrics } from '../src/services/metrics.js';
+import { calculateMetrics, calculateRankings } from '../src/services/metrics.js';
 import { batchUpdateETFMetrics } from '../src/services/database.js';
 import type { TiingoPriceData } from '../src/types/index.js';
 
@@ -559,6 +559,26 @@ async function main(): Promise<void> {
 
   if (options.dryRun) {
     console.log('\n  [DRY RUN] No data was actually written.');
+  }
+
+  // Calculate and save rankings
+  if (!options.dryRun && successful > 0) {
+    console.log('\n[Rankings] Calculating weighted ranks...');
+    try {
+      const rankings = await calculateRankings();
+      console.log(`[Rankings] Calculated ranks for ${rankings.length} ETFs`);
+
+      // Update ranks in database
+      for (const ranked of rankings) {
+        await supabase
+          .from('etf_static')
+          .update({ weighted_rank: ranked.rank })
+          .eq('ticker', ranked.ticker);
+      }
+      console.log('[Rankings] ✅ Saved ranks to database');
+    } catch (error) {
+      console.error('[Rankings] ❌ Failed to calculate rankings:', (error as Error).message);
+    }
   }
 
   // Log errors for debugging

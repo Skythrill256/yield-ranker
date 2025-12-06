@@ -37,6 +37,10 @@ interface Config {
     };
   };
 
+  redis: {
+    url: string | null;
+  };
+
   upload: {
     maxFileSize: number;
     allowedMimeTypes: string[];
@@ -89,6 +93,10 @@ export const config: Config = {
       requestsPerHour: optionalEnvNumber('TIINGO_RATE_LIMIT_HOURLY', 500),
       minDelayMs: optionalEnvNumber('TIINGO_MIN_DELAY_MS', 100),
     },
+  },
+
+  redis: {
+    url: process.env.REDIS_URL || null,
   },
 
   upload: {

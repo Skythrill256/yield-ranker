@@ -35,44 +35,67 @@ export function getSupabase(): SupabaseClient {
 }
 
 // ============================================================================
+// Retry Helper for Network Resilience
+// ============================================================================
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 500
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+      }
+    }
+  }
+  throw lastError;
+}
+
+// ============================================================================
 // ETF Static Table Operations
 // ============================================================================
 
 export async function getAllTickers(): Promise<string[]> {
   const db = getSupabase();
-  
+
   // Try etf_static first
   const { data, error } = await db
     .from('etf_static')
     .select('ticker')
     .order('ticker');
-  
+
   if (!error && data && data.length > 0) {
     return data.map((row: { ticker: string }) => row.ticker);
   }
-  
+
   // Fallback to legacy etfs table
   const { data: etfsData, error: etfsError } = await db
     .from('etfs')
     .select('symbol')
     .order('symbol');
-  
+
   if (etfsError) {
     throw new Error(`Failed to fetch tickers: ${etfsError.message}`);
   }
-  
+
   return (etfsData ?? []).map((row: { symbol: string }) => row.symbol);
 }
 
 export async function getETFStatic(ticker: string): Promise<ETFStaticRecord | null> {
   const db = getSupabase();
-  
+
   const { data, error } = await db
     .from('etf_static')
     .select('*')
     .eq('ticker', ticker.toUpperCase())
     .single();
-  
+
   if (error || !data) {
     // Try legacy table
     const { data: legacy } = await db
@@ -80,7 +103,7 @@ export async function getETFStatic(ticker: string): Promise<ETFStaticRecord | nu
       .select('*')
       .eq('symbol', ticker.toUpperCase())
       .single();
-    
+
     if (legacy) {
       return {
         ticker: legacy.symbol,
@@ -128,21 +151,21 @@ export async function getETFStatic(ticker: string): Promise<ETFStaticRecord | nu
     }
     return null;
   }
-  
+
   return data as ETFStaticRecord;
 }
 
 export async function upsertETFStatic(records: ETFStaticRecord[]): Promise<number> {
   const db = getSupabase();
-  
+
   const { error } = await db
     .from('etf_static')
     .upsert(records, { onConflict: 'ticker' });
-  
+
   if (error) {
     throw new Error(`Failed to upsert etf_static: ${error.message}`);
   }
-  
+
   return records.length;
 }
 
@@ -154,7 +177,7 @@ export async function updateETFMetrics(
   metrics: Partial<ETFStaticRecord>
 ): Promise<void> {
   const db = getSupabase();
-  
+
   const { error } = await db
     .from('etf_static')
     .update({
@@ -163,7 +186,7 @@ export async function updateETFMetrics(
       updated_at: new Date().toISOString(),
     })
     .eq('ticker', ticker.toUpperCase());
-  
+
   if (error) {
     logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
   }
@@ -176,7 +199,7 @@ export async function batchUpdateETFMetrics(
   updates: Array<{ ticker: string; metrics: Partial<ETFStaticRecord> }>
 ): Promise<number> {
   let updated = 0;
-  
+
   for (const { ticker, metrics } of updates) {
     try {
       await updateETFMetrics(ticker, metrics);
@@ -185,7 +208,7 @@ export async function batchUpdateETFMetrics(
       logger.error('Database', `Failed to update ${ticker}: ${error}`);
     }
   }
-  
+
   return updated;
 }
 
@@ -198,67 +221,79 @@ export async function getPriceHistory(
   startDate: string,
   endDate?: string
 ): Promise<PriceRecord[]> {
-  const db = getSupabase();
-  
-  let query = db
-    .from('prices_daily')
-    .select('*')
-    .eq('ticker', ticker.toUpperCase())
-    .gte('date', startDate)
-    .order('date', { ascending: true });
-  
-  if (endDate) {
-    query = query.lte('date', endDate);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    logger.error('Database', `Error fetching prices for ${ticker}: ${error.message}`);
+  try {
+    return await withRetry(async () => {
+      const db = getSupabase();
+
+      let query = db
+        .from('prices_daily')
+        .select('*')
+        .eq('ticker', ticker.toUpperCase())
+        .gte('date', startDate)
+        .order('date', { ascending: true });
+
+      if (endDate) {
+        query = query.lte('date', endDate);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (data ?? []) as PriceRecord[];
+    });
+  } catch (error) {
+    logger.error('Database', `Error fetching prices for ${ticker}: ${(error as Error).message}`);
     return [];
   }
-  
-  return (data ?? []) as PriceRecord[];
 }
 
 export async function getLatestPrice(ticker: string, limit = 2): Promise<PriceRecord[]> {
-  const db = getSupabase();
-  
-  const { data, error } = await db
-    .from('prices_daily')
-    .select('*')
-    .eq('ticker', ticker.toUpperCase())
-    .order('date', { ascending: false })
-    .limit(limit);
-  
-  if (error) {
-    logger.error('Database', `Error fetching latest price for ${ticker}: ${error.message}`);
+  try {
+    return await withRetry(async () => {
+      const db = getSupabase();
+
+      const { data, error } = await db
+        .from('prices_daily')
+        .select('*')
+        .eq('ticker', ticker.toUpperCase())
+        .order('date', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return ((data ?? []) as PriceRecord[]).reverse();
+    });
+  } catch (error) {
+    logger.error('Database', `Error fetching latest price for ${ticker}: ${(error as Error).message}`);
     return [];
   }
-  
-  return ((data ?? []) as PriceRecord[]).reverse();
 }
 
 export async function upsertPrices(records: PriceRecord[], batchSize = 500): Promise<number> {
   if (records.length === 0) return 0;
-  
+
   const db = getSupabase();
   let inserted = 0;
-  
+
   for (let i = 0; i < records.length; i += batchSize) {
     const batch = records.slice(i, i + batchSize);
-    
+
     const { error } = await db
       .from('prices_daily')
       .upsert(batch, { onConflict: 'ticker,date' });
-    
+
     if (error) {
       logger.error('Database', `Error upserting prices batch: ${error.message}`);
     } else {
       inserted += batch.length;
     }
   }
-  
+
   return inserted;
 }
 
@@ -270,26 +305,32 @@ export async function getDividendHistory(
   ticker: string,
   startDate?: string
 ): Promise<DividendRecord[]> {
-  const db = getSupabase();
-  
-  let query = db
-    .from('dividends_detail')
-    .select('*')
-    .eq('ticker', ticker.toUpperCase())
-    .order('ex_date', { ascending: false });
-  
-  if (startDate) {
-    query = query.gte('ex_date', startDate);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    logger.error('Database', `Error fetching dividends for ${ticker}: ${error.message}`);
+  try {
+    return await withRetry(async () => {
+      const db = getSupabase();
+
+      let query = db
+        .from('dividends_detail')
+        .select('*')
+        .eq('ticker', ticker.toUpperCase())
+        .order('ex_date', { ascending: false });
+
+      if (startDate) {
+        query = query.gte('ex_date', startDate);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return (data ?? []) as DividendRecord[];
+    });
+  } catch (error) {
+    logger.error('Database', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
     return [];
   }
-  
-  return (data ?? []) as DividendRecord[];
 }
 
 /**
@@ -301,25 +342,25 @@ export async function getDividendsFromPrices(
   startDate?: string
 ): Promise<DividendRecord[]> {
   const db = getSupabase();
-  
+
   let query = db
     .from('prices_daily')
     .select('ticker, date, div_cash')
     .eq('ticker', ticker.toUpperCase())
     .gt('div_cash', 0)
     .order('date', { ascending: false });
-  
+
   if (startDate) {
     query = query.gte('date', startDate);
   }
-  
+
   const { data, error } = await query;
-  
+
   if (error) {
     logger.error('Database', `Error fetching dividends from prices for ${ticker}: ${error.message}`);
     return [];
   }
-  
+
   // Map price records to dividend records
   return (data ?? []).map((row: { ticker: string; date: string; div_cash: number }) => ({
     ticker: row.ticker,
@@ -336,24 +377,24 @@ export async function getDividendsFromPrices(
 
 export async function upsertDividends(records: DividendRecord[], batchSize = 100): Promise<number> {
   if (records.length === 0) return 0;
-  
+
   const db = getSupabase();
   let inserted = 0;
-  
+
   for (let i = 0; i < records.length; i += batchSize) {
     const batch = records.slice(i, i + batchSize);
-    
+
     const { error } = await db
       .from('dividends_detail')
       .upsert(batch, { onConflict: 'ticker,ex_date' });
-    
+
     if (error) {
       logger.error('Database', `Error upserting dividends batch: ${error.message}`);
     } else {
       inserted += batch.length;
     }
   }
-  
+
   return inserted;
 }
 
@@ -366,28 +407,28 @@ export async function getSyncLog(
   dataType: 'prices' | 'dividends'
 ): Promise<SyncLogRecord | null> {
   const db = getSupabase();
-  
+
   const { data, error } = await db
     .from('data_sync_log')
     .select('*')
     .eq('ticker', ticker)
     .eq('data_type', dataType)
     .single();
-  
+
   if (error || !data) return null;
   return data as SyncLogRecord;
 }
 
 export async function updateSyncLog(record: Omit<SyncLogRecord, 'id' | 'created_at'>): Promise<void> {
   const db = getSupabase();
-  
+
   const { error } = await db
     .from('data_sync_log')
     .upsert({
       ...record,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'ticker,data_type' });
-  
+
   if (error) {
     logger.error('Database', `Error updating sync log: ${error.message}`);
   }
@@ -395,16 +436,16 @@ export async function updateSyncLog(record: Omit<SyncLogRecord, 'id' | 'created_
 
 export async function getAllSyncLogs(): Promise<SyncLogRecord[]> {
   const db = getSupabase();
-  
+
   const { data, error } = await db
     .from('data_sync_log')
     .select('*')
     .order('updated_at', { ascending: false });
-  
+
   if (error) {
     logger.error('Database', `Error fetching sync logs: ${error.message}`);
     return [];
   }
-  
+
   return (data ?? []) as SyncLogRecord[];
 }

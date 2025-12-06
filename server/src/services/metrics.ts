@@ -11,13 +11,13 @@
 import {
   getETFStatic,
   getAllTickers,
+  getPriceHistory,
+  getLatestPrice,
+  getDividendHistory,
 } from './database.js';
 import {
   fetchRealtimePrice,
   fetchRealtimePricesBatch,
-  getPriceHistoryFromAPI as getPriceHistory,
-  getLatestPriceFromAPI as getLatestPrice,
-  getDividendsFromAPI as getDividendHistory,
 } from './tiingo.js';
 import {
   getDateDaysAgo,

@@ -10,6 +10,7 @@ import path from 'path';
 import fs from 'fs';
 import XLSX from 'xlsx';
 import { getSupabase } from '../services/database.js';
+import { getCached, setCached, CACHE_KEYS, CACHE_TTL } from '../services/redis.js';
 import config from '../config/index.js';
 import { logger, parseNumeric } from '../utils/index.js';
 import type { ETFStaticRecord } from '../types/index.js';
@@ -243,207 +244,104 @@ router.post('/upload-dtr', upload.single('file'), handleStaticUpload);
  */
 router.post('/upload-static', upload.single('file'), handleStaticUpload);
 
-// ============================================================================
-// ETF List Endpoint
-// ============================================================================
-
 /**
- * GET / - Get all ETFs with LIVE data from Tiingo API
- * Fetches static identity data from database, then calculates all metrics live from API
+ * GET / - Get all ETFs with pre-computed metrics from database
+ * Serves metrics that were calculated during the hourly cron job
+ * Uses Redis caching for faster responses
  */
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
+    // Try Redis cache first
+    const cached = await getCached<any>(CACHE_KEYS.ETF_LIST);
+    if (cached) {
+      logger.info('Routes', `Returning ${cached.data?.length || 0} ETFs from Redis cache`);
+      res.json(cached);
+      return;
+    }
+
     const supabase = getSupabase();
 
-    // Fetch only static identity fields from database
+    // Fetch all data including pre-computed metrics from etf_static
     const staticResult = await supabase
       .from('etf_static')
-      .select('ticker, issuer, description, pay_day_text, payments_per_year, ipo_price')
+      .select('*')
       .order('ticker', { ascending: true })
-      .limit(10000);
-
-    const legacyResult = await supabase
-      .from('etfs')
-      .select('symbol, issuer, description, pay_day, payments_per_year, ipo_price')
-      .order('symbol', { ascending: true })
       .limit(10000);
 
     if (staticResult.error) {
       logger.error('Routes', `Error fetching etf_static: ${staticResult.error.message}`);
-    }
-    if (legacyResult.error) {
-      logger.error('Routes', `Error fetching etfs: ${legacyResult.error.message}`);
+      res.status(500).json({ error: 'Failed to fetch ETF data' });
+      return;
     }
 
     const staticData = staticResult.data || [];
-    const legacyData = legacyResult.data || [];
+    logger.info('Routes', `Fetched ${staticData.length} ETFs from database`);
 
-    logger.info('Routes', `Fetched ${staticData.length} from etf_static, ${legacyData.length} from etfs`);
+    // Map to frontend format
+    const results = staticData.map((etf: any) => ({
+      ticker: etf.ticker,
+      symbol: etf.ticker,
+      issuer: etf.issuer,
+      description: etf.description,
+      pay_day_text: etf.pay_day_text,
+      pay_day: etf.pay_day_text,
+      payments_per_year: etf.payments_per_year,
+      ipo_price: etf.ipo_price,
+      // Pre-computed price data from cron job
+      price: etf.price,
+      price_change: etf.price_change,
+      price_change_pct: etf.price_change_pct,
+      // Pre-computed dividend data from cron job
+      dividend: etf.last_dividend,
+      last_dividend: etf.last_dividend,
+      annual_div: etf.annual_dividend,
+      annual_dividend: etf.annual_dividend,
+      forward_yield: etf.forward_yield,
+      // Pre-computed volatility metrics from cron job
+      dividend_sd: etf.dividend_sd,
+      dividend_cv: etf.dividend_cv,
+      dividend_cv_percent: etf.dividend_cv_percent,
+      dividend_volatility_index: etf.dividend_volatility_index,
+      // Pre-computed 52-week range from cron job
+      week_52_high: etf.week_52_high,
+      week_52_low: etf.week_52_low,
+      // Pre-computed Total Return WITH DRIP from cron job
+      tr_drip_3y: etf.tr_drip_3y,
+      tr_drip_12m: etf.tr_drip_12m,
+      tr_drip_6m: etf.tr_drip_6m,
+      tr_drip_3m: etf.tr_drip_3m,
+      tr_drip_1m: etf.tr_drip_1m,
+      tr_drip_1w: etf.tr_drip_1w,
+      // Pre-computed Price Return from cron job
+      price_return_3y: etf.price_return_3y,
+      price_return_12m: etf.price_return_12m,
+      price_return_6m: etf.price_return_6m,
+      price_return_3m: etf.price_return_3m,
+      price_return_1m: etf.price_return_1m,
+      price_return_1w: etf.price_return_1w,
+      // Legacy fields for backward compatibility
+      three_year_annualized: etf.tr_drip_3y,
+      total_return_12m: etf.tr_drip_12m,
+      total_return_6m: etf.tr_drip_6m,
+      total_return_3m: etf.tr_drip_3m,
+      total_return_1m: etf.tr_drip_1m,
+      total_return_1w: etf.tr_drip_1w,
+      // Metadata
+      last_updated: etf.last_updated || etf.updated_at,
+      weighted_rank: etf.weighted_rank,
+    }));
 
-    // Build unique tickers list with static data
-    const tickerMap = new Map<string, {
-      ticker: string;
-      issuer: string | null;
-      description: string | null;
-      pay_day_text: string | null;
-      payments_per_year: number | null;
-      ipo_price: number | null;
-    }>();
-
-    // Add tickers from etf_static (preferred)
-    for (const item of staticData) {
-      const ticker = (item.ticker || '').toUpperCase().trim();
-      if (ticker && !tickerMap.has(ticker)) {
-        tickerMap.set(ticker, {
-          ticker,
-          issuer: item.issuer || null,
-          description: item.description || null,
-          pay_day_text: item.pay_day_text || null,
-          payments_per_year: item.payments_per_year || null,
-          ipo_price: item.ipo_price || null,
-        });
-      }
-    }
-
-    // Add tickers from legacy table if not already present
-    for (const item of legacyData) {
-      const ticker = (item.symbol || '').toUpperCase().trim();
-      if (ticker && !tickerMap.has(ticker)) {
-        tickerMap.set(ticker, {
-          ticker,
-          issuer: item.issuer || null,
-          description: item.description || null,
-          pay_day_text: item.pay_day || null,
-          payments_per_year: item.payments_per_year || null,
-          ipo_price: item.ipo_price || null,
-        });
-      }
-    }
-
-    const tickers = Array.from(tickerMap.keys()).sort();
-    logger.info('Routes', `Calculating live metrics for ${tickers.length} tickers from Tiingo API...`);
-
-    // Calculate live metrics for ALL tickers from Tiingo API
-    const metricsPromises = tickers.map(async (ticker) => {
-      try {
-        const staticInfo = tickerMap.get(ticker)!;
-        const metrics = await calculateMetrics(ticker);
-
-        return {
-          ticker,
-          symbol: ticker,
-          issuer: staticInfo.issuer,
-          description: staticInfo.description || metrics.name,
-          pay_day_text: staticInfo.pay_day_text,
-          pay_day: staticInfo.pay_day_text,
-          payments_per_year: metrics.paymentsPerYear || staticInfo.payments_per_year,
-          ipo_price: staticInfo.ipo_price,
-          // Live price data from API
-          price: metrics.currentPrice,
-          price_change: metrics.priceChange,
-          price_change_pct: metrics.priceChangePercent,
-          // Live dividend data from API
-          dividend: metrics.lastDividend,
-          last_dividend: metrics.lastDividend,
-          annual_div: metrics.annualizedDividend,
-          annual_dividend: metrics.annualizedDividend,
-          forward_yield: metrics.forwardYield,
-          // Volatility metrics from API
-          dividend_sd: metrics.dividendSD,
-          dividend_cv: metrics.dividendCV,
-          dividend_cv_percent: metrics.dividendCVPercent,
-          dividend_volatility_index: metrics.dividendVolatilityIndex,
-          // 52-week range from API
-          week_52_high: metrics.week52High,
-          week_52_low: metrics.week52Low,
-          // Total Return WITH DRIP from API
-          tr_drip_3y: metrics.totalReturnDrip?.['3Y'] ?? null,
-          tr_drip_12m: metrics.totalReturnDrip?.['1Y'] ?? null,
-          tr_drip_6m: metrics.totalReturnDrip?.['6M'] ?? null,
-          tr_drip_3m: metrics.totalReturnDrip?.['3M'] ?? null,
-          tr_drip_1m: metrics.totalReturnDrip?.['1M'] ?? null,
-          tr_drip_1w: metrics.totalReturnDrip?.['1W'] ?? null,
-          // Price Return from API
-          price_return_3y: metrics.priceReturn?.['3Y'] ?? null,
-          price_return_12m: metrics.priceReturn?.['1Y'] ?? null,
-          price_return_6m: metrics.priceReturn?.['6M'] ?? null,
-          price_return_3m: metrics.priceReturn?.['3M'] ?? null,
-          price_return_1m: metrics.priceReturn?.['1M'] ?? null,
-          price_return_1w: metrics.priceReturn?.['1W'] ?? null,
-          // Legacy fields for backward compatibility
-          three_year_annualized: metrics.totalReturnDrip?.['3Y'] ?? null,
-          total_return_12m: metrics.totalReturnDrip?.['1Y'] ?? null,
-          total_return_6m: metrics.totalReturnDrip?.['6M'] ?? null,
-          total_return_3m: metrics.totalReturnDrip?.['3M'] ?? null,
-          total_return_1m: metrics.totalReturnDrip?.['1M'] ?? null,
-          total_return_1w: metrics.totalReturnDrip?.['1W'] ?? null,
-          // Metadata
-          last_updated: new Date().toISOString(),
-          weighted_rank: null, // Ranking is calculated on frontend
-        };
-      } catch (error) {
-        logger.warn('Routes', `Failed to calculate metrics for ${ticker}: ${(error as Error).message}`);
-        // Return basic static data if metrics calculation fails
-        const staticInfo = tickerMap.get(ticker)!;
-        return {
-          ticker,
-          symbol: ticker,
-          issuer: staticInfo.issuer,
-          description: staticInfo.description,
-          pay_day_text: staticInfo.pay_day_text,
-          pay_day: staticInfo.pay_day_text,
-          payments_per_year: staticInfo.payments_per_year,
-          ipo_price: staticInfo.ipo_price,
-          price: null,
-          price_change: null,
-          price_change_pct: null,
-          dividend: null,
-          last_dividend: null,
-          annual_div: null,
-          annual_dividend: null,
-          forward_yield: null,
-          dividend_sd: null,
-          dividend_cv: null,
-          dividend_cv_percent: null,
-          dividend_volatility_index: null,
-          week_52_high: null,
-          week_52_low: null,
-          tr_drip_3y: null,
-          tr_drip_12m: null,
-          tr_drip_6m: null,
-          tr_drip_3m: null,
-          tr_drip_1m: null,
-          tr_drip_1w: null,
-          price_return_3y: null,
-          price_return_12m: null,
-          price_return_6m: null,
-          price_return_3m: null,
-          price_return_1m: null,
-          price_return_1w: null,
-          three_year_annualized: null,
-          total_return_12m: null,
-          total_return_6m: null,
-          total_return_3m: null,
-          total_return_1m: null,
-          total_return_1w: null,
-          last_updated: null,
-          weighted_rank: null,
-        };
-      }
-    });
-
-    const results = await Promise.all(metricsPromises);
-
-    // Sort by ticker
-    const sortedResults = results.sort((a, b) => a.ticker.localeCompare(b.ticker));
-
-    logger.info('Routes', `Successfully calculated live metrics for ${sortedResults.length} ETFs`);
-
-    res.json({
-      data: sortedResults,
+    const response = {
+      data: results,
       last_updated: new Date().toISOString(),
       last_updated_timestamp: new Date().toISOString(),
-    });
+    };
+
+    // Cache the response in Redis
+    await setCached(CACHE_KEYS.ETF_LIST, response, CACHE_TTL.ETF_LIST);
+    logger.info('Routes', `Returning ${results.length} ETFs (cached for ${CACHE_TTL.ETF_LIST}s)`);
+
+    res.json(response);
   } catch (error) {
     logger.error('Routes', `Error fetching ETFs: ${(error as Error).message}`);
     res.status(500).json({ error: 'Internal server error' });

@@ -8,6 +8,7 @@ import cors from "cors";
 
 import config, { validateConfig } from "./config/index.js";
 import { logger } from "./utils/index.js";
+import { getRedis, closeRedis } from "./services/redis.js";
 
 import tiingoRoutes from "./routes/tiingo.js";
 import etfRoutes from "./routes/etfs.js";
@@ -93,8 +94,99 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // ============================================================================
 const PORT = Number(process.env.PORT) || config.port || 3000;
 
+// Warm up cache on startup
+async function warmUpCache() {
+  try {
+    const { getSupabase } = await import("./services/database.js");
+    const { setCached, CACHE_KEYS, CACHE_TTL } = await import("./services/redis.js");
+
+    logger.info("Cache", "Warming up ETF cache...");
+
+    const supabase = getSupabase();
+    const staticResult = await supabase
+      .from('etf_static')
+      .select('*')
+      .order('ticker', { ascending: true })
+      .limit(10000);
+
+    if (staticResult.error) {
+      logger.error("Cache", `Failed to warm cache: ${staticResult.error.message}`);
+      return;
+    }
+
+    const staticData = staticResult.data || [];
+
+    // Map to frontend format (same as in routes)
+    const results = staticData.map((etf: any) => ({
+      ticker: etf.ticker,
+      symbol: etf.ticker,
+      issuer: etf.issuer,
+      description: etf.description,
+      pay_day_text: etf.pay_day_text,
+      pay_day: etf.pay_day_text,
+      payments_per_year: etf.payments_per_year,
+      ipo_price: etf.ipo_price,
+      price: etf.price,
+      price_change: etf.price_change,
+      price_change_pct: etf.price_change_pct,
+      dividend: etf.last_dividend,
+      last_dividend: etf.last_dividend,
+      annual_div: etf.annual_dividend,
+      annual_dividend: etf.annual_dividend,
+      forward_yield: etf.forward_yield,
+      dividend_sd: etf.dividend_sd,
+      dividend_cv: etf.dividend_cv,
+      dividend_cv_percent: etf.dividend_cv_percent,
+      dividend_volatility_index: etf.dividend_volatility_index,
+      week_52_high: etf.week_52_high,
+      week_52_low: etf.week_52_low,
+      tr_drip_3y: etf.tr_drip_3y,
+      tr_drip_12m: etf.tr_drip_12m,
+      tr_drip_6m: etf.tr_drip_6m,
+      tr_drip_3m: etf.tr_drip_3m,
+      tr_drip_1m: etf.tr_drip_1m,
+      tr_drip_1w: etf.tr_drip_1w,
+      price_return_3y: etf.price_return_3y,
+      price_return_12m: etf.price_return_12m,
+      price_return_6m: etf.price_return_6m,
+      price_return_3m: etf.price_return_3m,
+      price_return_1m: etf.price_return_1m,
+      price_return_1w: etf.price_return_1w,
+      three_year_annualized: etf.tr_drip_3y,
+      total_return_12m: etf.tr_drip_12m,
+      total_return_6m: etf.tr_drip_6m,
+      total_return_3m: etf.tr_drip_3m,
+      total_return_1m: etf.tr_drip_1m,
+      total_return_1w: etf.tr_drip_1w,
+      last_updated: etf.last_updated || etf.updated_at,
+      weighted_rank: etf.weighted_rank,
+    }));
+
+    const response = {
+      data: results,
+      last_updated: new Date().toISOString(),
+      last_updated_timestamp: new Date().toISOString(),
+    };
+
+    await setCached(CACHE_KEYS.ETF_LIST, response, CACHE_TTL.ETF_LIST);
+    logger.info("Cache", `✅ Cache warmed with ${results.length} ETFs`);
+  } catch (error) {
+    logger.error("Cache", `Failed to warm cache: ${(error as Error).message}`);
+  }
+}
+
 const server = app.listen(PORT, "0.0.0.0", () => {
   logger.info("Server", `🚀 Server running on 0.0.0.0:${PORT}`);
+
+  // Initialize Redis connection and warm up cache
+  if (config.redis?.url) {
+    getRedis();
+    // Warm up cache after a short delay to ensure Redis is connected
+    setTimeout(() => warmUpCache(), 1000);
+  } else {
+    // Even without Redis, still warm up by just triggering the DB query
+    warmUpCache();
+  }
 });
 
 // ============================================================================
@@ -111,8 +203,9 @@ process.on("unhandledRejection", (reason: any) => {
 // ============================================================================
 // Graceful Shutdown
 // ============================================================================
-function gracefulShutdown(signal: string) {
+async function gracefulShutdown(signal: string) {
   logger.info("Server", `${signal} received. Shutting down...`);
+  await closeRedis();
   server.close(() => process.exit(0));
 }
 
