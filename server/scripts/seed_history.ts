@@ -2,7 +2,7 @@
  * seed_history.ts - One-Time Historical Data Seeding Script
  * 
  * This script populates the prices_daily and dividends_detail tables
- * with historical data from the FMP API for all tickers in etf_static.
+ * with historical data from the Tiingo API for all tickers in etf_static.
  * 
  * Usage: npx tsx scripts/seed_history.ts [--ticker SYMBOL] [--start-date YYYY-MM-DD]
  * 
@@ -26,8 +26,11 @@ import {
   fetchDividendHistory,
   healthCheck,
   getRateLimitStatus,
-} from '../src/services/fmp.js';
-import type { FMPPriceData, FMPDividendData } from '../src/types/index.js';
+} from '../src/services/tiingo.js';
+import type { TiingoPriceData } from '../src/types/index.js';
+
+// Type alias for dividend data from Tiingo
+type DividendData = { date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null };
 
 // ============================================================================
 // Configuration
@@ -169,7 +172,7 @@ async function ensureTickerInStatic(ticker: string): Promise<boolean> {
  */
 async function insertPriceData(
   ticker: string,
-  prices: FMPPriceData[],
+  prices: TiingoPriceData[],
   dryRun: boolean
 ): Promise<number> {
   if (prices.length === 0) return 0;
@@ -186,9 +189,9 @@ async function insertPriceData(
     adj_open: p.adjOpen || p.open,
     adj_high: p.adjHigh || p.high,
     adj_low: p.adjLow || p.low,
-    adj_volume: p.adjVolume || p.volume,
-    div_cash: 0,  // FMP doesn't include divCash in price data
-    split_factor: 1,
+    adj_volume: p.volume, // Tiingo uses volume for adj_volume
+    div_cash: p.divCash || 0,
+    split_factor: p.splitFactor || 1,
   }));
 
   if (dryRun) {
@@ -224,7 +227,7 @@ async function insertPriceData(
  */
 async function insertDividendData(
   ticker: string,
-  dividends: FMPDividendData[],
+  dividends: DividendData[],
   dryRun: boolean
 ): Promise<number> {
   if (dividends.length === 0) return 0;
@@ -362,7 +365,7 @@ async function seedTicker(
 
 async function main(): Promise<void> {
   console.log('============================================');
-  console.log('FMP Historical Data Seeding Script');
+  console.log('Tiingo Historical Data Seeding Script');
   console.log('============================================\n');
 
   const options = parseArgs();
@@ -373,14 +376,14 @@ async function main(): Promise<void> {
   console.log(`  Dry Run: ${options.dryRun}`);
   console.log('');
 
-  // Verify FMP API connectivity
-  console.log('[Seed] Checking FMP API connectivity...');
+  // Verify Tiingo API connectivity
+  console.log('[Seed] Checking Tiingo API connectivity...');
   const apiHealthy = await healthCheck();
   if (!apiHealthy) {
-    console.error('[Seed] ERROR: Cannot connect to FMP API. Check your API key.');
+    console.error('[Seed] ERROR: Cannot connect to Tiingo API. Check your API key.');
     process.exit(1);
   }
-  console.log('[Seed] FMP API connection successful.\n');
+  console.log('[Seed] Tiingo API connection successful.\n');
 
   // Get tickers to process
   let tickers: string[];
@@ -412,7 +415,7 @@ async function main(): Promise<void> {
 
       // Show progress
       const rateLimitStatus = getRateLimitStatus();
-      console.log(`[Seed] Progress: ${processedCount}/${tickers.length} | API Requests: ${rateLimitStatus.requestsToday}/${rateLimitStatus.dailyLimit}`);
+      console.log(`[Seed] Progress: ${processedCount}/${tickers.length} | API Requests: ${rateLimitStatus.requestsThisHour}/${rateLimitStatus.hourlyLimit}`);
 
     } catch (error) {
       console.error(`[Seed] Error processing ${ticker}:`, error);

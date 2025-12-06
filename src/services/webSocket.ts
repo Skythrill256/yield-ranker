@@ -2,33 +2,24 @@
  * WebSocket Service Re-exports
  * 
  * Unified exports for real-time price streaming.
- * Uses FMP WebSocket as primary, with Finnhub as reference/fallback.
+ * Uses Tiingo IEX WebSocket for realtime ETF prices.
  */
 
-// Primary: FMP WebSocket (real-time ETF prices)
+// Primary: Tiingo IEX WebSocket (real-time ETF prices)
 export {
-    initializeFMPWebSocket as initializeWebSocket,
-    subscribeToFMPUpdates as subscribeToETFUpdates,
-    updateFMPCachedETFs as updateCachedETFs,
-    disconnectFMPWebSocket as disconnectWebSocket,
-    isFMPWebSocketConnected as isWebSocketConnected,
+    initializeTiingoWebSocket as initializeWebSocket,
+    subscribeToTiingoUpdates as subscribeToETFUpdates,
+    updateTiingoCachedETFs as updateCachedETFs,
+    disconnectTiingoWebSocket as disconnectWebSocket,
+    isTiingoWebSocketConnected as isWebSocketConnected,
     default as webSocket,
-} from './fmpWebSocket';
+} from './tiingoWebSocket';
 
-// Direct FMP exports (for explicit usage)
+// Direct Tiingo exports (for explicit usage)
 export {
-    initializeFMPWebSocket,
-    subscribeToFMPUpdates,
-    updateFMPCachedETFs,
-    disconnectFMPWebSocket,
-    isFMPWebSocketConnected,
-} from './fmpWebSocket';
-
-// Legacy Finnhub exports (for backward compatibility)
-export {
-    initializeWebSocket as initializeFinnhubWebSocket,
-    subscribeToETFUpdates as subscribeToFinnhubUpdates,
-    updateCachedETFs as updateFinnhubCachedETFs,
-    disconnectWebSocket as disconnectFinnhubWebSocket,
-    isWebSocketConnected as isFinnhubConnected,
-} from './finnhubWebSocket';
+    initializeTiingoWebSocket,
+    subscribeToTiingoUpdates,
+    updateTiingoCachedETFs,
+    disconnectTiingoWebSocket,
+    isTiingoWebSocketConnected,
+} from './tiingoWebSocket';

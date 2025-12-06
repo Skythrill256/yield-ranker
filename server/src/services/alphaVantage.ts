@@ -1,12 +1,12 @@
 /**
- * FMP Corporate Actions API Service
+ * Tiingo Dividend Dates Service
  * 
- * Fetches dividend record and payment dates from FMP API
- * Replaces the previous Tiingo Corporate Actions implementation.
+ * Fetches dividend data from Tiingo API
+ * Used for getting record and payment dates for the dividend calendar.
  */
 
-import config from '../config/index.js';
-import { logger, sleep } from '../utils/index.js';
+import { logger } from '../utils/index.js';
+import { fetchDividendHistory } from './tiingo.js';
 
 // ============================================================================
 // Types
@@ -42,27 +42,7 @@ const FREQUENCY_MAP: Record<string, number> = {
 };
 
 // ============================================================================
-// Rate Limiting State
-// ============================================================================
-
-let lastRequestTime = 0;
-
-async function waitForRateLimit(): Promise<void> {
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
-  const minDelay = config.fmp.rateLimit.minDelayMs;
-
-  if (timeSinceLastRequest < minDelay) {
-    const waitTime = minDelay - timeSinceLastRequest;
-    logger.debug('FMPCorporateActions', `Rate limiting: waiting ${waitTime}ms`);
-    await sleep(waitTime);
-  }
-
-  lastRequestTime = Date.now();
-}
-
-// ============================================================================
-// API Methods
+// Helper Functions
 // ============================================================================
 
 /**
@@ -85,75 +65,43 @@ function estimateFrequency(daysBetween: number): string {
   return 'annual';
 }
 
+// ============================================================================
+// API Methods
+// ============================================================================
+
 /**
- * Fetch dividend history with record and payment dates from FMP Dividends API
+ * Fetch dividend history with dates from Tiingo API
  */
 export async function fetchDividendDates(
   ticker: string,
   startDate?: string,
   endDate?: string
 ): Promise<DividendDates[]> {
-  if (!config.fmp.apiKey) {
-    logger.warn('FMPCorporateActions', 'FMP API key not configured');
-    return [];
-  }
-
-  await waitForRateLimit();
-
-  // Build URL with API key
-  const url = `${config.fmp.baseUrl}/stable/dividends?symbol=${ticker.toUpperCase()}&apikey=${config.fmp.apiKey}`;
-
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const tiingoDividends = await fetchDividendHistory(ticker, startDate, endDate);
 
-    if (response.status === 404) {
-      logger.debug('FMPCorporateActions', `No dividend data for ${ticker}`);
+    if (tiingoDividends.length === 0) {
+      logger.debug('DividendDates', `No dividend data for ${ticker}`);
       return [];
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
+    // Sort by date descending to estimate frequency
+    const sorted = [...tiingoDividends].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
 
-    const data = await response.json() as any[];
-
-    if (!Array.isArray(data) || data.length === 0) {
-      logger.debug('FMPCorporateActions', `No dividend data for ${ticker}`);
-      return [];
-    }
-
-    // Filter by date range if provided
-    let filteredData = data;
-    if (startDate) {
-      const startTime = new Date(startDate).getTime();
-      filteredData = filteredData.filter(d => new Date(d.date).getTime() >= startTime);
-    }
-    if (endDate) {
-      const endTime = new Date(endDate).getTime();
-      filteredData = filteredData.filter(d => new Date(d.date).getTime() <= endTime);
-    }
-
-    // Sort by date descending first to estimate frequency
-    filteredData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    const dividends: DividendDates[] = filteredData.map((div, index) => {
+    const dividends: DividendDates[] = sorted.map((div, index) => {
       // Estimate frequency from adjacent dividend dates
       let frequency: string | null = null;
-      if (index < filteredData.length - 1) {
+      if (index < sorted.length - 1) {
         const currentDate = new Date(div.date);
-        const nextDate = new Date(filteredData[index + 1].date);
+        const nextDate = new Date(sorted[index + 1].date);
         const daysBetween = (currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24);
         frequency = estimateFrequency(daysBetween);
       }
 
       const annualizationFactor = getAnnualizationFactor(frequency);
-      const amount = div.dividend || div.adjDividend || 0;
+      const amount = div.dividend || 0;
       const annualizedAmount = annualizationFactor > 0
         ? amount * annualizationFactor
         : null;
@@ -169,11 +117,11 @@ export async function fetchDividendDates(
       };
     });
 
-    logger.debug('FMPCorporateActions', `Fetched ${dividends.length} dividend records for ${ticker}`);
+    logger.debug('DividendDates', `Fetched ${dividends.length} dividend records for ${ticker}`);
     return dividends;
 
   } catch (error) {
-    logger.error('FMPCorporateActions', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
+    logger.error('DividendDates', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
     return [];
   }
 }
@@ -240,13 +188,9 @@ export async function getAnnualizedAdjustedDividends(
 }
 
 /**
- * Health check for FMP Dividend API
+ * Health check for Tiingo Dividend API
  */
-export async function fmpCorporateActionsHealthCheck(): Promise<boolean> {
-  if (!config.fmp.apiKey) {
-    return false;
-  }
-
+export async function dividendDatesHealthCheck(): Promise<boolean> {
   try {
     const dividends = await fetchDividendDates('AAPL');
     return dividends.length > 0;
@@ -256,5 +200,7 @@ export async function fmpCorporateActionsHealthCheck(): Promise<boolean> {
 }
 
 // Legacy aliases for backward compatibility
-export const tiingoCorporateActionsHealthCheck = fmpCorporateActionsHealthCheck;
-export const alphaVantageHealthCheck = fmpCorporateActionsHealthCheck;
+export const tiingoCorporateActionsHealthCheck = dividendDatesHealthCheck;
+export const alphaVantageHealthCheck = dividendDatesHealthCheck;
+export const fmpCorporateActionsHealthCheck = dividendDatesHealthCheck;
+

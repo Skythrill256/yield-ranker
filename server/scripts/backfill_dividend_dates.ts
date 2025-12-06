@@ -1,7 +1,7 @@
 /**
  * backfill_dividend_dates.ts - Backfill Record/Pay Dates for Dividends
  * 
- * This script fetches record_date and pay_date from FMP API
+ * This script fetches record_date and pay_date from Tiingo API
  * for existing dividend records that are missing these fields.
  * 
  * Usage: npx tsx scripts/backfill_dividend_dates.ts [--ticker SYMBOL] [--dry-run]
@@ -20,8 +20,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-import { fetchDividendHistory } from '../src/services/fmp.js';
-import type { FMPDividendData } from '../src/types/index.js';
+import { fetchDividendHistory } from '../src/services/tiingo.js';
+import type { TiingoDividendData } from '../src/types/index.js';
+
+// Type alias for dividend data from Tiingo
+type DividendData = { date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null };
 
 // ============================================================================
 // Configuration
@@ -151,7 +154,7 @@ async function getDividendsWithMissingDates(ticker: string): Promise<Array<{
  */
 async function updateDividendDates(
   ticker: string,
-  fmpDividends: FMPDividendData[],
+  tiingoDividends: DividendData[],
   dryRun: boolean
 ): Promise<number> {
   const dbDividends = await getDividendsWithMissingDates(ticker);
@@ -161,32 +164,32 @@ async function updateDividendDates(
     return 0;
   }
 
-  // Create a map of FMP dividends by ex_date
-  const fmpMap = new Map<string, FMPDividendData>();
-  fmpDividends.forEach(d => {
+  // Create a map of Tiingo dividends by ex_date
+  const tiingoMap = new Map<string, DividendData>();
+  tiingoDividends.forEach(d => {
     const exDate = d.date.split('T')[0];
-    fmpMap.set(exDate, d);
+    tiingoMap.set(exDate, d);
   });
 
   let updated = 0;
 
   for (const dbDiv of dbDividends) {
     const exDate = dbDiv.ex_date.split('T')[0];
-    const fmpDiv = fmpMap.get(exDate);
+    const tiingoDiv = tiingoMap.get(exDate);
 
-    if (!fmpDiv) {
-      log('DEBUG', `No FMP data for ${ticker} ex_date ${exDate}`);
+    if (!tiingoDiv) {
+      log('DEBUG', `No Tiingo data for ${ticker} ex_date ${exDate}`);
       continue;
     }
 
     const updates: Record<string, string | null> = {};
 
-    if (!dbDiv.record_date && fmpDiv.recordDate) {
-      updates.record_date = fmpDiv.recordDate;
+    if (!dbDiv.record_date && tiingoDiv.recordDate) {
+      updates.record_date = tiingoDiv.recordDate;
     }
 
-    if (!dbDiv.pay_date && fmpDiv.paymentDate) {
-      updates.pay_date = fmpDiv.paymentDate;
+    if (!dbDiv.pay_date && tiingoDiv.paymentDate) {
+      updates.pay_date = tiingoDiv.paymentDate;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -226,21 +229,21 @@ async function processTicker(ticker: string, dryRun: boolean): Promise<{
   try {
     log('INFO', `Processing ${ticker}...`);
 
-    // Fetch dividend history from FMP (last 5 years)
+    // Fetch dividend history from Tiingo (last 5 years)
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 5);
     const startDateStr = startDate.toISOString().split('T')[0];
 
-    const fmpDividends = await fetchDividendHistory(ticker, startDateStr);
+    const tiingoDividends = await fetchDividendHistory(ticker, startDateStr);
 
-    if (fmpDividends.length === 0) {
-      log('WARN', `No FMP dividend data for ${ticker}`);
+    if (tiingoDividends.length === 0) {
+      log('WARN', `No Tiingo dividend data for ${ticker}`);
       return { ticker, updated: 0 };
     }
 
-    log('DEBUG', `Fetched ${fmpDividends.length} dividends from FMP for ${ticker}`);
+    log('DEBUG', `Fetched ${tiingoDividends.length} dividends from Tiingo for ${ticker}`);
 
-    const updated = await updateDividendDates(ticker, fmpDividends, dryRun);
+    const updated = await updateDividendDates(ticker, tiingoDividends, dryRun);
 
     log('INFO', `${ticker}: Updated ${updated} dividend records`);
 

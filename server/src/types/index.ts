@@ -3,69 +3,65 @@
  */
 
 // ============================================================================
-// FMP API Types
+// Tiingo API Types
 // ============================================================================
 
-export interface FMPPriceData {
+export interface TiingoPriceData {
   date: string;
   open: number;
   high: number;
   low: number;
   close: number;
   volume: number;
+  adjOpen: number;
+  adjHigh: number;
+  adjLow: number;
   adjClose: number;
-  adjOpen?: number;
-  adjHigh?: number;
-  adjLow?: number;
-  adjVolume?: number;
-  unadjustedVolume?: number;
-  change: number;
-  changePercent: number;
-  vwap: number;
-  label: string;
-  changeOverTime: number;
+  divCash: number;
+  splitFactor: number;
 }
 
-export interface FMPDividendData {
+export interface TiingoDividendData {
   date: string;           // Ex-dividend date
-  label: string;
-  adjDividend: number;    // Split-adjusted dividend
   dividend: number;       // Original dividend amount
+  adjDividend: number;    // Split-adjusted dividend
   recordDate: string | null;
   paymentDate: string | null;
   declarationDate: string | null;
 }
 
-export interface FMPQuote {
-  symbol: string;
-  name: string;
-  price: number;
-  changesPercentage: number;
-  change: number;
-  dayLow: number;
-  dayHigh: number;
-  yearHigh: number;
-  yearLow: number;
-  marketCap: number;
-  priceAvg50: number;
-  priceAvg200: number;
-  exchange: string;
-  volume: number;
-  avgVolume: number;
+export interface TiingoIEXQuote {
+  ticker: string;
+  tngoLast: number;
+  last: number;
+  prevClose: number;
   open: number;
-  previousClose: number;
-  eps: number;
-  pe: number;
-  earningsAnnouncement: string | null;
-  sharesOutstanding: number;
-  timestamp: number;
+  high: number;
+  low: number;
+  mid: number;
+  volume: number;
+  bidPrice: number;
+  bidSize: number;
+  askPrice: number;
+  askSize: number;
+  timestamp: string;
+  quoteTimestamp: string;
+  lastSaleTimestamp: string;
 }
 
-// Legacy type aliases for backward compatibility in routes
-export type TiingoPriceData = FMPPriceData & { adjClose: number; divCash: number; splitFactor: number };
-export type TiingoDividendData = FMPDividendData & { exDate: string; divCash: number; splitFactor: number };
-export type TiingoIEXQuote = FMPQuote & { ticker: string; tngoLast: number; prevClose: number; lastSaleTimestamp: string };
-export type TiingoMetaData = FMPQuote;
+export interface TiingoMetaData {
+  ticker: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  exchangeCode: string;
+}
+
+// Legacy type aliases for backward compatibility
+export type FMPPriceData = TiingoPriceData;
+export type FMPDividendData = TiingoDividendData;
+export type FMPQuote = TiingoIEXQuote;
 
 // ============================================================================
 // Database Record Types

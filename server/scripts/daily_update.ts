@@ -34,10 +34,13 @@ import {
   fetchDividendHistory,
   healthCheck,
   getRateLimitStatus,
-} from '../src/services/fmp.js';
+} from '../src/services/tiingo.js';
 import { calculateMetrics } from '../src/services/metrics.js';
 import { batchUpdateETFMetrics } from '../src/services/database.js';
-import type { FMPPriceData, FMPDividendData } from '../src/types/index.js';
+import type { TiingoPriceData } from '../src/types/index.js';
+
+// Type alias for dividend data from Tiingo
+type DividendData = { date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null };
 
 // ============================================================================
 // Configuration
@@ -203,7 +206,7 @@ async function getLastPriceDate(ticker: string): Promise<string | null> {
  */
 async function upsertPrices(
   ticker: string,
-  prices: FMPPriceData[],
+  prices: TiingoPriceData[],
   dryRun: boolean
 ): Promise<number> {
   if (prices.length === 0) return 0;
@@ -220,9 +223,9 @@ async function upsertPrices(
     adj_open: p.adjOpen || p.open,
     adj_high: p.adjHigh || p.high,
     adj_low: p.adjLow || p.low,
-    adj_volume: p.adjVolume || p.volume,
-    div_cash: 0,  // FMP doesn't include divCash in price data
-    split_factor: 1,
+    adj_volume: p.volume, // Tiingo uses volume for adj_volume
+    div_cash: p.divCash || 0,
+    split_factor: p.splitFactor || 1,
   }));
 
   if (dryRun) {
@@ -257,7 +260,7 @@ async function upsertPrices(
  */
 async function upsertDividends(
   ticker: string,
-  dividends: FMPDividendData[],
+  dividends: DividendData[],
   dryRun: boolean
 ): Promise<number> {
   if (dividends.length === 0) return 0;
@@ -486,7 +489,7 @@ async function main(): Promise<void> {
   const startTime = Date.now();
 
   console.log('============================================');
-  console.log('FMP Daily Update Script');
+  console.log('Tiingo Daily Update Script');
   console.log(`Run Time: ${new Date().toISOString()}`);
   console.log('============================================');
 
@@ -503,10 +506,10 @@ async function main(): Promise<void> {
   }
 
   // Verify API connectivity
-  console.log('\n[Update] Checking FMP API...');
+  console.log('\n[Update] Checking Tiingo API...');
   const apiHealthy = await healthCheck();
   if (!apiHealthy) {
-    console.error('[Update] ERROR: Cannot connect to FMP API');
+    console.error('[Update] ERROR: Cannot connect to Tiingo API');
     process.exit(1);
   }
   console.log('[Update] API connection OK');
@@ -531,7 +534,7 @@ async function main(): Promise<void> {
     // Progress update every 10 tickers
     if (results.length % 10 === 0) {
       const status = getRateLimitStatus();
-      console.log(`\n[Update] Progress: ${results.length}/${tickers.length} | API: ${status.requestsToday}/${status.dailyLimit}`);
+      console.log(`\n[Update] Progress: ${results.length}/${tickers.length} | API: ${status.requestsThisHour}/${status.hourlyLimit}`);
     }
   }
 

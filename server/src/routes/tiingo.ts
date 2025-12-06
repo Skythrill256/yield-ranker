@@ -13,7 +13,7 @@ import {
   getAllSyncLogs,
   upsertDividends,
 } from '../services/database.js';
-import { fetchPriceHistory as fetchFMPPrices, fetchDividendHistory as fetchFMPDividends } from '../services/fmp.js';
+import { fetchPriceHistory as fetchTiingoPrices, fetchDividendHistory as fetchTiingoDividends } from '../services/tiingo.js';
 import { calculateMetrics, getChartData, calculateRankings, calculateRealtimeReturns, calculateRealtimeReturnsBatch } from '../services/metrics.js';
 import { periodToStartDate, getDateYearsAgo, logger, formatDate } from '../utils/index.js';
 import type { ChartPeriod, RankingWeights, DividendRecord } from '../types/index.js';
@@ -170,17 +170,17 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
 
     const hasMissingDates = dividends.some(d => !d.record_date || !d.pay_date);
 
-    // Always try to fetch from FMP dividend API to get record/pay dates
-    logger.info('Routes', `Fetching dividends from FMP for ${ticker}...`);
+    // Always try to fetch from Tiingo dividend API
+    logger.info('Routes', `Fetching dividends from Tiingo for ${ticker}...`);
 
     try {
-      const fmpDividends = await fetchFMPDividends(ticker, startDate);
+      const tiingoDividends = await fetchTiingoDividends(ticker, startDate);
 
-      if (fmpDividends.length > 0) {
+      if (tiingoDividends.length > 0) {
         isLiveData = true;
 
-        // Create records from FMP data (includes record/pay dates)
-        const fmpRecords = fmpDividends.map(d => ({
+        // Create records from Tiingo data
+        const tiingoRecords = tiingoDividends.map((d: { date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }) => ({
           ticker: ticker.toUpperCase(),
           ex_date: d.date.split('T')[0],
           pay_date: d.paymentDate?.split('T')[0] || null,
@@ -193,22 +193,22 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
           description: null,
           currency: 'USD',
           split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
-        })).sort((a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
+        })).sort((a: DividendRecord, b: DividendRecord) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
 
         // Persist to DB for future requests
-        upsertDividends(fmpRecords).catch(err =>
+        upsertDividends(tiingoRecords).catch(err =>
           logger.warn('Routes', `Failed to persist dividends for ${ticker}: ${err.message}`)
         );
 
-        dividends = fmpRecords;
+        dividends = tiingoRecords;
       }
     } catch (error) {
-      logger.warn('Routes', `Failed to fetch FMP dividends for ${ticker}: ${(error as Error).message}`);
+      logger.warn('Routes', `Failed to fetch Tiingo dividends for ${ticker}: ${(error as Error).message}`);
     }
 
-    // Fallback to database data if no FMP API data
+    // Log if no dividends found
     if (dividends.length === 0) {
-      logger.info('Routes', `No FMP dividend data for ${ticker}, using database data`);
+      logger.info('Routes', `No dividend data found for ${ticker} from Tiingo API`);
     }
 
     // Detect frequency from actual dividend dates first to get accurate paymentsPerYear
@@ -509,7 +509,7 @@ function getLiveStartDate(period: string): string {
 }
 
 /**
- * GET /live/:ticker - Get live price data directly from FMP API
+ * GET /live/:ticker - Get live price data directly from Tiingo API
  */
 router.get('/live/:ticker', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -520,7 +520,7 @@ router.get('/live/:ticker', async (req: Request, res: Response): Promise<void> =
 
     logger.info('Routes', `Fetching live data for ${ticker} from ${startDate} to ${endDate}`);
 
-    const prices = await fetchFMPPrices(ticker, startDate, endDate);
+    const prices = await fetchTiingoPrices(ticker, startDate, endDate);
 
     if (!prices || prices.length === 0) {
       res.status(404).json({ error: `No data found for ${ticker}` });
@@ -532,7 +532,7 @@ router.get('/live/:ticker', async (req: Request, res: Response): Promise<void> =
     const firstAdjClose = prices[0].adjClose;
 
     const chartData = prices.map((p) => ({
-      date: p.date,
+      date: p.date.split('T')[0],
       timestamp: new Date(p.date).getTime() / 1000,
       open: p.open,
       high: p.high,
@@ -540,7 +540,7 @@ router.get('/live/:ticker', async (req: Request, res: Response): Promise<void> =
       close: p.close,
       adjClose: p.adjClose,
       volume: p.volume,
-      divCash: 0, // FMP doesn't include divCash in price data
+      divCash: p.divCash || 0, // Tiingo includes divCash on ex-dividend dates
       priceReturn: firstClose > 0 ? ((p.close - firstClose) / firstClose) * 100 : 0,
       totalReturn: firstAdjClose > 0 ? ((p.adjClose - firstAdjClose) / firstAdjClose) * 100 : 0,
     }));
@@ -555,7 +555,7 @@ router.get('/live/:ticker', async (req: Request, res: Response): Promise<void> =
     });
   } catch (error) {
     logger.error('Routes', `Error in live endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch live data from FMP' });
+    res.status(500).json({ error: 'Failed to fetch live data from Tiingo' });
   }
 });
 
@@ -585,7 +585,7 @@ router.post('/live/compare', async (req: Request, res: Response): Promise<void> 
     }> = {};
 
     for (const ticker of tickers) {
-      const prices = await fetchFMPPrices(ticker.toUpperCase(), startDate, endDate);
+      const prices = await fetchTiingoPrices(ticker.toUpperCase(), startDate, endDate);
 
       if (prices && prices.length > 0) {
         const firstClose = prices[0].close;

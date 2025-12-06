@@ -26,20 +26,13 @@ interface Config {
     serviceKey: string;
   };
 
-  fmp: {
+  tiingo: {
     apiKey: string;
     baseUrl: string;
+    iexBaseUrl: string;
+    wsUrl: string;
     rateLimit: {
-      requestsPerDay: number;
-      minDelayMs: number;
-    };
-  };
-
-  alphaVantage: {
-    apiKey: string;
-    baseUrl: string;
-    rateLimit: {
-      requestsPerMinute: number;
+      requestsPerHour: number;
       minDelayMs: number;
     };
   };
@@ -87,21 +80,14 @@ export const config: Config = {
     serviceKey: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
   },
 
-  fmp: {
-    apiKey: requireEnv('FMP_API_KEY'),
-    baseUrl: 'https://financialmodelingprep.com',
+  tiingo: {
+    apiKey: requireEnv('TIINGO_API_KEY'),
+    baseUrl: 'https://api.tiingo.com',
+    iexBaseUrl: 'https://api.tiingo.com/iex',
+    wsUrl: 'wss://api.tiingo.com/iex',
     rateLimit: {
-      requestsPerDay: optionalEnvNumber('FMP_RATE_LIMIT_DAILY', 250),
-      minDelayMs: optionalEnvNumber('FMP_MIN_DELAY_MS', 200),
-    },
-  },
-
-  alphaVantage: {
-    apiKey: process.env.ALPHA_VANTAGE_API_KEY || '',
-    baseUrl: 'https://www.alphavantage.co',
-    rateLimit: {
-      requestsPerMinute: 5, // Free tier limit
-      minDelayMs: 12000, // 12 seconds between requests for free tier
+      requestsPerHour: optionalEnvNumber('TIINGO_RATE_LIMIT_HOURLY', 500),
+      minDelayMs: optionalEnvNumber('TIINGO_MIN_DELAY_MS', 100),
     },
   },
 
@@ -132,8 +118,8 @@ export function validateConfig(): void {
     errors.push('SUPABASE_URL must start with https://');
   }
 
-  if (config.fmp.apiKey.length < 20) {
-    errors.push('FMP_API_KEY appears invalid (too short)');
+  if (config.tiingo.apiKey.length < 20) {
+    errors.push('TIINGO_API_KEY appears invalid (too short)');
   }
 
   if (errors.length > 0) {

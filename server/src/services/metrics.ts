@@ -18,7 +18,7 @@ import {
   getPriceHistoryFromAPI as getPriceHistory,
   getLatestPriceFromAPI as getLatestPrice,
   getDividendsFromAPI as getDividendHistory,
-} from './fmp.js';
+} from './tiingo.js';
 import {
   getDateDaysAgo,
   getDateYearsAgo,
