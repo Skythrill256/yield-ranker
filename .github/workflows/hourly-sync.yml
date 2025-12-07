@@ -1,0 +1,54 @@
+name: Hourly ETF Data Sync
+
+on:
+  schedule:
+    # Run every hour during US market hours (9 AM - 5 PM EST = 14:00 - 22:00 UTC)
+    # Also runs at market open and close
+    - cron: '0 14-22 * * 1-5'  # Every hour from 2 PM to 10 PM UTC, Monday-Friday
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync:
+    name: Sync ETF Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        working-directory: server
+        run: pnpm install
+
+      - name: Build server
+        working-directory: server
+        run: pnpm build
+
+      - name: Run hourly sync
+        working-directory: server
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+          NODE_ENV: production
+        run: npx tsx scripts/hourly_sync.ts
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Hourly sync completed successfully"
+          else
+            echo "❌ Hourly sync failed"
+          fi
