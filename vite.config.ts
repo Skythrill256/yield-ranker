@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
     // In development, use empty string (Vite proxy handles it)
     define: {
       'import.meta.env.VITE_API_URL': mode === 'production'
-        ? JSON.stringify('https://stunning-adaptation-production-8960.up.railway.app')
+        ? JSON.stringify('https://observant-simplicity-production.up.railway.app')
         : JSON.stringify(''),
     },
   };
