@@ -189,6 +189,7 @@ type DividendData = {
     date: string;
     dividend: number;
     adjDividend: number;
+    scaledDividend: number;
     recordDate: string | null;
     paymentDate: string | null;
     declarationDate: string | null
@@ -207,6 +208,8 @@ async function upsertDividends(
         record_date: d.recordDate?.split('T')[0] || null,
         declare_date: d.declarationDate?.split('T')[0] || null,
         div_cash: d.dividend,
+        adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
+        scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
         split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
     }));
 

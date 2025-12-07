@@ -636,6 +636,7 @@ model dividends_detail {
   declare_date DateTime? @db.Date
   div_cash     Decimal   @db.Decimal(12, 6)
   adj_amount   Decimal?  @db.Decimal(12, 6)  // Split-adjusted dividend amount
+  scaled_amount Decimal? @db.Decimal(12, 6)  // Scaled dividend: divCash × (adjClose/close)
   split_factor Decimal?  @default(1) @db.Decimal(12, 6)
   div_type     String?   @db.VarChar(50)
   frequency    String?   @db.VarChar(20)     // Regular frequency: Mo, Qtr, Week, etc.

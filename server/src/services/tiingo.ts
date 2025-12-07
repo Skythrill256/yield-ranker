@@ -285,7 +285,7 @@ export async function fetchDividendHistory(
     ticker: string,
     startDate?: string,
     endDate?: string
-): Promise<Array<{ date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }>> {
+): Promise<Array<{ date: string; dividend: number; adjDividend: number; scaledDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }>> {
     try {
         const params: Record<string, string> = {};
         if (startDate) params.startDate = startDate;
@@ -301,14 +301,27 @@ export async function fetchDividendHistory(
         // Filter to dates where divCash > 0 (ex-dividend dates)
         const dividends = (priceData || [])
             .filter(p => p.divCash && p.divCash > 0)
-            .map(p => ({
-                date: p.date.split('T')[0],
-                dividend: p.divCash,
-                adjDividend: p.divCash / (p.splitFactor || 1), // Adjust for splits
-                recordDate: null, // Tiingo EOD doesn't include record date
-                paymentDate: null, // Tiingo EOD doesn't include payment date
-                declarationDate: null,
-            }))
+            .map(p => {
+                const adjClose = p.adjClose || 0;
+                const close = p.close || 0;
+                const divCash = p.divCash || 0;
+                
+                // Calculate scaled dividend: divCash × (adjClose / close)
+                // This scales dividends to match the adjusted price series scale
+                const scaledDividend = close > 0 && adjClose > 0 
+                    ? divCash * (adjClose / close)
+                    : divCash / (p.splitFactor || 1); // Fallback to split-adjusted if prices unavailable
+                
+                return {
+                    date: p.date.split('T')[0],
+                    dividend: divCash,
+                    adjDividend: p.divCash / (p.splitFactor || 1), // Split-adjusted (legacy)
+                    scaledDividend: scaledDividend, // Scaled by adjClose/close ratio
+                    recordDate: null, // Tiingo EOD doesn't include record date
+                    paymentDate: null, // Tiingo EOD doesn't include payment date
+                    declarationDate: null,
+                };
+            })
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         logger.debug('Tiingo', `Fetched ${dividends.length} dividend records for ${ticker}`);
@@ -454,8 +467,8 @@ export async function fetchDividendHistoryBatch(
     startDate?: string,
     endDate?: string,
     onProgress?: (ticker: string, index: number, total: number) => void
-): Promise<Map<string, Array<{ date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }>>> {
-    const results = new Map<string, Array<{ date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }>>();
+): Promise<Map<string, Array<{ date: string; dividend: number; adjDividend: number; scaledDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }>>> {
+    const results = new Map<string, Array<{ date: string; dividend: number; adjDividend: number; scaledDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }>>();
 
     for (let i = 0; i < tickers.length; i++) {
         const ticker = tickers[i];

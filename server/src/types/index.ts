@@ -95,6 +95,7 @@ export interface DividendRecord {
   declare_date: string | null;
   div_cash: number;
   adj_amount: number | null;      // Split-adjusted dividend amount
+  scaled_amount: number | null;   // Scaled dividend: divCash × (adjClose/close)
   split_factor: number | null;
   div_type: string | null;
   frequency: string | null;       // Mo, Qtr, Week, etc.

@@ -180,7 +180,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         isLiveData = true;
 
         // Create records from Tiingo data
-        const tiingoRecords = tiingoDividends.map((d: { date: string; dividend: number; adjDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }) => ({
+        const tiingoRecords = tiingoDividends.map((d: { date: string; dividend: number; adjDividend: number; scaledDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }) => ({
           ticker: ticker.toUpperCase(),
           ex_date: d.date.split('T')[0],
           pay_date: d.paymentDate?.split('T')[0] || null,
@@ -188,6 +188,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
           declare_date: d.declarationDate?.split('T')[0] || null,
           div_cash: d.dividend,
           adj_amount: d.adjDividend,
+          scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
           div_type: null,
           frequency: null,
           description: null,
@@ -333,6 +334,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
           declareDate: d.declare_date,
           amount: d.div_cash,
           adjAmount: d.adj_amount ?? d.div_cash,
+          scaledAmount: d.scaled_amount ?? d.div_cash,
           type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
           frequency: d.frequency ?? detectFrequencyFromDates(dividends, idx),
           description: d.description,
