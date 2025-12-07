@@ -282,12 +282,27 @@ async function upsertDividends(
     return records.length;
   }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from('dividends_detail')
     .upsert(records, {
       onConflict: 'ticker,ex_date',
       ignoreDuplicates: false,
     });
+
+  if (error && error.message.includes('scaled_amount')) {
+    console.warn(`  ⚠️  scaled_amount column missing. Saving without scaled_amount. Run migration SQL to fix.`);
+    const recordsWithoutScaled = records.map(({ scaled_amount, ...rest }) => rest);
+    const result = await supabase
+      .from('dividends_detail')
+      .upsert(recordsWithoutScaled, {
+        onConflict: 'ticker,ex_date',
+        ignoreDuplicates: false,
+      });
+    error = result.error;
+    if (!error) {
+      console.warn(`  ✓ Saved dividends (scaled_amount will be added after migration)`);
+    }
+  }
 
   if (error) {
     console.error(`  Error upserting dividends for ${ticker}:`, error.message);
@@ -460,7 +475,13 @@ async function updateTicker(
       }
     }
 
-    console.log(`  ✓ ${pricesAdded} prices, ${dividendsAdded} dividends`);
+    if (dividendsAdded === 0 && dividends.length > 0) {
+      console.log(`  ✓ ${pricesAdded} prices, 0 dividends saved (${dividends.length} found but failed to save - check errors above)`);
+    } else if (dividendsAdded === 0) {
+      console.log(`  ✓ ${pricesAdded} prices, 0 dividends (no new dividends in last 30 days)`);
+    } else {
+      console.log(`  ✓ ${pricesAdded} prices, ${dividendsAdded} dividends`);
+    }
 
     return {
       ticker,
