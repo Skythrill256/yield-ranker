@@ -1,0 +1,72 @@
+name: Daily ETF Data Update
+
+on:
+  schedule:
+    # Run once daily at 1 AM UTC (8 PM EST) after market close
+    # Monday-Friday only
+    - cron: '0 1 * * 2-6'  # 1 AM UTC Tue-Sat = 8 PM EST Mon-Fri
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      force:
+        description: 'Force full resync from last 60 days'
+        required: false
+        default: 'false'
+        type: boolean
+      ticker:
+        description: 'Specific ticker to update (leave empty for all)'
+        required: false
+        type: string
+
+jobs:
+  update:
+    name: Daily Data Update
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        working-directory: server
+        run: pnpm install
+
+      - name: Build server
+        working-directory: server
+        run: pnpm build
+
+      - name: Run daily update
+        working-directory: server
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+          NODE_ENV: production
+        run: |
+          ARGS=""
+          if [ "${{ inputs.force }}" == "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          if [ -n "${{ inputs.ticker }}" ]; then
+            ARGS="$ARGS --ticker ${{ inputs.ticker }}"
+          fi
+          npx tsx scripts/daily_update.ts $ARGS
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Daily update completed successfully"
+          else
+            echo "❌ Daily update failed"
+          fi

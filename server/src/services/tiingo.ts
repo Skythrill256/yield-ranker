@@ -305,13 +305,13 @@ export async function fetchDividendHistory(
                 const adjClose = p.adjClose || 0;
                 const close = p.close || 0;
                 const divCash = p.divCash || 0;
-                
+
                 // Calculate scaled dividend: divCash × (adjClose / close)
                 // This scales dividends to match the adjusted price series scale
-                const scaledDividend = close > 0 && adjClose > 0 
+                const scaledDividend = close > 0 && adjClose > 0
                     ? divCash * (adjClose / close)
                     : divCash / (p.splitFactor || 1); // Fallback to split-adjusted if prices unavailable
-                
+
                 return {
                     date: p.date.split('T')[0],
                     dividend: divCash,
@@ -549,6 +549,7 @@ export async function getDividendsFromAPI(
         declare_date: d.declarationDate,
         div_cash: d.dividend,
         adj_amount: d.adjDividend,
+        scaled_amount: d.scaledDividend,
         split_factor: null,
         div_type: null,
         frequency: null,

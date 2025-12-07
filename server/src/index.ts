@@ -41,12 +41,32 @@ const app: Express = express();
 // Middleware
 // ============================================================================
 
-// Log CORS origins for debugging
-console.log('[CORS] Allowed origins:', config.cors.origins);
+// Hardcoded allowed origins for production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'https://dividendsandtotalreturns.com',
+  'https://www.dividendsandtotalreturns.com',
+];
 
-// Configure CORS - Use permissive settings for production
+console.log('[CORS] Allowed origins:', allowedOrigins);
+
+// Configure CORS with function-based origin check
 const corsOptions = {
-  origin: config.cors.origins,
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('[CORS] Blocked origin:', origin);
+      callback(null, true); // Allow all origins for now to debug, change to false to block
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
@@ -54,6 +74,9 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
