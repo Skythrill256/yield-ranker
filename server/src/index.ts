@@ -108,7 +108,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // ============================================================================
 // Start Server (Railway-required)
 // ============================================================================
-const PORT = Number(process.env.PORT) || config.port || 3000;
+const PORT = 8080;
 
 // Warm up cache on startup
 async function warmUpCache() {
