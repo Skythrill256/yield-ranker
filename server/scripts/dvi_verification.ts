@@ -33,28 +33,28 @@ function formatSpreadsheetOutput(ticker: string, volMetrics: any) {
   console.log(`\n${'='.repeat(80)}`);
   console.log(`DVI CALCULATION DETAILS: ${ticker}`);
   console.log(`${'='.repeat(80)}\n`);
-  
+
   console.log(`Period: ${periodStart} to ${periodEnd} (365 days)`);
   console.log(`Total Payments: ${rawPayments.length}\n`);
-  
+
   // Header (matching spreadsheet format)
   console.log(`${ticker}`);
   console.log(`${'Date'.padEnd(15)} ${'RAW'.padEnd(12)} ${'FREQ'.padEnd(6)} ${'ANNUALIZED'.padEnd(12)}`);
   console.log('-'.repeat(50));
-  
+
   // Data rows (sorted by date descending to match spreadsheet - newest first)
-  const sortedPayments = [...rawPayments].sort((a, b) => 
+  const sortedPayments = [...rawPayments].sort((a, b) =>
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
-  
+
   sortedPayments.forEach(p => {
     console.log(
       `${p.date.padEnd(15)} ${p.amount.toFixed(4).padEnd(12)} ${p.frequency.toString().padEnd(6)} ${p.annualized.toFixed(2).padEnd(12)}`
     );
   });
-  
+
   console.log('-'.repeat(50));
-  
+
   // Summary statistics (matching spreadsheet format)
   console.log(`\nSUMMARY STATISTICS (calculated on ANNUALIZED amounts):`);
   console.log(`  SD (Sample):     ${standardDeviation.toFixed(4)}  [Formula: √(Σ(Annualized_i - μ)² / (n-1))]`);
@@ -64,14 +64,14 @@ function formatSpreadsheetOutput(ticker: string, volMetrics: any) {
   console.log(`  Variance:          ${variance.toFixed(4)}`);
   console.log(`  n (sample size):   ${rawPayments.length}`);
   console.log(`\nFINAL DVI: ${cv?.toFixed(2) ?? 'N/A'}%`);
-  
+
   // Show frequency source breakdown
-  const freqSourceCounts = rawPayments.reduce((acc, p) => {
+  const freqSourceCounts = rawPayments.reduce((acc: Record<string, number>, p: { date: string; amount: number; frequency: number; annualized: number }) => {
     const source = (p as any).frequencySource || 'unknown';
     acc[source] = (acc[source] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  
+
   if (Object.keys(freqSourceCounts).length > 0) {
     console.log(`\nFrequency Source: ${JSON.stringify(freqSourceCounts)}`);
   }
@@ -84,21 +84,21 @@ async function verifyDVI(tickers: string[]) {
   console.log('  - SD = Population Standard Deviation of annualized amounts');
   console.log('  - MEDIAN = Median of annualized amounts');
   console.log('  - Uses ALL payments within 365-day period\n');
-  
+
   for (const ticker of tickers) {
     try {
       console.log(`\nProcessing ${ticker}...`);
-      
+
       // Get dividend history (2 years to ensure we have enough data)
       const twoYearsAgo = new Date();
       twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
       const startDate = twoYearsAgo.toISOString().split('T')[0];
-      
+
       const dividends = await getDividendHistory(ticker.toUpperCase(), startDate);
-      
+
       // Calculate DVI with detailed breakdown
       const volMetrics = calculateDividendVolatility(dividends, 12, ticker.toUpperCase());
-      
+
       if (volMetrics.calculationDetails) {
         formatSpreadsheetOutput(ticker, volMetrics);
       } else {
