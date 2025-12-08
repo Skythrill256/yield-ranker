@@ -192,12 +192,17 @@ export function calculateDividendVolatility(
   periodStartDate.setDate(periodStartDate.getDate() - periodDays);
 
   const recentSeries = sortedAsc
-    .map(d => ({
-      date: new Date(d.ex_date),
-      amount: d.adj_amount ?? d.div_cash ?? 0, // Use adjusted amounts
-      frequency: d.frequency, // Include frequency field from database
-      originalDiv: d, // Keep reference to original dividend record
-    }))
+    .map(d => {
+      // Use scaled_amount (divCash × adjClose/close) for accurate split adjustment
+      // Falls back to adj_amount, then div_cash if scaled_amount not available
+      const amount = d.scaled_amount ?? d.adj_amount ?? d.div_cash ?? 0;
+      return {
+        date: new Date(d.ex_date),
+        amount, // Use scaled_amount (most accurate for reverse splits)
+        frequency: d.frequency, // Include frequency field from database
+        originalDiv: d, // Keep reference to original dividend record
+      };
+    })
     .filter(d => d.amount > 0 && d.date >= periodStartDate && d.date <= periodEndDate);
 
   // If no dividends in the period, we can't calculate volatility
