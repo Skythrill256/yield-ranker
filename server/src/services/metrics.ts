@@ -286,23 +286,15 @@ export function calculateDividendVolatility(
   // Need at least 2 data points to compute standard deviation
   if (finalNormalizedAmounts.length < 2) return nullResult;
 
-  // 6. Calculate MEDIAN of the normalized annual amounts (not mean!)
-  //    Sort the annualized amounts to find median
-  const sortedAmounts = [...finalNormalizedAmounts].sort((a, b) => a - b);
-  const median = sortedAmounts.length % 2 === 0
-    ? (sortedAmounts[sortedAmounts.length / 2 - 1] + sortedAmounts[sortedAmounts.length / 2]) / 2
-    : sortedAmounts[Math.floor(sortedAmounts.length / 2)];
-
-  // 7. Calculate the SAMPLE standard deviation on the ANNUALIZED amounts
+  // 6. Calculate the SAMPLE standard deviation on the ANNUALIZED amounts
   //    This is the key: SD is calculated on annualized values, not raw payments
   //    Example: [1.2, 1.20] annualized → SD ≈ 0 (correct, shows stability)
   //    vs [0.3, 0.10] raw → SD ≈ 0.14 (wrong, inflated by frequency change)
-  //    Formula: variance = Σ(x - mean)² / (n-1) (SAMPLE SD, per CEO/Gemini recommendation)
-  //    Note: We use mean for SD calculation, but median for CV calculation
-  const mean = calculateMean(finalNormalizedAmounts);
+  //    Formula: variance = Σ(x - mean)² / (n-1) (SAMPLE SD)
+  const average = calculateMean(finalNormalizedAmounts);
   let varianceSum = 0;
   for (const val of finalNormalizedAmounts) {
-    const diff = val - mean;
+    const diff = val - average;
     varianceSum += diff * diff;
   }
   // Use SAMPLE standard deviation (divide by n-1, not n)
@@ -312,27 +304,27 @@ export function calculateDividendVolatility(
 
   // Guard against invalid values
   if (
-    median <= 0.0001 ||
+    average <= 0.0001 ||
     standardDeviation < 0 ||
-    !isFinite(median) ||
+    !isFinite(average) ||
     !isFinite(standardDeviation) ||
-    isNaN(median) ||
+    isNaN(average) ||
     isNaN(standardDeviation)
   ) {
     return nullResult;
   }
 
-  // 8. Dividend Volatility (%) = (standard deviation ÷ MEDIAN) × 100
-  //    KEY: Use MEDIAN, not mean, for CV calculation per user specification
-  const cvPercentRaw = (standardDeviation / median) * 100;
+  // 7. Dividend Volatility (%) = (standard deviation ÷ AVERAGE) × 100
+  //    KEY: Use AVERAGE (mean), not median, for CV calculation
+  const cvPercentRaw = (standardDeviation / average) * 100;
 
   // 9. Round to 1 decimal place
   const roundedCVPercent = Math.round(cvPercentRaw * 10) / 10;
   const roundedCV = roundedCVPercent / 100;
 
-  // 10. Estimate annual dividend from the median of the normalized annual amounts
-  //     Since amounts are already normalized to annual, we use median as the annual dividend estimate
-  const estimatedAnnualDividend = median;
+  // 8. Estimate annual dividend from the average of the normalized annual amounts
+  //     Since amounts are already normalized to annual, we use average as the annual dividend estimate
+  const estimatedAnnualDividend = average;
 
   // 11. Generate volatility index label from the rounded CV%
   let volatilityIndex: string | null = null;
@@ -355,8 +347,8 @@ export function calculateDividendVolatility(
       periodStart: periodStartDate.toISOString().split('T')[0],
       periodEnd: periodEndDate.toISOString().split('T')[0],
       rawPayments: rawPaymentDetails,
-      mean: calculateMean(finalNormalizedAmounts),
-      median,
+      mean: average,
+      median: average,
       variance,
       standardDeviation,
     },

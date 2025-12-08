@@ -545,7 +545,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       {chartData.length > 0 && (
         <div className="mb-6 sm:mb-8">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Annual Dividend Totals</h3>
-          <ResponsiveContainer width="100%" height={150} className="sm:h-[200px]">
+          <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
@@ -561,6 +561,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `$${value.toFixed(2)}`}
+                domain={[0, 'dataMax']}
               />
               <Tooltip
                 contentStyle={{
@@ -589,12 +590,18 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       )}
 
       <div>
-        <div className="mb-3 sm:mb-4">
-          <h3 className="text-xs sm:text-sm font-medium mb-2">Dividend Payout Schedule</h3>
-          <p className="text-xs text-muted-foreground">
-            <strong>Amount:</strong> Original dividend paid. <strong>Scaled Amount:</strong> Adjusted to today's share price level (accounts for splits and dividends over time).
-            Use Scaled Amount to compare historical dividends on equal footing with current prices.
-          </p>
+        <div className="mb-3 sm:mb-4 flex items-center justify-between flex-wrap gap-2">
+          <h3 className="text-xs sm:text-sm font-medium">Dividend Payout Schedule</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              window.location.href = `/etf/${ticker.toUpperCase()}`;
+            }}
+            className="h-8 px-3 text-xs"
+          >
+            View Total Return Chart
+          </Button>
         </div>
         <div className="border rounded-lg overflow-hidden overflow-x-auto -mx-3 sm:mx-0">
           <Table>
