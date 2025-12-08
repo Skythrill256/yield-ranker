@@ -856,20 +856,32 @@ export default function Dashboard() {
   });
 
   // Sort ETFs - preserve ranking order by default, allow manual sorting
+  // Use stable sort to prevent chart from re-rendering unnecessarily
   const sortedETFs = useMemo(() => {
     if (!sortField || sortField === "weightedRank") {
       return filteredETFs;
     }
     
+    // Create a stable sorted array - use symbol as secondary sort to ensure stability
     return [...filteredETFs].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
-      if (aValue === undefined || aValue === null) return 1;
+      if (aValue === undefined || aValue === null) {
+        if (bValue === undefined || bValue === null) {
+          // Both null - sort by symbol for stability
+          return a.symbol.localeCompare(b.symbol);
+        }
+        return 1;
+      }
       if (bValue === undefined || bValue === null) return -1;
 
       const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortDirection === "asc" ? comparison : -comparison;
+      if (comparison !== 0) {
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+      // If values are equal, sort by symbol for stability
+      return a.symbol.localeCompare(b.symbol);
     });
   }, [filteredETFs, sortField, sortDirection]);
 
@@ -1029,7 +1041,9 @@ export default function Dashboard() {
       }
     };
     buildChartData();
-  }, [selectedETF, comparisonETFs, chartType, selectedTimeframe, sanitizeChartData]);
+    // Only depend on selectedETF.symbol to prevent unnecessary re-renders when sorting
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedETF?.symbol, comparisonETFs, chartType, selectedTimeframe]);
 
   useEffect(() => {
     if (selectedETF) {
