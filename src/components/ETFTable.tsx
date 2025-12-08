@@ -241,22 +241,9 @@ export const ETFTable = ({
                     <TooltipContent
                       side="top"
                       sideOffset={8}
-                      className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[400px]"
+                      className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[300px]"
                     >
-                      <div className="space-y-2">
-                        <p className="font-semibold mb-1">Dividend Volatility Index (DVI) Rating</p>
-                        <p className="mb-2">Computed using Coefficient of Variation (CV) with Adjusted Dividends that have been annualized to normalize for frequency changes.</p>
-                        <div className="border-t border-slate-700 pt-2 space-y-1">
-                          <p className="font-semibold">Rating Scale:</p>
-                          <p>A+ (0-5%): Excellent - Very Low Volatility</p>
-                          <p>A (5-10%): Very Good - Low Volatility</p>
-                          <p>B+ (10-15%): Good - Moderate-Low Volatility</p>
-                          <p>B (15-20%): Fair - Moderate Volatility</p>
-                          <p>C (20-30%): Below Average - High Volatility</p>
-                          <p>D (30-50%): Poor - Very High Volatility</p>
-                          <p>F (50%+): Very Poor - Extremely High Volatility</p>
-                        </div>
-                      </div>
+                      <p>Dividend Volatility Index is computed using the Coefficient of Variation (CV) with Adjusted Dividends that have been annualized to normalize for frequency changes</p>
                     </TooltipContent>
                   </Tooltip>
                 </th>
@@ -378,43 +365,8 @@ export const ETFTable = ({
                   <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-xs">
                     {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
                   </td>
-                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs">
-                    {(() => {
-                      const dviPercent = etf.dividendCVPercent ?? (etf.dividendCV != null ? etf.dividendCV * 100 : null);
-                      if (dviPercent == null) return <span className="text-muted-foreground">N/A</span>;
-                      
-                      // Get rating from DVI percentage
-                      let rating: string;
-                      let colorClass: string;
-                      if (dviPercent <= 5.0) {
-                        rating = 'A+';
-                        colorClass = 'text-green-600 font-semibold';
-                      } else if (dviPercent <= 10.0) {
-                        rating = 'A';
-                        colorClass = 'text-green-500 font-semibold';
-                      } else if (dviPercent <= 15.0) {
-                        rating = 'B+';
-                        colorClass = 'text-yellow-500 font-semibold';
-                      } else if (dviPercent <= 20.0) {
-                        rating = 'B';
-                        colorClass = 'text-yellow-600 font-semibold';
-                      } else if (dviPercent <= 30.0) {
-                        rating = 'C';
-                        colorClass = 'text-orange-500 font-semibold';
-                      } else if (dviPercent <= 50.0) {
-                        rating = 'D';
-                        colorClass = 'text-red-500 font-semibold';
-                      } else {
-                        rating = 'F';
-                        colorClass = 'text-red-700 font-bold';
-                      }
-                      
-                      return (
-                        <span className={colorClass} title={`DVI: ${dviPercent.toFixed(1)}%`}>
-                          {rating}
-                        </span>
-                      );
-                    })()}
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                    {etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendCV != null ? `${(etf.dividendCV * 100).toFixed(1)}%` : 'N/A')}
                   </td>
                   <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
                     {isGuest ? (
