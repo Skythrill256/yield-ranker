@@ -2862,13 +2862,22 @@ export default function Dashboard() {
                                   </SortButton>
                                 </th>
                                 <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                  <SortButton field="standardDeviation">
-                                    <div className="whitespace-normal leading-tight">
-                                      Dividend
-                                      <br />
-                                      Volatility
-                                    </div>
-                                  </SortButton>
+                                  <UITooltip delayDuration={200}>
+                                    <TooltipTrigger asChild>
+                                      <div>
+                                        <SortButton field="standardDeviation">
+                                          DVI
+                                        </SortButton>
+                                      </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                      side="top"
+                                      sideOffset={8}
+                                      className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[300px]"
+                                    >
+                                      <p>Dividend Volatility Index is computed using the Coefficient of Variation (CV) with Adjusted Dividends that have been annualized to normalize for frequency changes</p>
+                                    </TooltipContent>
+                                  </UITooltip>
                                 </th>
                                 <th className="h-6 px-1 text-center bg-slate-50 text-xs border-r-2 border-slate-300">
                                   {isGuest ? (

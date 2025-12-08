@@ -77,12 +77,14 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
   }, [dividendData, timeRange]);
 
   const yearlyDividends = useMemo(() => {
-    if (!dividendData?.dividends) return [];
+    // Use filtered dividends to match what's shown in the table
+    const filteredDivs = getFilteredDividends;
+    if (!filteredDivs || filteredDivs.length === 0) return [];
 
     const result: YearlyDividend[] = [];
     const dividendsByYear = new Map<number, DividendRecord[]>();
 
-    dividendData.dividends.forEach(d => {
+    filteredDivs.forEach(d => {
       const year = new Date(d.exDate).getFullYear();
       if (!dividendsByYear.has(year)) {
         dividendsByYear.set(year, []);
@@ -91,12 +93,14 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     });
 
     dividendsByYear.forEach((divs, year) => {
-      // Use adjusted amounts (adjAmount) for accurate totals that account for stock splits
-      // Match the table calculation: use adjAmount ?? amount (same logic as table yearTotal)
+      // Always use adjAmount for dividend history charts (no fallback to amount)
+      // This ensures accuracy and consistency with split-adjusted amounts
       const total = divs.reduce((sum, d) => {
-        // Use adjAmount if available, otherwise fallback to amount (matches table calculation)
-        const amount = (d.adjAmount ?? d.amount) || 0;
-        return sum + amount;
+        // Always use adjAmount - must be a valid number
+        const adjAmt = typeof d.adjAmount === 'number' && !isNaN(d.adjAmount) && isFinite(d.adjAmount) && d.adjAmount > 0
+          ? d.adjAmount
+          : 0;
+        return sum + adjAmt;
       }, 0);
       // Only include years with valid totals
       if (total > 0) {
@@ -111,7 +115,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     });
 
     return result.sort((a, b) => b.year - a.year);
-  }, [dividendData]);
+  }, [getFilteredDividends]);
 
   const chartData = useMemo(() => {
     return yearlyDividends
@@ -337,12 +341,11 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         const chartData = dividends.map((div, index, array) => {
           let equivalentWeeklyRate: number | null = null;
 
-          // Use adjAmount as primary (accounts for splits), fallback to amount if adjAmount is not available
+          // Always use adjAmount for dividend history charts (no fallback to amount)
+          // This ensures accuracy and consistency with split-adjusted amounts
           const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
             ? div.adjAmount
-            : ((typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
-              ? div.amount
-              : 0);
+            : 0;
 
           if (frequencyChanged && amount > 0) {
             // Detect frequency based on days between payments
