@@ -699,10 +699,33 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       weighted_rank: etf.weighted_rank,
     }));
 
+    // Get the most recent sync time from data_sync_log (actual Tiingo sync time)
+    const { data: syncLogs } = await supabase
+      .from('data_sync_log')
+      .select('updated_at, last_sync_date')
+      .eq('data_type', 'prices')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Use actual sync time if available, otherwise fallback to most recent etf_static update
+    let lastUpdatedTimestamp: string | null = null;
+    if (syncLogs?.updated_at) {
+      lastUpdatedTimestamp = syncLogs.updated_at;
+    } else if (staticData.length > 0) {
+      // Fallback: use the most recent updated_at from etf_static
+      const mostRecent = staticData.reduce((latest: any, current: any) => {
+        if (!latest || !latest.updated_at) return current;
+        if (!current || !current.updated_at) return latest;
+        return new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest;
+      }, null);
+      lastUpdatedTimestamp = mostRecent?.updated_at || null;
+    }
+
     const response = {
       data: results,
-      last_updated: new Date().toISOString(),
-      last_updated_timestamp: new Date().toISOString(),
+      last_updated: lastUpdatedTimestamp,
+      last_updated_timestamp: lastUpdatedTimestamp,
     };
 
     // Cache the response in Redis
