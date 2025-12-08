@@ -52,6 +52,16 @@ interface DividendVolatilityResult {
   dividendCVPercent: number | null;   // CV as percentage (e.g., 18.0%)
   volatilityIndex: string | null;     // Display label
   dataPoints: number;
+  // Detailed breakdown for verification
+  calculationDetails?: {
+    periodStart: string;
+    periodEnd: string;
+    rawPayments: Array<{ date: string; amount: number; frequency: number; annualized: number }>;
+    mean: number;
+    median: number;
+    variance: number;
+    standardDeviation: number;
+  };
 }
 
 /**
@@ -111,17 +121,16 @@ function isWeeklyPayerTicker(ticker: string): boolean {
  *
  * KEY PRINCIPLE: Annualize each payment FIRST, then calculate SD on annualized amounts (NOT raw payments)
  *
- * Process (per user specification):
- * 1. Define the dividend period: periodInMonths (default: 12 months = 365 days) from today.
- * 2. List all adjusted dividends (adj_amount) in the period.
+ * Process (per CEO specification):
+ * 1. Define the dividend period: 365 days from today (fixed period, not rolling).
+ * 2. List ALL adjusted dividends (adj_amount) in the period.
  * 3. Determine frequency of each dividend: weekly=52, monthly=12, quarterly=4, etc.
  * 4. Multiply frequency × adjusted dividend = annualized dividend (for each payment).
- * 5. If there are 12 or more annualized payments → use exactly the most recent 12.
- * 6. If there are fewer than 12 annualized payments → use ALL available annualized payments.
- * 7. Calculate SD for all annualized dividends in the period (population SD).
- * 8. Calculate MEDIAN for all annualized dividends in the period.
- * 9. CV = SD / MEDIAN (NOT SD / Mean!)
- * 10. Round to 1 decimal place.
+ * 5. Use ALL annualized payments within the 365-day period (no "12-or-all" rule).
+ * 6. Calculate SD for all annualized dividends in the period (Population SD, not Sample).
+ * 7. Calculate MEDIAN for all annualized dividends in the period.
+ * 8. CV = SD / MEDIAN (NOT SD / Mean!)
+ * 9. Round to 1 decimal place.
  *
  * This ensures frequency changes (e.g., monthly to weekly) don't artificially inflate volatility.
  * Example: $0.3 quarterly = $1.2 annual, $0.10 monthly = $1.20 annual
@@ -131,7 +140,7 @@ function isWeeklyPayerTicker(ticker: string): boolean {
  *
  * Note: periodInMonths can be changed for different asset types (e.g., closed-end funds may use 6 months)
  */
-function calculateDividendVolatility(
+export function calculateDividendVolatility(
   dividends: DividendRecord[],
   periodInMonths: 6 | 12 = 12,
   ticker?: string
@@ -174,8 +183,10 @@ function calculateDividendVolatility(
   );
 
   // 3. Restrict to dividends within the specified period (default: 12 months = 365 days)
+  // IMPORTANT: Use fixed 365 days from today (not rolling, but consistent calculation)
   const periodDays = periodInMonths === 6 ? 180 : 365; // 6 months = 180 days, 12 months = 365 days
-  const periodStartDate = new Date();
+  const periodEndDate = new Date(); // Today (or most recent date)
+  const periodStartDate = new Date(periodEndDate);
   periodStartDate.setDate(periodStartDate.getDate() - periodDays);
 
   const recentSeries = sortedAsc
@@ -183,7 +194,7 @@ function calculateDividendVolatility(
       date: new Date(d.ex_date),
       amount: d.adj_amount ?? d.div_cash ?? 0, // Use adjusted amounts
     }))
-    .filter(d => d.amount > 0 && d.date >= periodStartDate);
+    .filter(d => d.amount > 0 && d.date >= periodStartDate && d.date <= periodEndDate);
 
   // If no dividends in the period, we can't calculate volatility
   if (recentSeries.length < 2) return nullResult;
@@ -236,11 +247,38 @@ function calculateDividendVolatility(
     normalizedAnnualAmounts.push(normalizedAnnual);
   }
 
-  // 5. Apply the 12-or-all rule within the period (on normalized annual amounts)
-  // Use most recent 12 annualized payments if available, otherwise use all
-  const n = normalizedAnnualAmounts.length;
-  const finalNormalizedAmounts =
-    n >= 12 ? normalizedAnnualAmounts.slice(-12) : normalizedAnnualAmounts;
+  // 5. Use ALL annualized payments within the 365-day period
+  // IMPORTANT: Always use all payments in the period (per CEO specification)
+  // No "12-or-all" rule - use ALL payments within the time period
+  const finalNormalizedAmounts = normalizedAnnualAmounts;
+  
+  // Store raw payment details for detailed output
+  const rawPaymentDetails = recentSeries.map((d, i) => {
+    let daysBetween: number | null = null;
+    if (i > 0) {
+      const prev = recentSeries[i - 1];
+      daysBetween = (d.date.getTime() - prev.date.getTime()) / (1000 * 60 * 60 * 24);
+    } else if (i < recentSeries.length - 1) {
+      const next = recentSeries[i + 1];
+      daysBetween = (next.date.getTime() - d.date.getTime()) / (1000 * 60 * 60 * 24);
+    }
+    
+    let frequency = 12; // default
+    if (daysBetween !== null && daysBetween > 0 && daysBetween < 400) {
+      if (daysBetween <= 10) frequency = 52;
+      else if (daysBetween <= 35) frequency = 12;
+      else if (daysBetween <= 95) frequency = 4;
+      else if (daysBetween <= 185) frequency = 2;
+      else frequency = 1;
+    }
+    
+    return {
+      date: d.date.toISOString().split('T')[0],
+      amount: d.amount,
+      frequency,
+      annualized: d.amount * frequency,
+    };
+  });
 
   // Need at least 2 data points to compute standard deviation
   if (finalNormalizedAmounts.length < 2) return nullResult;
@@ -308,6 +346,15 @@ function calculateDividendVolatility(
     dividendCVPercent: roundedCVPercent,
     volatilityIndex,
     dataPoints: finalNormalizedAmounts.length,
+    calculationDetails: {
+      periodStart: periodStartDate.toISOString().split('T')[0],
+      periodEnd: periodEndDate.toISOString().split('T')[0],
+      rawPayments: rawPaymentDetails,
+      mean: calculateMean(finalNormalizedAmounts),
+      median,
+      variance,
+      standardDeviation,
+    },
   };
 }
 
