@@ -326,14 +326,17 @@ export function calculateDividendVolatility(
   //     Since amounts are already normalized to annual, we use average as the annual dividend estimate
   const estimatedAnnualDividend = average;
 
-  // 11. Generate volatility index label from the rounded CV%
+  // 11. Generate volatility index rating from the rounded CV%
+  // Rating System: A+ (0-5%), A (5-10%), B+ (10-15%), B (15-20%), C (20-30%), D (30-50%), F (50%+)
   let volatilityIndex: string | null = null;
   if (roundedCVPercent !== null) {
-    if (roundedCVPercent < 5) volatilityIndex = 'Very Low';
-    else if (roundedCVPercent < 10) volatilityIndex = 'Low';
-    else if (roundedCVPercent < 20) volatilityIndex = 'Moderate';
-    else if (roundedCVPercent < 30) volatilityIndex = 'High';
-    else volatilityIndex = 'Very High';
+    if (roundedCVPercent <= 5.0) volatilityIndex = 'A+';
+    else if (roundedCVPercent <= 10.0) volatilityIndex = 'A';
+    else if (roundedCVPercent <= 15.0) volatilityIndex = 'B+';
+    else if (roundedCVPercent <= 20.0) volatilityIndex = 'B';
+    else if (roundedCVPercent <= 30.0) volatilityIndex = 'C';
+    else if (roundedCVPercent <= 50.0) volatilityIndex = 'D';
+    else volatilityIndex = 'F';
   }
 
   return {
