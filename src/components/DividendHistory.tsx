@@ -60,10 +60,10 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
 
   const getFilteredDividends = useMemo(() => {
     if (!dividendData?.dividends) return [];
-    
+
     const now = new Date();
     const cutoffDate = new Date();
-    
+
     switch (timeRange) {
       case '1Y': cutoffDate.setFullYear(now.getFullYear() - 1); break;
       case '3Y': cutoffDate.setFullYear(now.getFullYear() - 3); break;
@@ -72,16 +72,16 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       case '20Y': cutoffDate.setFullYear(now.getFullYear() - 20); break;
       case 'ALL': return dividendData.dividends;
     }
-    
+
     return dividendData.dividends.filter(d => new Date(d.exDate) >= cutoffDate);
   }, [dividendData, timeRange]);
 
   const yearlyDividends = useMemo(() => {
     if (!dividendData?.dividends) return [];
-    
+
     const result: YearlyDividend[] = [];
     const dividendsByYear = new Map<number, DividendRecord[]>();
-    
+
     dividendData.dividends.forEach(d => {
       const year = new Date(d.exDate).getFullYear();
       if (!dividendsByYear.has(year)) {
@@ -89,7 +89,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       }
       dividendsByYear.get(year)!.push(d);
     });
-    
+
     dividendsByYear.forEach((divs, year) => {
       // Use adjusted amounts (adjAmount) for accurate totals that account for stock splits
       // Filter out any dividends with zero or invalid amounts
@@ -97,10 +97,10 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         const amount = d.adjAmount ?? d.amount ?? 0;
         return amount > 0 && isFinite(amount);
       });
-      
+
       // Only include years with at least one valid dividend
       if (validDivs.length === 0) return;
-      
+
       const total = validDivs.reduce((sum, d) => sum + (d.adjAmount ?? d.amount ?? 0), 0);
       result.push({
         year,
@@ -110,7 +110,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         dividends: validDivs,
       });
     });
-    
+
     return result.sort((a, b) => b.year - a.year);
   }, [dividendData]);
 
@@ -133,10 +133,10 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
 
   const getFilteredTableRecords = useMemo(() => {
     if (!dividendData?.dividends) return [];
-    
+
     const now = new Date();
     const cutoffDate = new Date();
-    
+
     switch (timeRange) {
       case '1Y': cutoffDate.setFullYear(now.getFullYear() - 1); break;
       case '3Y': cutoffDate.setFullYear(now.getFullYear() - 3); break;
@@ -145,7 +145,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
       case '20Y': cutoffDate.setFullYear(now.getFullYear() - 20); break;
       case 'ALL': return dividendData.dividends;
     }
-    
+
     return dividendData.dividends.filter(d => new Date(d.exDate) >= cutoffDate);
   }, [dividendData, timeRange]);
 
@@ -179,16 +179,16 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     const loadDividends = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         // Fetch Tiingo dividend data and corporate actions dates in parallel
         const [tiingoData, corpActionsResponse] = await Promise.all([
           fetchDividends(ticker, 10),
           fetchDividendDates(ticker).catch(() => ({ dividends: [] as DividendDates[] }))
         ]);
-        
+
         setDividendData(tiingoData);
-        
+
         // Create a map of ex-date to corporate actions dates for quick lookup
         const datesMap = new Map<string, DividendDates>();
         corpActionsResponse.dividends.forEach((div: DividendDates) => {
@@ -197,7 +197,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           datesMap.set(exDate, div);
         });
         setCorporateActionDates(datesMap);
-        
+
         if (tiingoData.dividends.length > 0) {
           const firstYear = new Date(tiingoData.dividends[0].exDate).getFullYear();
           setExpandedYears(new Set([firstYear]));
@@ -209,7 +209,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         setIsLoading(false);
       }
     };
-    
+
     loadDividends();
   }, [ticker]);
 
@@ -239,11 +239,11 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         <div>
           <h2 className="text-lg sm:text-xl font-semibold mb-1">Dividend History</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {dividendData.paymentsPerYear} payments per year • 
+            {dividendData.paymentsPerYear} payments per year •
             Last dividend: ${dividendData.lastDividend?.toFixed(4) || 'N/A'}
           </p>
         </div>
-        
+
         <div className="flex gap-3 sm:gap-4 flex-wrap">
           <div className="text-center min-w-[100px]">
             <p className="text-xs text-muted-foreground">Annual Dividend</p>
@@ -254,9 +254,8 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           {yoyGrowth !== null && (
             <div className="text-center min-w-[100px]">
               <p className="text-xs text-muted-foreground">YoY Growth</p>
-              <p className={`text-base sm:text-lg font-bold flex items-center justify-center ${
-                yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <p className={`text-base sm:text-lg font-bold flex items-center justify-center ${yoyGrowth >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {yoyGrowth >= 0 ? <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> : <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />}
                 {yoyGrowth >= 0 ? '+' : ''}{yoyGrowth.toFixed(1)}%
               </p>
@@ -281,7 +280,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
 
       {getFilteredDividends.length > 0 && (() => {
         const dividends = getFilteredDividends.slice().reverse();
-        
+
         // Detect if frequency changed using both API frequency field and actual payment intervals
         const frequencies = dividends
           .map(div => {
@@ -296,11 +295,11 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
             return null;
           })
           .filter((f): f is string => f !== null);
-        
+
         // Check if frequency changed based on API frequency field
         const uniqueFrequencies = new Set(frequencies);
         let frequencyChanged = uniqueFrequencies.size > 1;
-        
+
         // Also check actual payment intervals to verify frequency change
         // If all intervals are similar, frequency hasn't actually changed
         if (dividends.length >= 3) {
@@ -313,7 +312,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               intervals.push(daysBetween);
             }
           }
-          
+
           if (intervals.length >= 2) {
             // Calculate average interval
             const avgInterval = intervals.reduce((sum, d) => sum + d, 0) / intervals.length;
@@ -322,7 +321,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               const deviation = Math.abs(d - avgInterval) / avgInterval;
               return deviation <= 0.2; // Within 20% of average
             });
-            
+
             // Only show frequency change if intervals are NOT consistent
             // AND we have different frequency labels
             frequencyChanged = !isConsistent && uniqueFrequencies.size > 1;
@@ -334,25 +333,25 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           // Not enough data points, rely on frequency field
           frequencyChanged = uniqueFrequencies.size > 1;
         }
-        
+
         // Calculate equivalent weekly rate only if frequency changed
         const chartData = dividends.map((div, index, array) => {
           let equivalentWeeklyRate: number | null = null;
-          
+
           // Ensure amount is a valid number - use adjAmount as fallback if amount is 0/null
           const amount = (typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
             ? div.amount
             : ((typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
               ? div.adjAmount
               : 0);
-          
+
           if (frequencyChanged && amount > 0) {
             // Detect frequency based on days between payments
             if (index < array.length - 1) {
               const currentDate = new Date(div.exDate);
               const nextDate = new Date(array[index + 1].exDate);
               const daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-              
+
               // Normalize to weekly rate based on detected frequency
               if (daysBetween <= 10) {
                 equivalentWeeklyRate = amount;
@@ -370,7 +369,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               const currentDate = new Date(div.exDate);
               const prevDate = new Date(array[index - 1].exDate);
               const daysBetween = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-              
+
               if (daysBetween <= 10) {
                 equivalentWeeklyRate = amount;
               } else if (daysBetween <= 35) {
@@ -384,7 +383,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               }
             }
           }
-          
+
           return {
             exDate: div.exDate,
             amount: Number(amount.toFixed(4)), // Ensure amount is always a valid number with proper precision
@@ -404,20 +403,20 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         return (
           <div className="mb-4 sm:mb-6">
             <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-              {frequencyChanged 
+              {frequencyChanged
                 ? `${ticker} Dividend History: Individual Payments vs. Equivalent Weekly Rate`
                 : `Dividend Payments by Ex-Date`}
             </h3>
             <ResponsiveContainer width="100%" height={450} className="sm:h-[450px]">
               {frequencyChanged ? (
-                <ComposedChart 
+                <ComposedChart
                   data={chartData}
                   margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis 
-                    dataKey="exDate" 
-                    stroke="#94a3b8" 
+                  <XAxis
+                    dataKey="exDate"
+                    stroke="#94a3b8"
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
@@ -430,8 +429,8 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       }
                     }}
                   />
-                  <YAxis 
-                    stroke="#94a3b8" 
+                  <YAxis
+                    stroke="#94a3b8"
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
@@ -467,24 +466,24 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                     labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   />
                   <Bar dataKey="amount" fill="#93c5fd" radius={[2, 2, 0, 0]} name="Individual Payment Amount (Monthly/Weekly)" minPointSize={3} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="equivalentWeeklyRate" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="equivalentWeeklyRate"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     dot={{ fill: '#ef4444', r: 3 }}
                     name="Equivalent Weekly Rate (Rate Normalized to Weekly Payout)"
                   />
                 </ComposedChart>
               ) : (
-                <BarChart 
+                <BarChart
                   data={chartData}
                   margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis 
-                    dataKey="exDate" 
-                    stroke="#94a3b8" 
+                  <XAxis
+                    dataKey="exDate"
+                    stroke="#94a3b8"
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
@@ -497,8 +496,8 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       }
                     }}
                   />
-                  <YAxis 
-                    stroke="#94a3b8" 
+                  <YAxis
+                    stroke="#94a3b8"
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
@@ -528,9 +527,9 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                     }}
                     labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   />
-                  <Bar 
-                    dataKey="amount" 
-                    fill="#3b82f6" 
+                  <Bar
+                    dataKey="amount"
+                    fill="#3b82f6"
                     radius={[2, 2, 0, 0]}
                     minPointSize={3}
                   />
@@ -591,7 +590,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         <div className="mb-3 sm:mb-4">
           <h3 className="text-xs sm:text-sm font-medium mb-2">Dividend Payout Schedule</h3>
           <p className="text-xs text-muted-foreground">
-            <strong>Amount:</strong> Original dividend paid. <strong>Scaled Amount:</strong> Adjusted to today's share price level (accounts for splits and dividends over time). 
+            <strong>Amount:</strong> Original dividend paid. <strong>Scaled Amount:</strong> Adjusted to today's share price level (accounts for splits and dividends over time).
             Use Scaled Amount to compare historical dividends on equal footing with current prices.
           </p>
         </div>
@@ -601,7 +600,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
               <TableRow className="bg-slate-50">
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Year</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap" title="Original dividend amount paid">Amount</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap hidden sm:table-cell" title="Split-adjusted dividend">Adj. Amount</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap" title="Split-adjusted dividend">Adj. Amount</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Dividend Type</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Frequency</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Ex-Div Date</TableHead>
@@ -612,11 +611,11 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
             <TableBody>
               {recordsByYear.map(({ year, records }, yearIndex) => {
                 const yearTotal = records.reduce((sum, r) => sum + (r.adjAmount ?? r.amount), 0);
-                const sortedRecords = [...records].sort((a, b) => 
+                const sortedRecords = [...records].sort((a, b) =>
                   new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
                 );
                 const isLastYear = yearIndex === recordsByYear.length - 1;
-                
+
                 return (
                   <React.Fragment key={year}>
                     {sortedRecords.map((div, idx) => {
@@ -624,12 +623,12 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                       const exDateStr = div.exDate.split('T')[0];
                       const isFirstInYear = idx === 0;
                       const isLastInYear = idx === sortedRecords.length - 1;
-                      
+
                       // Try to get dates from Tiingo Corporate Actions first, fall back to basic Tiingo data
                       const corpActionDates = corporateActionDates.get(exDateStr);
                       let payDate: Date | null = null;
                       let recordDate: Date | null = null;
-                      
+
                       if (corpActionDates?.paymentDate) {
                         const pd = new Date(corpActionDates.paymentDate);
                         if (!isNaN(pd.getTime())) payDate = pd;
@@ -637,7 +636,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                         const pd = new Date(div.payDate);
                         if (!isNaN(pd.getTime())) payDate = pd;
                       }
-                      
+
                       if (corpActionDates?.recordDate) {
                         const rd = new Date(corpActionDates.recordDate);
                         if (!isNaN(rd.getTime())) recordDate = rd;
@@ -645,12 +644,12 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                         const rd = new Date(div.recordDate);
                         if (!isNaN(rd.getTime())) recordDate = rd;
                       }
-                      
+
                       const typeLabel = div.type === 'Special' ? 'Special' : 'Regular';
-                      
+
                       // Use frequency from API, which now detects per-payment frequency
                       const frequency = div.frequency || 'Monthly';
-                      
+
                       return (
                         <React.Fragment key={`${year}-${idx}`}>
                           <TableRow className={`hover:bg-slate-50 ${isFirstInYear && yearIndex > 0 ? 'border-t-2 border-slate-300' : ''}`}>
@@ -660,15 +659,14 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                             <TableCell className="font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
                               ${div.amount.toFixed(4)}
                             </TableCell>
-                            <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2 hidden sm:table-cell">
+                            <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2">
                               ${(div.adjAmount ?? div.amount).toFixed(4)}
                             </TableCell>
                             <TableCell className="px-2 sm:px-4 py-2">
-                              <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs ${
-                                typeLabel === 'Special' 
-                                  ? 'bg-amber-100 text-amber-700' 
+                              <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs ${typeLabel === 'Special'
+                                  ? 'bg-amber-100 text-amber-700'
                                   : 'bg-slate-100 text-slate-700'
-                              }`}>
+                                }`}>
                                 {typeLabel}
                               </span>
                             </TableCell>
@@ -685,19 +683,19 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                             <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
                               {recordDate && !isNaN(recordDate.getTime())
                                 ? recordDate.toLocaleDateString('en-US', {
-                                    month: 'numeric',
-                                    day: 'numeric',
-                                    year: '2-digit',
-                                  })
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  year: '2-digit',
+                                })
                                 : '_'}
                             </TableCell>
                             <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
                               {payDate && !isNaN(payDate.getTime())
                                 ? payDate.toLocaleDateString('en-US', {
-                                    month: 'numeric',
-                                    day: 'numeric',
-                                    year: '2-digit',
-                                  })
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  year: '2-digit',
+                                })
                                 : '_'}
                             </TableCell>
                           </TableRow>
@@ -710,7 +708,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                                 <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-3">
                                   ${yearTotal.toFixed(4)}
                                 </TableCell>
-                                <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-3 hidden sm:table-cell">
+                                <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-3">
                                   ${yearTotal.toFixed(4)}
                                 </TableCell>
                                 <TableCell colSpan={5} className="px-2 sm:px-4 py-3"></TableCell>
@@ -731,7 +729,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
             </TableBody>
           </Table>
         </div>
-        
+
         {getFilteredTableRecords.length > recordsByYear.reduce((sum, { year, records }) => sum + (expandedYears.has(year) ? records.length : Math.min(4, records.length)), 0) && (
           <div className="mt-4 text-center">
             <Button
@@ -762,9 +760,9 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
           <span>Amounts shown are per-share cash dividends.</span>
         </p>
         <p className="sm:text-right">
-          Last updated: {new Date().toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
+          Last updated: {new Date().toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
