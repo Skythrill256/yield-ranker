@@ -308,14 +308,19 @@ export async function fetchDividendHistory(
 
                 // Calculate scaled dividend: divCash × (adjClose / close)
                 // This scales dividends to match the adjusted price series scale
+                // This is the CORRECT method for both forward and reverse splits
                 const scaledDividend = close > 0 && adjClose > 0
                     ? divCash * (adjClose / close)
                     : divCash / (p.splitFactor || 1); // Fallback to split-adjusted if prices unavailable
 
+                // adj_amount should use the same calculation as scaled_amount
+                // Both should use divCash × (adjClose/close) for accurate split adjustment
+                const adjDividend = scaledDividend; // Use same calculation for consistency
+
                 return {
                     date: p.date.split('T')[0],
                     dividend: divCash,
-                    adjDividend: p.divCash / (p.splitFactor || 1), // Split-adjusted (legacy)
+                    adjDividend: adjDividend, // Now uses divCash × (adjClose/close) - correct for reverse splits
                     scaledDividend: scaledDividend, // Scaled by adjClose/close ratio
                     recordDate: null, // Tiingo EOD doesn't include record date
                     paymentDate: null, // Tiingo EOD doesn't include payment date
