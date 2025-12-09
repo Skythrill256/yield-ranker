@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { DividendHistory } from "@/components/DividendHistory";
-import { fetchSingleETF } from "@/services/etfData";
+import { fetchSingleETF, fetchETFDataWithMetadata } from "@/services/etfData";
 import { ETF } from "@/types/etf";
 
 const DividendHistoryPage = () => {
@@ -14,6 +14,7 @@ const DividendHistoryPage = () => {
   const [etf, setEtf] = useState<ETF | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [etfNotFound, setEtfNotFound] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
     const loadETF = async () => {
@@ -22,11 +23,31 @@ const DividendHistoryPage = () => {
       setIsLoading(true);
       setEtfNotFound(false);
       try {
-        const data = await fetchSingleETF(symbol);
-        if (data) {
-          setEtf(data);
+        const [singleData, metadata] = await Promise.all([
+          fetchSingleETF(symbol),
+          fetchETFDataWithMetadata()
+        ]);
+        
+        if (singleData) {
+          setEtf(singleData);
         } else {
           setEtfNotFound(true);
+        }
+        
+        // Format the last updated timestamp
+        if (metadata.lastUpdatedTimestamp) {
+          const date = new Date(metadata.lastUpdatedTimestamp);
+          const formatted = date.toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+          setLastUpdated(formatted);
+        } else if (metadata.lastUpdated) {
+          setLastUpdated(metadata.lastUpdated);
         }
       } catch (error) {
         console.error("Error loading ETF:", error);
@@ -96,6 +117,10 @@ const DividendHistoryPage = () => {
             <DividendHistory 
               ticker={symbol} 
               annualDividend={etf?.annualDividend ?? null}
+              etfSymbol={etf?.symbol}
+              etfName={etf?.name}
+              etfPrice={etf?.price}
+              lastUpdated={lastUpdated}
             />
           )}
         </div>

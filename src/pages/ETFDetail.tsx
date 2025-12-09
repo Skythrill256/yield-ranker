@@ -342,6 +342,24 @@ const ETFDetail = () => {
         {/* Chart Section - No tabs, direct display */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200 relative z-0" data-chart-section>
           <Card className="p-6 mb-8 relative z-0">
+            {/* Header Section */}
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-bold mb-3">TOTAL RETURN CHART</h2>
+              <div className="mb-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
+                  <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
+                </div>
+                <div className="text-xl sm:text-2xl font-bold mt-1">${etf.price.toFixed(2)}</div>
+                {lastUpdated && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <Clock className="h-3 w-3" />
+                    <span>Last updated {lastUpdated}</span>
+                    <span className="text-primary font-medium">Source: Tiingo</span>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">

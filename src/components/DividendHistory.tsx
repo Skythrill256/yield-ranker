@@ -31,12 +31,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ChevronDown, ChevronUp, DollarSign, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, DollarSign, TrendingUp, TrendingDown, BarChart3, Clock } from "lucide-react";
 import { fetchDividends, fetchDividendDates, type DividendData, type DividendRecord, type DividendDates } from "@/services/tiingoApi";
 
 interface DividendHistoryProps {
   ticker: string;
   annualDividend?: number | null;
+  etfSymbol?: string;
+  etfName?: string;
+  etfPrice?: number;
+  lastUpdated?: string | null;
 }
 
 interface YearlyDividend {
@@ -49,7 +53,7 @@ interface YearlyDividend {
 
 type TimeRange = '1Y' | '3Y' | '5Y' | '10Y' | '20Y' | 'ALL';
 
-export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps) {
+export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, etfPrice, lastUpdated }: DividendHistoryProps) {
   const [dividendData, setDividendData] = useState<DividendData | null>(null);
   const [corporateActionDates, setCorporateActionDates] = useState<Map<string, DividendDates>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +119,133 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
     });
 
     return result.sort((a, b) => b.year - a.year);
+  }, [getFilteredDividends]);
+
+  // Calculate chart data and frequency change detection
+  const individualChartData = useMemo(() => {
+    if (getFilteredDividends.length === 0) return null;
+
+    const dividends = getFilteredDividends.slice().reverse();
+
+    // Detect if frequency changed using both API frequency field and actual payment intervals
+    const frequencies = dividends
+      .map(div => {
+        const freq = div.frequency || '';
+        // Normalize frequency strings for comparison
+        const normalized = freq.toLowerCase();
+        if (normalized.includes('week') || normalized === 'weekly') return 'weekly';
+        if (normalized.includes('month') || normalized === 'monthly' || normalized === 'mo') return 'monthly';
+        if (normalized.includes('quarter') || normalized === 'quarterly' || normalized.includes('qtr')) return 'quarterly';
+        if (normalized.includes('semi') || normalized.includes('semi-annual')) return 'semi-annual';
+        if (normalized.includes('annual') || normalized === 'annual' || normalized === 'yearly') return 'annual';
+        return null;
+      })
+      .filter((f): f is 'weekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual' => f !== null);
+
+    // Check if frequency changed based on API frequency field
+    const uniqueFrequencies = new Set(frequencies);
+    let frequencyChanged = uniqueFrequencies.size > 1;
+
+    // Also check actual payment intervals to verify frequency change
+    // If all intervals are similar, frequency hasn't actually changed
+    if (dividends.length >= 3) {
+      const intervals: number[] = [];
+      for (let i = 0; i < dividends.length - 1; i++) {
+        const currentDate = new Date(dividends[i].exDate);
+        const nextDate = new Date(dividends[i + 1].exDate);
+        const daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (daysBetween > 0 && daysBetween < 365) { // Valid interval
+          intervals.push(daysBetween);
+        }
+      }
+
+      if (intervals.length >= 2) {
+        // Calculate average interval
+        const avgInterval = intervals.reduce((sum, d) => sum + d, 0) / intervals.length;
+        // Check if intervals are consistent (within 20% of average)
+        const isConsistent = intervals.every(d => {
+          const deviation = Math.abs(d - avgInterval) / avgInterval;
+          return deviation <= 0.2; // Within 20% of average
+        });
+
+        // Only show frequency change if intervals are NOT consistent
+        // AND we have different frequency labels
+        frequencyChanged = !isConsistent && uniqueFrequencies.size > 1;
+      } else {
+        // Not enough intervals to determine, rely on frequency field
+        frequencyChanged = uniqueFrequencies.size > 1;
+      }
+    } else {
+      // Not enough data points, rely on frequency field
+      frequencyChanged = uniqueFrequencies.size > 1;
+    }
+
+    // Calculate equivalent weekly rate only if frequency changed
+    const chartData = dividends.map((div, index, array) => {
+      let equivalentWeeklyRate: number | null = null;
+
+      // Always use adjAmount for dividend history charts (no fallback to amount)
+      // This ensures accuracy and consistency with split-adjusted amounts
+      const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
+        ? div.adjAmount
+        : 0;
+
+      if (frequencyChanged && amount > 0) {
+        // Detect frequency based on days between payments
+        if (index < array.length - 1) {
+          const currentDate = new Date(div.exDate);
+          const nextDate = new Date(array[index + 1].exDate);
+          const daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
+
+          // Normalize to weekly rate based on detected frequency
+          if (daysBetween <= 10) {
+            equivalentWeeklyRate = amount;
+          } else if (daysBetween <= 35) {
+            equivalentWeeklyRate = amount / 4.33;
+          } else if (daysBetween <= 95) {
+            equivalentWeeklyRate = amount / 13;
+          } else if (daysBetween <= 185) {
+            equivalentWeeklyRate = amount / 26;
+          } else {
+            equivalentWeeklyRate = amount / 52;
+          }
+        } else if (index > 0) {
+          // For last item, use previous payment's frequency
+          const currentDate = new Date(div.exDate);
+          const prevDate = new Date(array[index - 1].exDate);
+          const daysBetween = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+
+          if (daysBetween <= 10) {
+            equivalentWeeklyRate = amount;
+          } else if (daysBetween <= 35) {
+            equivalentWeeklyRate = amount / 4.33;
+          } else if (daysBetween <= 95) {
+            equivalentWeeklyRate = amount / 13;
+          } else if (daysBetween <= 185) {
+            equivalentWeeklyRate = amount / 26;
+          } else {
+            equivalentWeeklyRate = amount / 52;
+          }
+        }
+      }
+
+      return {
+        exDate: div.exDate,
+        amount: Number(amount.toFixed(4)), // Ensure amount is always a valid number with proper precision
+        adjAmount: div.adjAmount,
+        scaledAmount: div.scaledAmount,
+        payDate: div.payDate,
+        recordDate: div.recordDate,
+        declareDate: div.declareDate,
+        type: div.type,
+        frequency: div.frequency,
+        description: div.description,
+        currency: div.currency,
+        equivalentWeeklyRate: equivalentWeeklyRate !== null && typeof equivalentWeeklyRate === 'number' && !isNaN(equivalentWeeklyRate) && isFinite(equivalentWeeklyRate) ? Number(equivalentWeeklyRate.toFixed(4)) : null,
+      };
+    }).filter(item => item.amount > 0); // Filter out any items with zero or invalid amounts
+
+    return { chartData, frequencyChanged };
   }, [getFilteredDividends]);
 
   const chartData = useMemo(() => {
@@ -252,17 +383,38 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
 
   return (
     <Card className="p-3 sm:p-4 md:p-6">
-      <div className="mb-4 sm:mb-6 flex items-center justify-between">
-        <h2 className="text-lg sm:text-xl font-semibold mb-1">Dividend History</h2>
-        <Button
-          variant="outline"
-          size="default"
-          onClick={handleViewTotalReturnChart}
-          className="gap-2 font-bold text-base"
-        >
-          <BarChart3 className="h-4 w-4" />
-          View Total Return Chart
-        </Button>
+      {/* Header Section */}
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold mb-3">DIVIDEND HISTORY</h2>
+        {etfSymbol && (
+          <div className="mb-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-bold">{etfSymbol}</span>
+              {etfName && <span className="text-base sm:text-lg text-muted-foreground">{etfName}</span>}
+            </div>
+            {etfPrice != null && (
+              <div className="text-xl sm:text-2xl font-bold mt-1">${etfPrice.toFixed(2)}</div>
+            )}
+            {lastUpdated && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <Clock className="h-3 w-3" />
+                <span>Last updated {lastUpdated}</span>
+                <span className="text-primary font-medium">Source: Tiingo</span>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex items-center justify-end mt-2">
+          <Button
+            variant="outline"
+            size="default"
+            onClick={handleViewTotalReturnChart}
+            className="gap-2 font-bold text-base"
+          >
+            <BarChart3 className="h-4 w-4" />
+            View Total Return Chart
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-1 mb-4 flex-wrap">
@@ -279,277 +431,155 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
         ))}
       </div>
 
-      {getFilteredDividends.length > 0 && (() => {
-        const dividends = getFilteredDividends.slice().reverse();
-
-        // Detect if frequency changed using both API frequency field and actual payment intervals
-        const frequencies = dividends
-          .map(div => {
-            const freq = div.frequency || '';
-            // Normalize frequency strings for comparison
-            const normalized = freq.toLowerCase();
-            if (normalized.includes('week') || normalized === 'weekly') return 'weekly';
-            if (normalized.includes('month') || normalized === 'monthly' || normalized === 'mo') return 'monthly';
-            if (normalized.includes('quarter') || normalized === 'quarterly' || normalized.includes('qtr')) return 'quarterly';
-            if (normalized.includes('semi') || normalized.includes('semi-annual')) return 'semi-annual';
-            if (normalized.includes('annual') || normalized === 'annual' || normalized === 'yearly') return 'annual';
-            return null;
-          })
-          .filter((f): f is 'weekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual' => f !== null);
-
-        // Check if frequency changed based on API frequency field
-        const uniqueFrequencies = new Set(frequencies);
-        let frequencyChanged = uniqueFrequencies.size > 1;
-
-        // Also check actual payment intervals to verify frequency change
-        // If all intervals are similar, frequency hasn't actually changed
-        if (dividends.length >= 3) {
-          const intervals: number[] = [];
-          for (let i = 0; i < dividends.length - 1; i++) {
-            const currentDate = new Date(dividends[i].exDate);
-            const nextDate = new Date(dividends[i + 1].exDate);
-            const daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-            if (daysBetween > 0 && daysBetween < 365) { // Valid interval
-              intervals.push(daysBetween);
-            }
-          }
-
-          if (intervals.length >= 2) {
-            // Calculate average interval
-            const avgInterval = intervals.reduce((sum, d) => sum + d, 0) / intervals.length;
-            // Check if intervals are consistent (within 20% of average)
-            const isConsistent = intervals.every(d => {
-              const deviation = Math.abs(d - avgInterval) / avgInterval;
-              return deviation <= 0.2; // Within 20% of average
-            });
-
-            // Only show frequency change if intervals are NOT consistent
-            // AND we have different frequency labels
-            frequencyChanged = !isConsistent && uniqueFrequencies.size > 1;
-          } else {
-            // Not enough intervals to determine, rely on frequency field
-            frequencyChanged = uniqueFrequencies.size > 1;
-          }
-        } else {
-          // Not enough data points, rely on frequency field
-          frequencyChanged = uniqueFrequencies.size > 1;
-        }
-
-        // Calculate equivalent weekly rate only if frequency changed
-        const chartData = dividends.map((div, index, array) => {
-          let equivalentWeeklyRate: number | null = null;
-
-          // Always use adjAmount for dividend history charts (no fallback to amount)
-          // This ensures accuracy and consistency with split-adjusted amounts
-          const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
-            ? div.adjAmount
-            : 0;
-
-          if (frequencyChanged && amount > 0) {
-            // Detect frequency based on days between payments
-            if (index < array.length - 1) {
-              const currentDate = new Date(div.exDate);
-              const nextDate = new Date(array[index + 1].exDate);
-              const daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-
-              // Normalize to weekly rate based on detected frequency
-              if (daysBetween <= 10) {
-                equivalentWeeklyRate = amount;
-              } else if (daysBetween <= 35) {
-                equivalentWeeklyRate = amount / 4.33;
-              } else if (daysBetween <= 95) {
-                equivalentWeeklyRate = amount / 13;
-              } else if (daysBetween <= 185) {
-                equivalentWeeklyRate = amount / 26;
-              } else {
-                equivalentWeeklyRate = amount / 52;
-              }
-            } else if (index > 0) {
-              // For last item, use previous payment's frequency
-              const currentDate = new Date(div.exDate);
-              const prevDate = new Date(array[index - 1].exDate);
-              const daysBetween = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-
-              if (daysBetween <= 10) {
-                equivalentWeeklyRate = amount;
-              } else if (daysBetween <= 35) {
-                equivalentWeeklyRate = amount / 4.33;
-              } else if (daysBetween <= 95) {
-                equivalentWeeklyRate = amount / 13;
-              } else if (daysBetween <= 185) {
-                equivalentWeeklyRate = amount / 26;
-              } else {
-                equivalentWeeklyRate = amount / 52;
-              }
-            }
-          }
-
-          return {
-            exDate: div.exDate,
-            amount: Number(amount.toFixed(4)), // Ensure amount is always a valid number with proper precision
-            adjAmount: div.adjAmount,
-            scaledAmount: div.scaledAmount,
-            payDate: div.payDate,
-            recordDate: div.recordDate,
-            declareDate: div.declareDate,
-            type: div.type,
-            frequency: div.frequency,
-            description: div.description,
-            currency: div.currency,
-            equivalentWeeklyRate: equivalentWeeklyRate !== null && typeof equivalentWeeklyRate === 'number' && !isNaN(equivalentWeeklyRate) && isFinite(equivalentWeeklyRate) ? Number(equivalentWeeklyRate.toFixed(4)) : null,
-          };
-        }).filter(item => item.amount > 0); // Filter out any items with zero or invalid amounts
-
-        return (
-          <div className="mb-4 sm:mb-6">
-            <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-              {frequencyChanged
-                ? `Dividend History: Individual Adjusted Dividends vs. Equivalent Weekly Rate`
-                : `Dividend Payments by Ex-Date`}
-            </h3>
-            <div className="relative">
-              <ResponsiveContainer width="100%" height={450} className="sm:h-[450px] landscape:h-[350px] landscape:sm:h-[400px]">
-                {frequencyChanged ? (
-                  <ComposedChart
-                    data={chartData}
-                    margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis
-                      dataKey="exDate"
-                      stroke="#94a3b8"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => {
-                        if (!value) return '';
-                        try {
-                          return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-                        } catch {
-                          return '';
-                        }
-                      }}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => {
-                        if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
-                          return `$${value.toFixed(2)}`;
-                        }
-                        return '';
-                      }}
-                      width={50}
-                      domain={[0, 'dataMax']}
-                      allowDataOverflow={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.98)",
-                        border: "none",
-                        borderRadius: "8px",
-                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                      }}
-                      formatter={(value: number | string, name: string) => {
-                        const numValue = typeof value === 'number' ? value : parseFloat(String(value));
-                        if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
-                          if (name === 'amount') {
-                            return [`$${numValue.toFixed(4)}`, 'Individual Payment Amount (Monthly/Weekly)'];
-                          } else if (name === 'equivalentWeeklyRate') {
-                            return [`$${numValue.toFixed(4)}`, 'Equivalent Weekly Rate (Rate Normalized to Weekly Payout)'];
-                          }
-                          return [`$${numValue.toFixed(4)}`, name];
-                        }
-                        return ['N/A', name];
-                      }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    />
-                    <Bar dataKey="amount" fill="#93c5fd" radius={[2, 2, 0, 0]} name="Individual Payment Amount (Monthly/Weekly)" minPointSize={3} />
-                    <Line
-                      type="monotone"
-                      dataKey="equivalentWeeklyRate"
-                      stroke="#ef4444"
-                      strokeWidth={2}
-                      dot={{ fill: '#ef4444', r: 3 }}
-                      name="Equivalent Weekly Rate (Rate Normalized to Weekly Payout)"
-                    />
-                  </ComposedChart>
-                ) : (
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis
-                      dataKey="exDate"
-                      stroke="#94a3b8"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => {
-                        if (!value) return '';
-                        try {
-                          return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-                        } catch {
-                          return '';
-                        }
-                      }}
-                    />
-                    <YAxis
-                      stroke="#94a3b8"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => {
-                        if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
-                          return `$${value.toFixed(2)}`;
-                        }
-                        return '';
-                      }}
-                      width={50}
-                      domain={[0, 'dataMax']}
-                      allowDataOverflow={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.98)",
-                        border: "none",
-                        borderRadius: "8px",
-                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                      }}
-                      formatter={(value: number | string) => {
-                        const numValue = typeof value === 'number' ? value : parseFloat(String(value));
-                        if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
-                          return [`$${numValue.toFixed(4)}`, 'Dividend'];
-                        }
-                        return ['N/A', 'Dividend'];
-                      }}
-                      labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    />
-                    <Bar
-                      dataKey="amount"
-                      fill="#3b82f6"
-                      radius={[2, 2, 0, 0]}
-                      minPointSize={3}
-                    />
-                  </BarChart>
-                )}
-              </ResponsiveContainer>
-              <div className="text-center text-xs text-muted-foreground mt-1">
-                Adjusted Dividends Bar Chart
-              </div>
-            </div>
+      {individualChartData ? (
+        <div className="mb-4 sm:mb-6">
+          <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">
+            {individualChartData.frequencyChanged
+              ? `Dividend History: Individual Adjusted Dividends vs. Equivalent Weekly Rate`
+              : `Dividend Payments by Ex-Date`}
+          </h3>
+          <div className="relative">
+            <ResponsiveContainer width="100%" height={450} className="sm:h-[450px] landscape:h-[350px] landscape:sm:h-[400px]">
+            {individualChartData.frequencyChanged ? (
+              <ComposedChart
+                data={individualChartData.chartData}
+                margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="exDate"
+                  stroke="#94a3b8"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    if (!value) return '';
+                    try {
+                      return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    } catch {
+                      return '';
+                    }
+                  }}
+                />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                      return `$${value.toFixed(2)}`;
+                    }
+                    return '';
+                  }}
+                  width={50}
+                  domain={[0, 'dataMax']}
+                  allowDataOverflow={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255, 255, 255, 0.98)",
+                    border: "none",
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  }}
+                  formatter={(value: number | string, name: string) => {
+                    const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                    if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                      if (name === 'amount') {
+                        return [`$${numValue.toFixed(4)}`, 'Individual Payment Amount (Monthly/Weekly)'];
+                      } else if (name === 'equivalentWeeklyRate') {
+                        return [`$${numValue.toFixed(4)}`, 'Equivalent Weekly Rate (Rate Normalized to Weekly Payout)'];
+                      }
+                      return [`$${numValue.toFixed(4)}`, name];
+                    }
+                    return ['N/A', name];
+                  }}
+                  labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                />
+                <Bar dataKey="amount" fill="#93c5fd" radius={[2, 2, 0, 0]} name="Individual Payment Amount (Monthly/Weekly)" minPointSize={3} />
+                <Line
+                  type="monotone"
+                  dataKey="equivalentWeeklyRate"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ fill: '#ef4444', r: 3 }}
+                  name="Equivalent Weekly Rate (Rate Normalized to Weekly Payout)"
+                />
+              </ComposedChart>
+            ) : (
+              <BarChart
+                data={individualChartData.chartData}
+                margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis
+                  dataKey="exDate"
+                  stroke="#94a3b8"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    if (!value) return '';
+                    try {
+                      return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                    } catch {
+                      return '';
+                    }
+                  }}
+                />
+                <YAxis
+                  stroke="#94a3b8"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                      return `$${value.toFixed(2)}`;
+                    }
+                    return '';
+                  }}
+                  width={50}
+                  domain={[0, 'dataMax']}
+                  allowDataOverflow={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(255, 255, 255, 0.98)",
+                    border: "none",
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  }}
+                  formatter={(value: number | string) => {
+                    const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                    if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                      return [`$${numValue.toFixed(4)}`, 'Dividend'];
+                    }
+                    return ['N/A', 'Dividend'];
+                  }}
+                  labelFormatter={(label) => new Date(label).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                />
+                <Bar
+                  dataKey="amount"
+                  fill="#3b82f6"
+                  radius={[2, 2, 0, 0]}
+                  minPointSize={3}
+                />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+          <div className="text-center text-xs text-muted-foreground mt-1">
+            Adjusted Dividends Bar Chart
           </div>
-        );
-      })()}
+          </div>
+        </div>
+      ) : null}
 
-      {chartData.length > 0 && (
+      {yearlyDividends.length > 0 && (
         <div className="mb-6 sm:mb-8">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Annual Dividend Totals</h3>
           <ResponsiveContainer width="100%" height={200} className="sm:h-[250px] landscape:h-[180px] landscape:sm:h-[220px]">
-            <BarChart data={chartData}>
+            <BarChart data={yearlyDividends}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="year"
@@ -580,15 +610,18 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
                 labelFormatter={(label) => `Year ${label}`}
               />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry, index) => (
+                {yearlyDividends.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={index === chartData.length - 1 ? '#3b82f6' : '#93c5fd'}
+                    fill={index === yearlyDividends.length - 1 ? '#3b82f6' : '#93c5fd'}
                   />
                 ))}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          <div className="text-center text-xs text-muted-foreground mt-1">
+            Adjusted Dividends Bar Chart
+          </div>
         </div>
       )}
 
