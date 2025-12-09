@@ -91,20 +91,15 @@ const DividendHistoryPage = () => {
           </Button>
         </div>
 
-        <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-            {symbol.toUpperCase()} - Dividend Yield & Payments
-          </h1>
-          {etf ? (
-            <p className="text-lg text-muted-foreground">{etf.name}</p>
-          ) : etfNotFound ? (
-            <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        {etfNotFound && (
+          <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 <strong>Note:</strong> This ETF is not currently in our database, but dividend history may still be available.
               </p>
             </div>
-          ) : null}
-        </div>
+          </div>
+        )}
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200">
           {isLoading ? (
