@@ -51,7 +51,7 @@ interface YearlyDividend {
 
 type TimeRange = '1Y' | '3Y' | '5Y' | '10Y' | '20Y' | 'ALL';
 
-export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps) {
+export function DividendHistory({ ticker, annualDividend, dvi }: DividendHistoryProps) {
   const [dividendData, setDividendData] = useState<DividendData | null>(null);
   const [corporateActionDates, setCorporateActionDates] = useState<Map<string, DividendDates>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -382,7 +382,7 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
   return (
     <Card className="p-3 sm:p-4 md:p-6">
 
-      {dvi != null && (
+      {dvi != null && typeof dvi === 'number' && !isNaN(dvi) && (
         <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-blue-50 to-slate-50 border border-blue-200 rounded-lg">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
