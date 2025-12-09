@@ -205,40 +205,38 @@ const ETFDetail = () => {
 
         {/* Header with symbol, price, and return indicator */}
         <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-baseline gap-4 mb-2">
-                <h1 className="text-3xl sm:text-4xl font-bold">{etf.symbol}</h1>
-                <span className="text-lg text-muted-foreground">{etf.name}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl font-bold">${etf.price.toFixed(2)}</span>
-                <span className={`text-lg font-semibold flex items-center ${
-                  currentReturn != null && currentReturn >= 0 ? "text-green-600" : "text-red-600"
-                }`}>
-                  {currentReturn != null && currentReturn >= 0 ? <TrendingUp className="w-5 h-5 mr-1" /> : <TrendingDown className="w-5 h-5 mr-1" />}
-                  {currentReturn != null ? `${currentReturn >= 0 ? '+' : ''}${currentReturn.toFixed(2)}%` : 'N/A'}
-                </span>
-              </div>
-              {/* Last Updated + Source - Moved under price */}
-              {lastUpdated && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                  <Clock className="h-3 w-3" />
-                  <span>Last updated: {lastUpdated}</span>
-                  <span className="text-primary font-medium">Source: Tiingo</span>
-                </div>
-              )}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg sm:text-xl font-bold">TOTAL RETURN CHART</h2>
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/etf/${etf.symbol}/dividends`)}
+              className="gap-2 font-bold text-base"
+            >
+              View Dividend History
+            </Button>
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
+              <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
             </div>
-            {/* View Dividend History Button - Moved to top right */}
-            <div className="flex items-center">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/etf/${etf.symbol}/dividends`)}
-                className="gap-2 font-bold text-base"
-              >
-                View Dividend History
-              </Button>
+            <div className="flex items-center gap-3">
+              <span className="text-xl sm:text-2xl font-bold">${etf.price.toFixed(2)}</span>
+              <span className={`text-lg font-semibold flex items-center ${
+                currentReturn != null && currentReturn >= 0 ? "text-green-600" : "text-red-600"
+              }`}>
+                {currentReturn != null && currentReturn >= 0 ? <TrendingUp className="w-5 h-5 mr-1" /> : <TrendingDown className="w-5 h-5 mr-1" />}
+                {currentReturn != null ? `${currentReturn >= 0 ? '+' : ''}${currentReturn.toFixed(2)}%` : 'N/A'}
+              </span>
             </div>
+            {/* Last Updated + Source - Moved under price */}
+            {lastUpdated && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <Clock className="h-3 w-3" />
+                <span>Last updated {lastUpdated}</span>
+                <span className="text-primary font-medium">Source: Tiingo</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -342,23 +340,8 @@ const ETFDetail = () => {
         {/* Chart Section - No tabs, direct display */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200 relative z-0" data-chart-section>
           <Card className="p-6 mb-8 relative z-0">
-            {/* Header Section */}
-            <div className="mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-bold mb-3">TOTAL RETURN CHART</h2>
-              <div className="mb-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
-                  <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
-                </div>
-                <div className="text-xl sm:text-2xl font-bold mt-1">${etf.price.toFixed(2)}</div>
-                {lastUpdated && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    <Clock className="h-3 w-3" />
-                    <span>Last updated {lastUpdated}</span>
-                    <span className="text-primary font-medium">Source: Tiingo</span>
-                  </div>
-                )}
-              </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-bold">TOTAL RETURN CHART</h2>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
               <div className="flex items-center gap-3 flex-wrap">

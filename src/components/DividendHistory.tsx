@@ -385,7 +385,18 @@ export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, et
     <Card className="p-3 sm:p-4 md:p-6">
       {/* Header Section */}
       <div className="mb-4 sm:mb-6">
-        <h2 className="text-lg sm:text-xl font-bold mb-3">DIVIDEND HISTORY</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg sm:text-xl font-bold">DIVIDEND HISTORY</h2>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={handleViewTotalReturnChart}
+            className="gap-2 font-bold text-base"
+          >
+            <BarChart3 className="h-4 w-4" />
+            View Total Return Chart
+          </Button>
+        </div>
         {etfSymbol && (
           <div className="mb-2">
             <div className="flex items-baseline gap-2">
@@ -404,17 +415,6 @@ export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, et
             )}
           </div>
         )}
-        <div className="flex items-center justify-end mt-2">
-          <Button
-            variant="outline"
-            size="default"
-            onClick={handleViewTotalReturnChart}
-            className="gap-2 font-bold text-base"
-          >
-            <BarChart3 className="h-4 w-4" />
-            View Total Return Chart
-          </Button>
-        </div>
       </div>
 
       <div className="flex gap-1 mb-4 flex-wrap">
