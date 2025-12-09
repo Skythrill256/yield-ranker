@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Clock, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Header } from "@/components/Header";
@@ -101,6 +101,40 @@ const DividendHistoryPage = () => {
           </div>
         )}
 
+        {!isLoading && etf && (
+          <div className="mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl sm:text-2xl font-bold">DIVIDEND HISTORY CHART</h2>
+              <Button
+                variant="outline"
+                onClick={() => navigate(`/etf/${etf.symbol}`)}
+                className="gap-2 font-bold text-base"
+              >
+                <BarChart3 className="h-4 w-4" />
+                View Total Return Chart
+              </Button>
+            </div>
+            {etf.symbol && (
+              <div className="mb-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
+                  <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
+                </div>
+                {etf.price != null && (
+                  <div className="text-xl sm:text-2xl font-bold mt-1">${etf.price.toFixed(2)}</div>
+                )}
+                {lastUpdated && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <Clock className="h-3 w-3" />
+                    <span>Last updated {lastUpdated}</span>
+                    <span className="text-primary font-medium">Source: Tiingo</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200">
           {isLoading ? (
             <Card className="p-6">
@@ -112,10 +146,6 @@ const DividendHistoryPage = () => {
             <DividendHistory 
               ticker={symbol} 
               annualDividend={etf?.annualDividend ?? null}
-              etfSymbol={etf?.symbol}
-              etfName={etf?.name}
-              etfPrice={etf?.price}
-              lastUpdated={lastUpdated}
             />
           )}
         </div>

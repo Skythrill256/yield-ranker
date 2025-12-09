@@ -37,10 +37,6 @@ import { fetchDividends, fetchDividendDates, type DividendData, type DividendRec
 interface DividendHistoryProps {
   ticker: string;
   annualDividend?: number | null;
-  etfSymbol?: string;
-  etfName?: string;
-  etfPrice?: number;
-  lastUpdated?: string | null;
 }
 
 interface YearlyDividend {
@@ -53,7 +49,7 @@ interface YearlyDividend {
 
 type TimeRange = '1Y' | '3Y' | '5Y' | '10Y' | '20Y' | 'ALL';
 
-export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, etfPrice, lastUpdated }: DividendHistoryProps) {
+export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps) {
   const [dividendData, setDividendData] = useState<DividendData | null>(null);
   const [corporateActionDates, setCorporateActionDates] = useState<Map<string, DividendDates>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
@@ -383,39 +379,6 @@ export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, et
 
   return (
     <Card className="p-3 sm:p-4 md:p-6">
-      {/* Header Section */}
-      <div className="mb-4 sm:mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg sm:text-xl font-bold">DIVIDEND HISTORY</h2>
-          <Button
-            variant="outline"
-            size="default"
-            onClick={handleViewTotalReturnChart}
-            className="gap-2 font-bold text-base"
-          >
-            <BarChart3 className="h-4 w-4" />
-            View Total Return Chart
-          </Button>
-        </div>
-        {etfSymbol && (
-          <div className="mb-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-bold">{etfSymbol}</span>
-              {etfName && <span className="text-base sm:text-lg text-muted-foreground">{etfName}</span>}
-            </div>
-            {etfPrice != null && (
-              <div className="text-xl sm:text-2xl font-bold mt-1">${etfPrice.toFixed(2)}</div>
-            )}
-            {lastUpdated && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                <Clock className="h-3 w-3" />
-                <span>Last updated {lastUpdated}</span>
-                <span className="text-primary font-medium">Source: Tiingo</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       <div className="flex gap-1 mb-4 flex-wrap">
         {(['1Y', '3Y', '5Y', '10Y', '20Y', 'ALL'] as TimeRange[]).map((range) => (

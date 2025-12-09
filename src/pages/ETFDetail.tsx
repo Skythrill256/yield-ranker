@@ -206,7 +206,7 @@ const ETFDetail = () => {
         {/* Header with symbol, price, and return indicator */}
         <div className="mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg sm:text-xl font-bold">TOTAL RETURN CHART</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">TOTAL RETURN CHART</h2>
             <Button
               variant="outline"
               onClick={() => navigate(`/etf/${etf.symbol}/dividends`)}
