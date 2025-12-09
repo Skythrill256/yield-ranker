@@ -22,6 +22,7 @@ import {
   Cell,
 } from "recharts";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -30,12 +31,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ChevronDown, ChevronUp, DollarSign, TrendingUp, TrendingDown, BarChart3, Clock } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, DollarSign, TrendingUp, TrendingDown, BarChart3, Clock, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { fetchDividends, fetchDividendDates, type DividendData, type DividendRecord, type DividendDates } from "@/services/tiingoApi";
 
 interface DividendHistoryProps {
   ticker: string;
   annualDividend?: number | null;
+  dvi?: number | null;
 }
 
 interface YearlyDividend {
@@ -378,6 +381,50 @@ export function DividendHistory({ ticker, annualDividend }: DividendHistoryProps
 
   return (
     <Card className="p-3 sm:p-4 md:p-6">
+
+      {dvi != null && (
+        <div className="mb-4 sm:mb-6 p-4 bg-gradient-to-r from-blue-50 to-slate-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm sm:text-base font-bold text-foreground">Dividend Volatility Index (DVI)</h3>
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="right"
+                      sideOffset={8}
+                      className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[320px]"
+                    >
+                      <p className="font-semibold mb-2">What is DVI?</p>
+                      <p className="mb-2">
+                        DVI measures the consistency of dividend payments using the Coefficient of Variation (CV). 
+                        It's calculated from the last 12 months of adjusted dividends, annualized to normalize for frequency changes.
+                      </p>
+                      <p className="font-semibold mb-2">Why is it important?</p>
+                      <p>
+                        Lower DVI indicates more predictable, stable dividend payments. Higher DVI suggests greater variability, 
+                        which may impact income planning. DVI helps investors assess dividend reliability beyond just yield.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold text-primary">{dvi.toFixed(1)}%</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">
+                  {dvi < 20 ? 'Very Low Volatility' : dvi < 35 ? 'Low Volatility' : dvi < 50 ? 'Moderate Volatility' : dvi < 70 ? 'High Volatility' : 'Very High Volatility'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Based on 12-month rolling analysis of adjusted dividends, normalized for payment frequency
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-1 mb-4 flex-wrap">
         {(['1Y', '3Y', '5Y', '10Y', '20Y', 'ALL'] as TimeRange[]).map((range) => (
