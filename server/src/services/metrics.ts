@@ -241,15 +241,32 @@ export function calculateDividendVolatility(
     }
     
     // PRIORITY 2: Fallback to interval-based detection if no frequency field
-    let daysBetween: number | null = null;
-    if (index > 0) {
-      // Use interval from previous payment to current
-      const prev = recentSeries[index - 1];
-      daysBetween = (current.date.getTime() - prev.date.getTime()) / (1000 * 60 * 60 * 24);
-    } else if (index < recentSeries.length - 1) {
-      // For first payment, use interval to next payment
+    // Check BOTH next and previous intervals, prefer the one indicating higher frequency (more frequent payments)
+    let daysToNext: number | null = null;
+    let daysFromPrev: number | null = null;
+    
+    if (index < recentSeries.length - 1) {
+      // Check interval to next payment (more indicative of current payment's frequency)
       const next = recentSeries[index + 1];
-      daysBetween = (next.date.getTime() - current.date.getTime()) / (1000 * 60 * 60 * 24);
+      daysToNext = (next.date.getTime() - current.date.getTime()) / (1000 * 60 * 60 * 24);
+    }
+    
+    if (index > 0) {
+      // Check interval from previous payment
+      const prev = recentSeries[index - 1];
+      daysFromPrev = (current.date.getTime() - prev.date.getTime()) / (1000 * 60 * 60 * 24);
+    }
+    
+    // Prefer the interval that indicates higher frequency (shorter days = higher frequency)
+    // Use the shorter interval (more frequent) to determine frequency
+    let daysBetween: number | null = null;
+    if (daysToNext !== null && daysFromPrev !== null) {
+      // Use the shorter interval (indicates higher frequency)
+      daysBetween = Math.min(daysToNext, daysFromPrev);
+    } else if (daysToNext !== null) {
+      daysBetween = daysToNext;
+    } else if (daysFromPrev !== null) {
+      daysBetween = daysFromPrev;
     }
     
     if (daysBetween !== null && daysBetween > 0 && daysBetween < 400) {
