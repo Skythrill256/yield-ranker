@@ -30,6 +30,7 @@
     "refresh:all": "tsx scripts/refresh_all.ts",
     "refresh:ticker": "tsx scripts/refresh_all.ts --ticker",
     "test:dvi": "tsx scripts/test_dvi_calculation.ts",
+    "breakdown:dvi": "tsx scripts/dvi_breakdown.ts",
     "tiingo:test": "tsx -e \"import { healthCheck } from './src/services/tiingo.js'; healthCheck().then(console.log)\""
   },
   "dependencies": {
