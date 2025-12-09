@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Clock, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { DividendHistory } from "@/components/DividendHistory";
 import { fetchSingleETF, fetchETFDataWithMetadata } from "@/services/etfData";
 import { ETF } from "@/types/etf";
@@ -151,6 +152,7 @@ const DividendHistoryPage = () => {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

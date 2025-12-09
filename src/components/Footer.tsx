@@ -4,7 +4,7 @@ export const Footer = () => (
   <footer className="w-full bg-white border-t border-slate-200">
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs sm:text-sm text-muted-foreground">
-        <span>© 2025 DividendsandTotalReturns.com All rights reserved.</span>
+        <span>© 2025 Dividends And Total Returns LLC All rights reserved.</span>
         <div className="flex items-center gap-4">
           <Link to="/terms" className="hover:text-foreground transition-colors">
             Terms of Service

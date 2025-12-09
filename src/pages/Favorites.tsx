@@ -13,6 +13,7 @@ import { Sliders, RotateCcw, X, Star, Lock, Check } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
+import { Footer } from "@/components/Footer";
 
 const Favorites = () => {
   const { profile } = useAuth();
@@ -449,6 +450,7 @@ const Favorites = () => {
         open={showUpgradeModal} 
         onOpenChange={setShowUpgradeModal} 
       />
+      <Footer />
     </div>
   );
 };

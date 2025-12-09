@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { AuthWidget } from "@/auth/AuthWidget";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -27,10 +28,10 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
 
-      <main className="relative flex min-h-[calc(100vh-4rem)] items-center justify-center">
+      <main className="relative flex-1 flex items-center justify-center">
         <div className="container max-w-md mx-auto px-4 sm:px-6 py-8 sm:py-12">
           <div className="w-full space-y-6 sm:space-y-8">
             <div className="space-y-2 sm:space-y-3">
@@ -47,6 +48,7 @@ const Auth = () => {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

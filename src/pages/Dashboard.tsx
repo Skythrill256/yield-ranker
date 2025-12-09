@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Footer } from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -3421,6 +3422,7 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+      <Footer />
     </div>
   );
 }

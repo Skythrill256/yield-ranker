@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, TrendingUp, TrendingDown, Plus, X, Loader2, Clock, Search } from "lucide-react";
+import { Footer } from "@/components/Footer";
 import {
   fetchETFData,
   fetchETFDataWithMetadata,
@@ -975,6 +976,7 @@ const ETFDetail = () => {
           </Card>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };
