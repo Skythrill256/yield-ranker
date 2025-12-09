@@ -29,6 +29,7 @@
     "cron:hourly": "tsx scripts/hourly_sync.ts",
     "refresh:all": "tsx scripts/refresh_all.ts",
     "refresh:ticker": "tsx scripts/refresh_all.ts --ticker",
+    "test:dvi": "tsx scripts/test_dvi_calculation.ts",
     "tiingo:test": "tsx -e \"import { healthCheck } from './src/services/tiingo.js'; healthCheck().then(console.log)\""
   },
   "dependencies": {

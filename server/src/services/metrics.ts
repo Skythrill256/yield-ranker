@@ -217,16 +217,25 @@ export function calculateDividendVolatility(
   function getAnnualizationFactor(current: typeof recentSeries[0], index: number): number {
     // PRIORITY 1: Use frequency field from database/website (as CEO specified)
     if (current.frequency) {
-      const freq = current.frequency.toLowerCase();
-      if (freq.includes('week') || freq === 'weekly') {
+      const freq = String(current.frequency).trim();
+      const freqLower = freq.toLowerCase();
+      
+      // Handle numeric frequency values (52, 12, 4, etc.)
+      const numericFreq = parseFloat(freq);
+      if (!isNaN(numericFreq) && numericFreq > 0 && numericFreq <= 52) {
+        return numericFreq;
+      }
+      
+      // Handle string frequency values
+      if (freqLower.includes('week') || freqLower === 'weekly' || freq === 'Week' || freq === 'Wk' || freq === 'W') {
         return 52;
-      } else if (freq.includes('month') || freq === 'monthly' || freq === 'mo') {
+      } else if (freqLower.includes('month') || freqLower === 'monthly' || freq === 'Mo' || freq === 'M' || freq === 'Monthly') {
         return 12;
-      } else if (freq.includes('quarter') || freq === 'quarterly' || freq.includes('qtr')) {
+      } else if (freqLower.includes('quarter') || freqLower === 'quarterly' || freq.includes('qtr') || freq === 'Qtr' || freq === 'Q' || freq === 'Quarterly') {
         return 4;
-      } else if (freq.includes('semi') || freq.includes('semi-annual')) {
+      } else if (freqLower.includes('semi') || freqLower.includes('semi-annual')) {
         return 2;
-      } else if (freq.includes('annual') || freq === 'annual' || freq === 'yearly') {
+      } else if (freqLower.includes('annual') || freqLower === 'annual' || freqLower === 'yearly') {
         return 1;
       }
     }
