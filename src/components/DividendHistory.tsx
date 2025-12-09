@@ -579,7 +579,7 @@ export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, et
         <div className="mb-6 sm:mb-8">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">Annual Dividend Totals</h3>
           <ResponsiveContainer width="100%" height={200} className="sm:h-[250px] landscape:h-[180px] landscape:sm:h-[220px]">
-            <BarChart data={[...yearlyDividends].reverse()}>
+            <BarChart data={yearlyDividends}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis
                 dataKey="year"
@@ -610,7 +610,7 @@ export function DividendHistory({ ticker, annualDividend, etfSymbol, etfName, et
                 labelFormatter={(label) => `Year ${label}`}
               />
               <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                {[...yearlyDividends].reverse().map((entry, index, arr) => (
+                {yearlyDividends.map((entry, index, arr) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={index === arr.length - 1 ? '#3b82f6' : '#93c5fd'}

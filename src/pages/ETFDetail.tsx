@@ -204,7 +204,7 @@ const ETFDetail = () => {
         </div>
 
         {/* Header with symbol, price, and return indicator */}
-        <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
+        <div className="mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg sm:text-xl font-bold">TOTAL RETURN CHART</h2>
             <Button
@@ -215,29 +215,30 @@ const ETFDetail = () => {
               View Dividend History
             </Button>
           </div>
-          <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
-              <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xl sm:text-2xl font-bold">${etf.price.toFixed(2)}</span>
-              <span className={`text-lg font-semibold flex items-center ${
-                currentReturn != null && currentReturn >= 0 ? "text-green-600" : "text-red-600"
-              }`}>
-                {currentReturn != null && currentReturn >= 0 ? <TrendingUp className="w-5 h-5 mr-1" /> : <TrendingDown className="w-5 h-5 mr-1" />}
-                {currentReturn != null ? `${currentReturn >= 0 ? '+' : ''}${currentReturn.toFixed(2)}%` : 'N/A'}
-              </span>
-            </div>
-            {/* Last Updated + Source - Moved under price */}
-            {lastUpdated && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                <Clock className="h-3 w-3" />
-                <span>Last updated {lastUpdated}</span>
-                <span className="text-primary font-medium">Source: Tiingo</span>
+          {etf.symbol && (
+            <div className="mb-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
+                <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
               </div>
-            )}
-          </div>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-xl sm:text-2xl font-bold">${etf.price.toFixed(2)}</span>
+                <span className={`text-lg font-semibold flex items-center ${
+                  currentReturn != null && currentReturn >= 0 ? "text-green-600" : "text-red-600"
+                }`}>
+                  {currentReturn != null && currentReturn >= 0 ? <TrendingUp className="w-5 h-5 mr-1" /> : <TrendingDown className="w-5 h-5 mr-1" />}
+                  {currentReturn != null ? `${currentReturn >= 0 ? '+' : ''}${currentReturn.toFixed(2)}%` : 'N/A'}
+                </span>
+              </div>
+              {lastUpdated && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                  <Clock className="h-3 w-3" />
+                  <span>Last updated {lastUpdated}</span>
+                  <span className="text-primary font-medium">Source: Tiingo</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Top Metrics Bar - Section 3.3: Show precomputed returns based on chart type */}
