@@ -27,6 +27,25 @@ export default defineConfig(({ mode }) => {
       },
       dedupe: ["react", "react-dom"],
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split vendor chunks
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-charts': ['recharts'],
+            'vendor-ui': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-dropdown-menu',
+              '@radix-ui/react-tabs',
+              '@radix-ui/react-tooltip',
+              '@radix-ui/react-select',
+              '@radix-ui/react-slot',
+            ],
+          },
+        },
+      },
+    },
     // In production, call Railway backend directly
     // In development, use empty string (Vite proxy handles it)
     define: {

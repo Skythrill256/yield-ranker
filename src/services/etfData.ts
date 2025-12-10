@@ -1,5 +1,6 @@
 // ...existing code...
 import { ETF } from "@/types/etf";
+import { fetchRealtimeReturnsBatch } from "@/services/tiingoApi";
 // ...existing code...
 
 const dataCache = new Map<string, { data: ETF; timestamp: number }>();
@@ -26,15 +27,15 @@ type DatabaseETF = {
   annual_div?: number | null;
   annual_dividend?: number | null;  // etf_static uses annual_dividend
   forward_yield: number | null;
-  
+
   // Volatility metrics
   dividend_volatility_index?: number | string | null;  // Can be number (old) or string (new)
   dividend_cv_percent?: number | null;
   dividend_cv?: number | null;
   dividend_sd?: number | null;
-  
+
   weighted_rank: number | null;
-  
+
   // Total Return WITH DRIP (new fields from etf_static)
   tr_drip_3y?: number | null;
   tr_drip_12m?: number | null;
@@ -42,7 +43,7 @@ type DatabaseETF = {
   tr_drip_3m?: number | null;
   tr_drip_1m?: number | null;
   tr_drip_1w?: number | null;
-  
+
   // Legacy total return fields (old etfs table)
   three_year_annualized?: number | null;
   total_return_12m?: number | null;
@@ -50,7 +51,7 @@ type DatabaseETF = {
   total_return_3m?: number | null;
   total_return_1m?: number | null;
   total_return_1w?: number | null;
-  
+
   // Price Return
   price_return_3y: number | null;
   price_return_12m: number | null;
@@ -58,11 +59,11 @@ type DatabaseETF = {
   price_return_3m: number | null;
   price_return_1m: number | null;
   price_return_1w: number | null;
-  
+
   // 52-week range
   week_52_high?: number | null;
   week_52_low?: number | null;
-  
+
   // Metadata
   last_updated?: string | null;
   last_updated_timestamp?: string | null;
@@ -71,16 +72,16 @@ type DatabaseETF = {
 function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
   const symbol = (dbEtf.symbol || dbEtf.ticker || '').toUpperCase().trim();
   const price = dbEtf.price ?? 0;
-  
+
   // Handle annual dividend - keep null if no data available
   const annualDiv = dbEtf.annual_dividend ?? dbEtf.annual_div ?? null;
-  
+
   // Handle forward yield:
   // 1. Use database value if present
   // 2. Calculate from annual dividend if available
   // 3. Keep null if no data (shows 'N/A' in UI)
   let forwardYield: number | null = dbEtf.forward_yield ?? null;
-  
+
   if (forwardYield === null && price > 0 && annualDiv != null && annualDiv > 0) {
     forwardYield = (annualDiv / price) * 100;
   }
@@ -88,13 +89,13 @@ function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
   // Handle dividend volatility - can be string (new) or number (old)
   let dividendVolatilityIndex: string | null = null;
   let dividendCVPercent: number | null = null;
-  
+
   if (typeof dbEtf.dividend_volatility_index === 'string') {
     dividendVolatilityIndex = dbEtf.dividend_volatility_index;
   } else if (typeof dbEtf.dividend_volatility_index === 'number') {
     dividendCVPercent = dbEtf.dividend_volatility_index;
   }
-  
+
   if (dbEtf.dividend_cv_percent != null) {
     dividendCVPercent = dbEtf.dividend_cv_percent;
   }
@@ -113,20 +114,20 @@ function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
     numPayments: dbEtf.payments_per_year ?? 12,
     annualDividend: annualDiv ?? null,
     forwardYield: forwardYield,
-    
+
     // Volatility metrics
     dividendSD: dbEtf.dividend_sd ?? null,
     dividendCV: dbEtf.dividend_cv ?? null,
     dividendCVPercent: dividendCVPercent,
     dividendVolatilityIndex: dividendVolatilityIndex,
-    
+
     // Legacy field for backward compatibility
     standardDeviation: dividendCVPercent ?? 0,
-    
+
     weightedRank: dbEtf.weighted_rank ?? null,
     week52Low: dbEtf.week_52_low ?? 0,
     week52High: dbEtf.week_52_high ?? 0,
-    
+
     // Total Return WITH DRIP - prefer new fields, fallback to legacy
     trDrip3Yr: (dbEtf.tr_drip_3y ?? dbEtf.three_year_annualized) ?? null,
     trDrip12Mo: (dbEtf.tr_drip_12m ?? dbEtf.total_return_12m) ?? null,
@@ -134,7 +135,7 @@ function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
     trDrip3Mo: (dbEtf.tr_drip_3m ?? dbEtf.total_return_3m) ?? null,
     trDrip1Mo: (dbEtf.tr_drip_1m ?? dbEtf.total_return_1m) ?? null,
     trDrip1Wk: (dbEtf.tr_drip_1w ?? dbEtf.total_return_1w) ?? null,
-    
+
     // Legacy fields for backward compatibility
     totalReturn3Yr: (dbEtf.tr_drip_3y ?? dbEtf.three_year_annualized) ?? null,
     totalReturn12Mo: (dbEtf.tr_drip_12m ?? dbEtf.total_return_12m) ?? null,
@@ -142,7 +143,7 @@ function mapDatabaseETFToETF(dbEtf: DatabaseETF): ETF {
     totalReturn3Mo: (dbEtf.tr_drip_3m ?? dbEtf.total_return_3m) ?? null,
     totalReturn1Mo: (dbEtf.tr_drip_1m ?? dbEtf.total_return_1m) ?? null,
     totalReturn1Wk: (dbEtf.tr_drip_1w ?? dbEtf.total_return_1w) ?? null,
-    
+
     // Price Return
     priceReturn3Yr: dbEtf.price_return_3y ?? null,
     priceReturn12Mo: dbEtf.price_return_12m ?? null,
@@ -174,7 +175,7 @@ export const fetchETFDataWithMetadata = async (): Promise<ETFDataResponse> => {
       lastUpdatedTimestamp: (cached as any).lastUpdatedTimestamp || null,
     };
   }
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/api/etfs`, {
       signal: AbortSignal.timeout(30000)  // 30 seconds timeout
@@ -188,14 +189,14 @@ export const fetchETFDataWithMetadata = async (): Promise<ETFDataResponse> => {
     const etfs: ETF[] = dbEtfs.map(mapDatabaseETFToETF);
     const lastUpdated = Array.isArray(json) ? null : (json.last_updated || json.lastUpdated || null);
     const lastUpdatedTimestamp = Array.isArray(json) ? null : (json.last_updated_timestamp || json.lastUpdatedTimestamp || json.last_updated || null);
-    
-    dataCache.set("__ALL__", { 
-      data: etfs as unknown as ETF, 
+
+    dataCache.set("__ALL__", {
+      data: etfs as unknown as ETF,
       timestamp: now,
       lastUpdated,
       lastUpdatedTimestamp,
     } as any);
-    
+
     return {
       etfs,
       lastUpdated,
@@ -260,7 +261,7 @@ export const fetchComparisonData = async (
   timeframe: ComparisonTimeframe,
 ): Promise<ComparisonResponse> => {
   const normalizedSymbols = symbols.map(s => s.toUpperCase().trim()).filter(s => s.length > 0);
-  
+
   if (normalizedSymbols.length === 0) {
     return {
       symbols: [],
@@ -268,7 +269,7 @@ export const fetchComparisonData = async (
       data: {},
     };
   }
-  
+
   const response = await fetch(`${API_BASE_URL}/api/tiingo/live/compare`, {
     method: "POST",
     headers: {
@@ -276,20 +277,20 @@ export const fetchComparisonData = async (
     },
     body: JSON.stringify({ tickers: normalizedSymbols, period: timeframe }),
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Failed to fetch comparison data: ${errorText || response.statusText}`);
   }
-  
+
   const json = await response.json();
-  
+
   const transformedData: ComparisonResponse = {
     symbols: (json.tickers || normalizedSymbols).map((t: string) => t.toUpperCase()),
     timeframe,
     data: {},
   };
-  
+
   const responseData = json.data || {};
   for (const ticker of transformedData.symbols) {
     const tickerData = responseData[ticker] || responseData[ticker.toUpperCase()] || responseData[ticker.toLowerCase()];
@@ -301,14 +302,14 @@ export const fetchComparisonData = async (
       };
     }
   }
-  
+
   return transformedData;
 };
 
 function getPeriodStartDate(timeframe: ComparisonTimeframe): Date {
   const now = new Date();
   const start = new Date(now);
-  
+
   switch (timeframe) {
     case "1D":
       start.setDate(start.getDate() - 1);
@@ -350,7 +351,7 @@ function getPeriodStartDate(timeframe: ComparisonTimeframe): Date {
     default:
       start.setFullYear(start.getFullYear() - 1);
   }
-  
+
   return start;
 }
 
@@ -361,59 +362,59 @@ export const generateChartData = (
   if (!comparison.symbols.length || !comparison.data) {
     return [];
   }
-  
+
   const firstValidPrice: Record<string, number> = {};
   const timestampToData: Map<number, Map<string, number>> = new Map();
-  
+
   for (const symbol of comparison.symbols) {
     const series = comparison.data[symbol];
     if (!series || !series.timestamps) continue;
-    
+
     // Use closes for price return, adjCloses for total return
-    const prices = chartType === "price" 
+    const prices = chartType === "price"
       ? (series.closes || [])
       : (series.adjCloses || series.closes || []);
-    
+
     if (!prices || prices.length === 0) continue;
-    
+
     for (let i = 0; i < series.timestamps.length && i < prices.length; i++) {
       const ts = series.timestamps[i];
       const price = prices[i];
-      
+
       if (price == null || isNaN(price) || price <= 0) continue;
-      
+
       if (!firstValidPrice[symbol]) {
         firstValidPrice[symbol] = price;
       }
-      
+
       if (!timestampToData.has(ts)) {
         timestampToData.set(ts, new Map());
       }
       timestampToData.get(ts)!.set(symbol, price);
     }
   }
-  
+
   if (timestampToData.size === 0) {
     return [];
   }
-  
+
   const allTimestamps = Array.from(timestampToData.keys()).sort((a, b) => a - b);
   const primarySymbol = comparison.symbols[0];
-  
+
   const periodStart = getPeriodStartDate(comparison.timeframe);
   const periodStartTs = Math.floor(periodStart.getTime() / 1000);
   const firstDataTs = allTimestamps[0];
-  
+
   const result: any[] = [];
-  
+
   if (firstDataTs > periodStartTs) {
     const daysDiff = Math.ceil((firstDataTs - periodStartTs) / 86400);
     const sampleInterval = Math.max(1, Math.floor(daysDiff / 20));
-    
+
     for (let ts = periodStartTs; ts < firstDataTs; ts += sampleInterval * 86400) {
       const date = new Date(ts * 1000);
       let timeLabel: string;
-      
+
       if (comparison.timeframe === "1D") {
         timeLabel = date.toLocaleTimeString(undefined, {
           hour: "2-digit",
@@ -435,13 +436,13 @@ export const generateChartData = (
           year: "numeric",
         });
       }
-      
+
       const point: Record<string, number | string | null> = {
         time: timeLabel,
         fullDate: date.toISOString(),
         timestamp: ts,
       };
-      
+
       for (const symbol of comparison.symbols) {
         if (symbol === primarySymbol && comparison.symbols.length === 1) {
           point.price = null;
@@ -453,15 +454,15 @@ export const generateChartData = (
           }
         }
       }
-      
+
       result.push(point);
     }
   }
-  
+
   for (const ts of allTimestamps) {
     const date = new Date(ts * 1000);
     let timeLabel: string;
-    
+
     if (comparison.timeframe === "1D") {
       timeLabel = date.toLocaleTimeString(undefined, {
         hour: "2-digit",
@@ -483,23 +484,23 @@ export const generateChartData = (
         year: "numeric",
       });
     }
-    
+
     const point: Record<string, number | string | null> = {
       time: timeLabel,
       fullDate: date.toISOString(),
       timestamp: ts,
     };
-    
+
     let hasValidData = false;
     const dataAtTimestamp = timestampToData.get(ts)!;
-    
+
     for (const symbol of comparison.symbols) {
       const price = dataAtTimestamp.get(symbol);
       if (price == null || isNaN(price) || price <= 0) continue;
-      
+
       const base = firstValidPrice[symbol];
       if (!base || base <= 0) continue;
-      
+
       if (chartType === "price") {
         const priceReturn = ((price - base) / base) * 100;
         if (typeof priceReturn === 'number' && !isNaN(priceReturn) && isFinite(priceReturn)) {
@@ -522,12 +523,12 @@ export const generateChartData = (
         }
       }
     }
-    
+
     if (hasValidData) {
       result.push(point);
     }
   }
-  
+
   return result;
 };
 
@@ -541,19 +542,18 @@ export const generateChartData = (
 export async function updateETFsWithRealtimeData(
   etfs: ETF[]
 ): Promise<{ updatedETFs: ETF[]; isRealtime: boolean }> {
-  const { fetchRealtimeReturnsBatch } = await import('@/services/tiingoApi');
-  
+
   const tickers = etfs.map(etf => etf.symbol);
   const realtimeData = await fetchRealtimeReturnsBatch(tickers);
-  
+
   if (Object.keys(realtimeData).length === 0) {
     return { updatedETFs: etfs, isRealtime: false };
   }
-  
+
   const updatedETFs = etfs.map(etf => {
     const realtime = realtimeData[etf.symbol.toUpperCase()];
     if (!realtime) return etf;
-    
+
     // Update price and returns with realtime data
     return {
       ...etf,
@@ -589,9 +589,9 @@ export async function updateETFsWithRealtimeData(
       lastUpdated: realtime.timestamp,
     };
   });
-  
-  return { 
-    updatedETFs, 
-    isRealtime: Object.values(realtimeData).some(r => r.isRealtime) 
+
+  return {
+    updatedETFs,
+    isRealtime: Object.values(realtimeData).some(r => r.isRealtime)
   };
 }

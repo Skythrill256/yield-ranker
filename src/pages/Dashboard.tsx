@@ -1,4 +1,4 @@
-import React,{ useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -70,7 +70,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { listProfiles, updateProfile, ProfileRow } from "@/services/admin";
+import { listProfiles, updateProfile, ProfileRow, getSiteSettings } from "@/services/admin";
 import {
   saveRankingWeights,
   loadRankingWeights,
@@ -157,7 +157,7 @@ export default function Dashboard() {
         return true;
       });
       setEtfData(deduplicated);
-      
+
       // Clean up favorites to remove symbols that no longer exist
       cleanupFavorites(deduplicated.map(etf => etf.symbol));
 
@@ -182,7 +182,6 @@ export default function Dashboard() {
 
     const loadSiteSettings = async () => {
       try {
-        const { getSiteSettings } = await import("@/services/admin");
         const settings = await getSiteSettings();
         const guestMsgSetting = settings.find((s) => s.key === "guest_message");
         const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
@@ -278,21 +277,21 @@ export default function Dashboard() {
 
   const returnColumns: { key: keyof ETF; label: string }[] = showTotalReturns
     ? [
-        { key: "totalReturn3Yr", label: "3 Yr" },
-        { key: "totalReturn12Mo", label: "12 Mo" },
-        { key: "totalReturn6Mo", label: "6 Mo" },
-        { key: "totalReturn3Mo", label: "3 Mo" },
-        { key: "totalReturn1Mo", label: "1 Mo" },
-        { key: "totalReturn1Wk", label: "1 Wk" },
-      ]
+      { key: "totalReturn3Yr", label: "3 Yr" },
+      { key: "totalReturn12Mo", label: "12 Mo" },
+      { key: "totalReturn6Mo", label: "6 Mo" },
+      { key: "totalReturn3Mo", label: "3 Mo" },
+      { key: "totalReturn1Mo", label: "1 Mo" },
+      { key: "totalReturn1Wk", label: "1 Wk" },
+    ]
     : [
-        { key: "priceReturn3Yr", label: "3 Yr" },
-        { key: "priceReturn12Mo", label: "12 Mo" },
-        { key: "priceReturn6Mo", label: "6 Mo" },
-        { key: "priceReturn3Mo", label: "3 Mo" },
-        { key: "priceReturn1Mo", label: "1 Mo" },
-        { key: "priceReturn1Wk", label: "1 Wk" },
-      ];
+      { key: "priceReturn3Yr", label: "3 Yr" },
+      { key: "priceReturn12Mo", label: "12 Mo" },
+      { key: "priceReturn6Mo", label: "6 Mo" },
+      { key: "priceReturn3Mo", label: "3 Mo" },
+      { key: "priceReturn1Mo", label: "1 Mo" },
+      { key: "priceReturn1Wk", label: "1 Wk" },
+    ];
 
   const userMetadata =
     (user?.user_metadata as {
@@ -753,9 +752,8 @@ export default function Dashboard() {
       toast({
         variant: "destructive",
         title: "Failed to save",
-        description: `Error: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        description: `Error: ${error instanceof Error ? error.message : "Unknown error"
+          }`,
       });
     }
   };
@@ -862,7 +860,7 @@ export default function Dashboard() {
     if (!sortField || sortField === "weightedRank") {
       return filteredETFs;
     }
-    
+
     // Create a stable sorted array - use symbol as secondary sort to ensure stability
     return [...filteredETFs].sort((a, b) => {
       const aValue = a[sortField];
@@ -919,9 +917,8 @@ export default function Dashboard() {
     <Button
       variant="ghost"
       size="sm"
-      className={`h-8 hover:bg-slate-100 hover:text-foreground transition-colors ${
-        align === "left" ? "-ml-3" : "-mr-3"
-      }`}
+      className={`h-8 hover:bg-slate-100 hover:text-foreground transition-colors ${align === "left" ? "-ml-3" : "-mr-3"
+        }`}
       onClick={() => handleSort(field)}
     >
       {children}
@@ -964,21 +961,21 @@ export default function Dashboard() {
   const sanitizeChartData = useCallback((data: any[]): ChartPoint[] => {
     try {
       if (!Array.isArray(data)) return [];
-      
+
       return data.map(point => {
         if (!point || typeof point !== 'object') {
           return { time: '', fullDate: '', timestamp: 0 };
         }
-        
-        const sanitized: ChartPoint = { 
-          time: (point.time && typeof point.time === 'string') ? point.time : '', 
-          fullDate: (point.fullDate && typeof point.fullDate === 'string') ? point.fullDate : '', 
-          timestamp: (typeof point.timestamp === 'number' && !isNaN(point.timestamp)) ? point.timestamp : 0 
+
+        const sanitized: ChartPoint = {
+          time: (point.time && typeof point.time === 'string') ? point.time : '',
+          fullDate: (point.fullDate && typeof point.fullDate === 'string') ? point.fullDate : '',
+          timestamp: (typeof point.timestamp === 'number' && !isNaN(point.timestamp)) ? point.timestamp : 0
         };
-        
+
         for (const key in point) {
           if (key === 'time' || key === 'fullDate' || key === 'timestamp') continue;
-          
+
           try {
             const value = point[key];
             if (value === null || value === undefined) {
@@ -995,7 +992,7 @@ export default function Dashboard() {
             sanitized[key] = null;
           }
         }
-        
+
         return sanitized;
       });
     } catch (error) {
@@ -1090,8 +1087,8 @@ export default function Dashboard() {
     ];
 
     const keyMetrics = [
-      { 
-        label: "LAST CLOSE PRICE", 
+      {
+        label: "LAST CLOSE PRICE",
         value: (() => {
           const price = selectedETF.price;
           if (typeof price === 'number' && !isNaN(price) && isFinite(price)) {
@@ -1106,7 +1103,7 @@ export default function Dashboard() {
           const low = selectedETF.week52Low;
           const high = selectedETF.week52High;
           if (typeof low === 'number' && !isNaN(low) && isFinite(low) &&
-              typeof high === 'number' && !isNaN(high) && isFinite(high)) {
+            typeof high === 'number' && !isNaN(high) && isFinite(high)) {
             return `$${low.toFixed(2)} - $${high.toFixed(2)}`;
           }
           return 'N/A';
@@ -1170,16 +1167,13 @@ export default function Dashboard() {
         )}
 
         <aside
-          className={`${
-            sidebarCollapsed ? "w-16" : "w-64"
-          } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${
-            mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
-          }`}
+          className={`${sidebarCollapsed ? "w-16" : "w-64"
+            } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
+            }`}
         >
           <div
-            className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${
-              sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
-            }`}
+            className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
+              }`}
           >
             {!sidebarCollapsed && <Logo simple />}
             <button
@@ -1202,9 +1196,8 @@ export default function Dashboard() {
           </div>
 
           <nav
-            className={`flex-1 overflow-y-auto ${
-              sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
-            }`}
+            className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
+              }`}
           >
             <button
               onClick={() => {
@@ -1212,11 +1205,10 @@ export default function Dashboard() {
                 setShowFavoritesOnly(false);
                 navigate("/");
               }}
-              className={`w-full flex items-center ${
-                sidebarCollapsed
-                  ? "justify-center px-0 py-2.5"
-                  : "gap-3 px-4 py-3"
-              } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+              className={`w-full flex items-center ${sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
               title={sidebarCollapsed ? "Home" : ""}
             >
               <Home className="w-5 h-5" />
@@ -1227,17 +1219,15 @@ export default function Dashboard() {
                 setShowFavoritesOnly(false);
                 setSelectedETF(null);
               }}
-              className={`w-full flex items-center ${
-                sidebarCollapsed
-                  ? "justify-center px-0 py-2.5"
-                  : "gap-3 px-4 py-3"
-              } rounded-lg text-sm font-medium transition-colors ${
-                !showFavoritesOnly
+              className={`w-full flex items-center ${sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+                } rounded-lg text-sm font-medium transition-colors ${!showFavoritesOnly
                   ? sidebarCollapsed
                     ? "bg-primary/10 text-primary"
                     : "bg-primary text-white"
                   : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-              }`}
+                }`}
               title={sidebarCollapsed ? "Dashboard" : ""}
             >
               <BarChart3 className="w-5 h-5" />
@@ -1248,38 +1238,34 @@ export default function Dashboard() {
                 setShowFavoritesOnly(true);
                 setSelectedETF(null);
               }}
-              className={`w-full flex items-center ${
-                sidebarCollapsed
-                  ? "justify-center px-0 py-2.5"
-                  : "gap-3 px-4 py-3"
-              } rounded-lg text-sm font-medium transition-colors ${
-                showFavoritesOnly
+              className={`w-full flex items-center ${sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+                } rounded-lg text-sm font-medium transition-colors ${showFavoritesOnly
                   ? sidebarCollapsed
                     ? "bg-yellow-50 text-yellow-600"
                     : "bg-yellow-500 text-white"
                   : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-              }`}
+                }`}
               title={sidebarCollapsed ? "Favorites" : ""}
             >
               <Star
-                className={`w-5 h-5 ${
-                  showFavoritesOnly && !sidebarCollapsed
-                    ? "fill-white"
-                    : showFavoritesOnly
+                className={`w-5 h-5 ${showFavoritesOnly && !sidebarCollapsed
+                  ? "fill-white"
+                  : showFavoritesOnly
                     ? "fill-yellow-400 text-yellow-400"
                     : ""
-                }`}
+                  }`}
               />
               {!sidebarCollapsed && (
                 <span className="flex items-center gap-2">
                   Favorites
                   {favorites.size > 0 && (
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        showFavoritesOnly
-                          ? "bg-yellow-600 text-white"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
+                      className={`text-xs px-2 py-0.5 rounded-full ${showFavoritesOnly
+                        ? "bg-yellow-600 text-white"
+                        : "bg-yellow-100 text-yellow-700"
+                        }`}
                     >
                       {favorites.size}
                     </span>
@@ -1289,11 +1275,10 @@ export default function Dashboard() {
             </button>
             <button
               onClick={() => navigate("/settings")}
-              className={`w-full flex items-center ${
-                sidebarCollapsed
-                  ? "justify-center px-0 py-2.5"
-                  : "gap-3 px-4 py-3"
-              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+              className={`w-full flex items-center ${sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+                } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
               title={sidebarCollapsed ? "Settings" : ""}
             >
               <Settings className="w-5 h-5" />
@@ -1302,17 +1287,15 @@ export default function Dashboard() {
           </nav>
 
           <div
-            className={`border-t border-slate-200 flex-shrink-0 ${
-              sidebarCollapsed ? "p-2" : "p-4"
-            }`}
+            className={`border-t border-slate-200 flex-shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"
+              }`}
           >
             <button
               onClick={logout}
-              className={`w-full flex items-center ${
-                sidebarCollapsed
-                  ? "justify-center px-0 py-2.5"
-                  : "gap-3 px-4 py-3"
-              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+              className={`w-full flex items-center ${sidebarCollapsed
+                ? "justify-center px-0 py-2.5"
+                : "gap-3 px-4 py-3"
+                } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
               title={sidebarCollapsed ? "Logout" : ""}
             >
               <LogOut className="w-5 h-5" />
@@ -1389,9 +1372,8 @@ export default function Dashboard() {
                     ${selectedETF.price != null ? selectedETF.price.toFixed(2) : 'N/A'}
                   </span>
                   <span
-                    className={`text-base sm:text-lg font-semibold flex items-center ${
-                      isPositive ? "text-green-600" : "text-red-600"
-                    }`}
+                    className={`text-base sm:text-lg font-semibold flex items-center ${isPositive ? "text-green-600" : "text-red-600"
+                      }`}
                   >
                     {isPositive ? (
                       <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
@@ -1412,11 +1394,10 @@ export default function Dashboard() {
                     </span>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">3 Yr:</span>
-                      <span className={`font-semibold ${
-                        chartType === "price" 
-                          ? (selectedETF.priceReturn3Yr != null && selectedETF.priceReturn3Yr >= 0 ? 'text-green-600' : 'text-red-600')
-                          : ((selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr) != null && (selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr)! >= 0 ? 'text-green-600' : 'text-red-600')
-                      }`}>
+                      <span className={`font-semibold ${chartType === "price"
+                        ? (selectedETF.priceReturn3Yr != null && selectedETF.priceReturn3Yr >= 0 ? 'text-green-600' : 'text-red-600')
+                        : ((selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr) != null && (selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr)! >= 0 ? 'text-green-600' : 'text-red-600')
+                        }`}>
                         {chartType === "price"
                           ? (selectedETF.priceReturn3Yr != null ? `${selectedETF.priceReturn3Yr >= 0 ? '+' : ''}${selectedETF.priceReturn3Yr.toFixed(1)}%` : 'N/A')
                           : ((selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr) != null ? `${(selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr)! >= 0 ? '+' : ''}${(selectedETF.trDrip3Yr ?? selectedETF.totalReturn3Yr)!.toFixed(1)}%` : 'N/A')
@@ -1425,11 +1406,10 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">12 Mo:</span>
-                      <span className={`font-semibold ${
-                        chartType === "price" 
-                          ? (selectedETF.priceReturn12Mo != null && selectedETF.priceReturn12Mo >= 0 ? 'text-green-600' : 'text-red-600')
-                          : ((selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo) != null && (selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
-                      }`}>
+                      <span className={`font-semibold ${chartType === "price"
+                        ? (selectedETF.priceReturn12Mo != null && selectedETF.priceReturn12Mo >= 0 ? 'text-green-600' : 'text-red-600')
+                        : ((selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo) != null && (selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
+                        }`}>
                         {chartType === "price"
                           ? (selectedETF.priceReturn12Mo != null ? `${selectedETF.priceReturn12Mo >= 0 ? '+' : ''}${selectedETF.priceReturn12Mo.toFixed(1)}%` : 'N/A')
                           : ((selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo) != null ? `${(selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo)! >= 0 ? '+' : ''}${(selectedETF.trDrip12Mo ?? selectedETF.totalReturn12Mo)!.toFixed(1)}%` : 'N/A')
@@ -1438,11 +1418,10 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">6 Mo:</span>
-                      <span className={`font-semibold ${
-                        chartType === "price" 
-                          ? (selectedETF.priceReturn6Mo != null && selectedETF.priceReturn6Mo >= 0 ? 'text-green-600' : 'text-red-600')
-                          : ((selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo) != null && (selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
-                      }`}>
+                      <span className={`font-semibold ${chartType === "price"
+                        ? (selectedETF.priceReturn6Mo != null && selectedETF.priceReturn6Mo >= 0 ? 'text-green-600' : 'text-red-600')
+                        : ((selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo) != null && (selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
+                        }`}>
                         {chartType === "price"
                           ? (selectedETF.priceReturn6Mo != null ? `${selectedETF.priceReturn6Mo >= 0 ? '+' : ''}${selectedETF.priceReturn6Mo.toFixed(1)}%` : 'N/A')
                           : ((selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo) != null ? `${(selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo)! >= 0 ? '+' : ''}${(selectedETF.trDrip6Mo ?? selectedETF.totalReturn6Mo)!.toFixed(1)}%` : 'N/A')
@@ -1451,11 +1430,10 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">3 Mo:</span>
-                      <span className={`font-semibold ${
-                        chartType === "price" 
-                          ? (selectedETF.priceReturn3Mo != null && selectedETF.priceReturn3Mo >= 0 ? 'text-green-600' : 'text-red-600')
-                          : ((selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo) != null && (selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
-                      }`}>
+                      <span className={`font-semibold ${chartType === "price"
+                        ? (selectedETF.priceReturn3Mo != null && selectedETF.priceReturn3Mo >= 0 ? 'text-green-600' : 'text-red-600')
+                        : ((selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo) != null && (selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
+                        }`}>
                         {chartType === "price"
                           ? (selectedETF.priceReturn3Mo != null ? `${selectedETF.priceReturn3Mo >= 0 ? '+' : ''}${selectedETF.priceReturn3Mo.toFixed(1)}%` : 'N/A')
                           : ((selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo) != null ? `${(selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo)! >= 0 ? '+' : ''}${(selectedETF.trDrip3Mo ?? selectedETF.totalReturn3Mo)!.toFixed(1)}%` : 'N/A')
@@ -1464,11 +1442,10 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">1 Mo:</span>
-                      <span className={`font-semibold ${
-                        chartType === "price" 
-                          ? (selectedETF.priceReturn1Mo != null && selectedETF.priceReturn1Mo >= 0 ? 'text-green-600' : 'text-red-600')
-                          : ((selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo) != null && (selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
-                      }`}>
+                      <span className={`font-semibold ${chartType === "price"
+                        ? (selectedETF.priceReturn1Mo != null && selectedETF.priceReturn1Mo >= 0 ? 'text-green-600' : 'text-red-600')
+                        : ((selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo) != null && (selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo)! >= 0 ? 'text-green-600' : 'text-red-600')
+                        }`}>
                         {chartType === "price"
                           ? (selectedETF.priceReturn1Mo != null ? `${selectedETF.priceReturn1Mo >= 0 ? '+' : ''}${selectedETF.priceReturn1Mo.toFixed(1)}%` : 'N/A')
                           : ((selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo) != null ? `${(selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo)! >= 0 ? '+' : ''}${(selectedETF.trDrip1Mo ?? selectedETF.totalReturn1Mo)!.toFixed(1)}%` : 'N/A')
@@ -1477,11 +1454,10 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-muted-foreground">1 Wk:</span>
-                      <span className={`font-semibold ${
-                        chartType === "price" 
-                          ? (selectedETF.priceReturn1Wk != null && selectedETF.priceReturn1Wk >= 0 ? 'text-green-600' : 'text-red-600')
-                          : ((selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk) != null && (selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk)! >= 0 ? 'text-green-600' : 'text-red-600')
-                      }`}>
+                      <span className={`font-semibold ${chartType === "price"
+                        ? (selectedETF.priceReturn1Wk != null && selectedETF.priceReturn1Wk >= 0 ? 'text-green-600' : 'text-red-600')
+                        : ((selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk) != null && (selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk)! >= 0 ? 'text-green-600' : 'text-red-600')
+                        }`}>
                         {chartType === "price"
                           ? (selectedETF.priceReturn1Wk != null ? `${selectedETF.priceReturn1Wk >= 0 ? '+' : ''}${selectedETF.priceReturn1Wk.toFixed(1)}%` : 'N/A')
                           : ((selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk) != null ? `${(selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk)! >= 0 ? '+' : ''}${(selectedETF.trDrip1Wk ?? selectedETF.totalReturn1Wk)!.toFixed(1)}%` : 'N/A')
@@ -1531,26 +1507,25 @@ export default function Dashboard() {
                           }
                           size="sm"
                           onClick={() => setSelectedTimeframe(tf)}
-                          className={`h-9 px-1.5 sm:px-3 text-[10px] sm:text-xs whitespace-nowrap ${
-                          selectedTimeframe !== tf
+                          className={`h-9 px-1.5 sm:px-3 text-[10px] sm:text-xs whitespace-nowrap ${selectedTimeframe !== tf
                             ? "border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors"
                             : ""
-                        }`}
+                            }`}
+                        >
+                          {tf}
+                        </Button>
+                      ))}
+                      <button
+                        onClick={() =>
+                          setShowComparisonSelector(!showComparisonSelector)
+                        }
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1 h-9"
                       >
-                        {tf}
-                      </Button>
-                    ))}
-                    <button
-                      onClick={() =>
-                        setShowComparisonSelector(!showComparisonSelector)
-                      }
-                      className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1 h-9"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Compare ({comparisonETFs.length}/5)
-                    </button>
+                        <Plus className="h-3 w-3" />
+                        Compare ({comparisonETFs.length}/5)
+                      </button>
+                    </div>
                   </div>
-                </div>
                 </div>
 
 
@@ -1584,9 +1559,8 @@ export default function Dashboard() {
                             <span className="font-bold text-sm">{symbol}</span>
                             <span className="text-xs text-muted-foreground">
                               {etf.totalReturn12Mo !== undefined
-                                ? `${
-                                    etf.totalReturn12Mo > 0 ? "+" : ""
-                                  }${etf.totalReturn12Mo.toFixed(2)}%`
+                                ? `${etf.totalReturn12Mo > 0 ? "+" : ""
+                                }${etf.totalReturn12Mo.toFixed(2)}%`
                                 : "N/A"}
                             </span>
                           </div>
@@ -1626,7 +1600,7 @@ export default function Dashboard() {
                         placeholder="Search ETFs..."
                         value={comparisonSearchQuery}
                         onChange={(e) => setComparisonSearchQuery(e.target.value)}
-                        onFocus={() => {}}
+                        onFocus={() => { }}
                         className="pl-10 pr-10 h-12 bg-background border-2 border-border focus:border-primary text-base rounded-xl"
                       />
                       {comparisonSearchQuery && (
@@ -1647,7 +1621,7 @@ export default function Dashboard() {
                               const searchLower = comparisonSearchQuery.toLowerCase();
                               return e.symbol !== selectedETF.symbol &&
                                 (e.symbol.toLowerCase().includes(searchLower) ||
-                                 (e.name && e.name.toLowerCase().includes(searchLower)));
+                                  (e.name && e.name.toLowerCase().includes(searchLower)));
                             })
                             .slice(0, 10)
                             .map((e) => {
@@ -1663,9 +1637,8 @@ export default function Dashboard() {
                                     }
                                   }}
                                   disabled={isDisabled}
-                                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0 ${
-                                    isDisabled ? "opacity-50 cursor-not-allowed" : ""
-                                  }`}
+                                  className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-b border-slate-100 last:border-0 ${isDisabled ? "opacity-50 cursor-not-allowed" : ""
+                                    }`}
                                 >
                                   <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                                     <TrendingUp className="w-5 h-5 text-primary" />
@@ -1747,276 +1720,275 @@ export default function Dashboard() {
                       return d[dataKey];
                     }
                     return d.price;
-                  }).filter(v => typeof v === 'number' && !isNaN(v));
+                  }).filter((v): v is number => typeof v === 'number' && !isNaN(v));
                   const minValue = chartValues.length > 0 ? Math.min(...chartValues, 0) : -10;
                   const maxValue = chartValues.length > 0 ? Math.max(...chartValues, 0) : 10;
-                  
+
                   return (
-                <div className="flex flex-col lg:flex-row gap-4">
-                  {/* Chart Area */}
-                  <div className="flex-1 min-w-0 order-2 lg:order-1">
-                    <ResponsiveContainer width="100%" height={chartHeight}>
-                      {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
-                        <ComposedChart 
-                          key={`chart-${selectedETF.symbol}-${chartType}-${selectedTimeframe}`}
-                          data={chartData}
-                        >
-                      <defs>
-                        <linearGradient
-                          id="colorPricePrimary"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor={isPositive ? "#10b981" : "#ef4444"}
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor={isPositive ? "#10b981" : "#ef4444"}
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#f1f5f9"
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="time"
-                        stroke="#94a3b8"
-                        fontSize={chartHeight < 280 ? 9 : 12}
-                        tickLine={false}
-                        axisLine={false}
-                        angle={chartHeight < 280 ? -45 : 0}
-                        textAnchor={chartHeight < 280 ? "end" : "middle"}
-                        height={chartHeight < 280 ? 50 : 30}
-                        interval="preserveStartEnd"
-                        tickFormatter={(value) => value || ''}
-                      />
-                      <YAxis
-                        stroke="#94a3b8"
-                        fontSize={12}
-                        domain={chartType === "totalReturn" ? [minValue, maxValue] : [minValue, maxValue]}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value: any) => {
-                          if (value === null || value === undefined) return '';
-                          const numValue = typeof value === 'number' ? value : parseFloat(String(value));
-                          if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
-                            try {
-                              return `${numValue.toFixed(1)}%`;
-                            } catch (e) {
-                              return '';
+                    <div className="flex flex-col lg:flex-row gap-4">
+                      {/* Chart Area */}
+                      <div className="flex-1 min-w-0 order-2 lg:order-1">
+                        <ResponsiveContainer width="100%" height={chartHeight}>
+                          {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
+                            <ComposedChart
+                              key={`chart-${selectedETF.symbol}-${chartType}-${selectedTimeframe}`}
+                              data={chartData}
+                            >
+                              <defs>
+                                <linearGradient
+                                  id="colorPricePrimary"
+                                  x1="0"
+                                  y1="0"
+                                  x2="0"
+                                  y2="1"
+                                >
+                                  <stop
+                                    offset="5%"
+                                    stopColor={isPositive ? "#10b981" : "#ef4444"}
+                                    stopOpacity={0.3}
+                                  />
+                                  <stop
+                                    offset="95%"
+                                    stopColor={isPositive ? "#10b981" : "#ef4444"}
+                                    stopOpacity={0}
+                                  />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#f1f5f9"
+                                vertical={false}
+                              />
+                              <XAxis
+                                dataKey="time"
+                                stroke="#94a3b8"
+                                fontSize={chartHeight < 280 ? 9 : 12}
+                                tickLine={false}
+                                axisLine={false}
+                                angle={chartHeight < 280 ? -45 : 0}
+                                textAnchor={chartHeight < 280 ? "end" : "middle"}
+                                height={chartHeight < 280 ? 50 : 30}
+                                interval="preserveStartEnd"
+                                tickFormatter={(value) => value || ''}
+                              />
+                              <YAxis
+                                stroke="#94a3b8"
+                                fontSize={12}
+                                domain={chartType === "totalReturn" ? [minValue, maxValue] : [minValue, maxValue]}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(value: any) => {
+                                  if (value === null || value === undefined) return '';
+                                  const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                                  if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                                    try {
+                                      return `${numValue.toFixed(1)}%`;
+                                    } catch (e) {
+                                      return '';
+                                    }
+                                  }
+                                  return '';
+                                }}
+                              />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: "rgba(255, 255, 255, 0.98)",
+                                  border: "none",
+                                  borderRadius: "12px",
+                                  boxShadow:
+                                    "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                                  padding: "12px 16px",
+                                }}
+                                labelStyle={{
+                                  color: "#64748b",
+                                  fontSize: "12px",
+                                  marginBottom: "4px",
+                                }}
+                                formatter={(value: any, name: string) => {
+                                  if (value === null || value === undefined) {
+                                    return ['N/A', name];
+                                  }
+                                  const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+                                  if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
+                                    try {
+                                      return [`${numValue.toFixed(2)}%`, name];
+                                    } catch (e) {
+                                      return ['N/A', name];
+                                    }
+                                  }
+                                  return ['N/A', name];
+                                }}
+                              />
+                              {/* Primary ETF with gradient Area (only when no comparisons) */}
+                              {comparisonETFs.length === 0 && (
+                                <Area
+                                  type="monotone"
+                                  dataKey="price"
+                                  stroke={isPositive ? "#10b981" : "#ef4444"}
+                                  strokeWidth={3}
+                                  fill="url(#colorPricePrimary)"
+                                  fillOpacity={1}
+                                  dot={false}
+                                  name={selectedETF.symbol}
+                                  animationDuration={500}
+                                  strokeLinecap="round"
+                                  connectNulls={false}
+                                />
+                              )}
+                              {/* All ETFs as Lines (when comparing) */}
+                              {[
+                                selectedETF.symbol,
+                                ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
+                              ].map((symbol, index) => {
+                                const colors = [
+                                  "#3b82f6",
+                                  "#f97316",
+                                  "#8b5cf6",
+                                  "#10b981",
+                                  "#ef4444",
+                                ];
+                                const color = colors[index % colors.length];
+                                const dataKey =
+                                  chartType === "totalReturn"
+                                    ? `return_${symbol}`
+                                    : `price_${symbol}`;
+                                return (
+                                  <Line
+                                    key={symbol}
+                                    type="monotone"
+                                    dataKey={dataKey}
+                                    stroke={color}
+                                    strokeWidth={index === 0 ? 3 : 2.5}
+                                    dot={false}
+                                    name={symbol}
+                                    animationDuration={500}
+                                    animationBegin={(index + 1) * 100}
+                                    strokeLinecap="round"
+                                    connectNulls={false}
+                                  />
+                                );
+                              })}
+                            </ComposedChart>
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <p className="text-muted-foreground">Chart data is loading or unavailable.</p>
+                                {isChartLoading && <RefreshCw className="h-4 w-4 animate-spin mx-auto mt-2" />}
+                              </div>
+                            </div>
+                          )}
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Right Side - Return Percentages Legend */}
+                      <div className="w-full lg:w-52 flex-shrink-0 bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200 order-1 lg:order-2">
+                        <h4 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 sm:mb-3">
+                          {chartType === "totalReturn" ? "Total Return" : "Price Return"} ({selectedTimeframe})
+                        </h4>
+
+                        {isChartLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (
+                          <div className="space-y-2 sm:space-y-3">
+                            {[
+                              selectedETF.symbol,
+                              ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
+                            ].map((sym, index) => {
+                              const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
+                              const color = colors[index % colors.length];
+
+                              // Use the same data source as the table (uniqueSymbolETFs) to ensure consistency
+                              const compareETF = uniqueSymbolETFs.find((e) => e.symbol === sym) || rankedETFs.find((e) => e.symbol === sym);
+                              let returnValue: number | null = null;
+
+                              if (compareETF) {
+                                if (chartType === "totalReturn") {
+                                  switch (selectedTimeframe) {
+                                    case "1W":
+                                      returnValue = compareETF.trDrip1Wk ?? compareETF.totalReturn1Wk ?? null;
+                                      break;
+                                    case "1M":
+                                      returnValue = compareETF.trDrip1Mo ?? compareETF.totalReturn1Mo ?? null;
+                                      break;
+                                    case "3M":
+                                      returnValue = compareETF.trDrip3Mo ?? compareETF.totalReturn3Mo ?? null;
+                                      break;
+                                    case "6M":
+                                      returnValue = compareETF.trDrip6Mo ?? compareETF.totalReturn6Mo ?? null;
+                                      break;
+                                    case "1Y":
+                                      returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
+                                      break;
+                                    case "3Y":
+                                      returnValue = compareETF.trDrip3Yr ?? compareETF.totalReturn3Yr ?? null;
+                                      break;
+                                    default:
+                                      returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
+                                  }
+                                } else {
+                                  switch (selectedTimeframe) {
+                                    case "1W":
+                                      returnValue = compareETF.priceReturn1Wk ?? null;
+                                      break;
+                                    case "1M":
+                                      returnValue = compareETF.priceReturn1Mo ?? null;
+                                      break;
+                                    case "3M":
+                                      returnValue = compareETF.priceReturn3Mo ?? null;
+                                      break;
+                                    case "6M":
+                                      returnValue = compareETF.priceReturn6Mo ?? null;
+                                      break;
+                                    case "1Y":
+                                      returnValue = compareETF.priceReturn12Mo ?? null;
+                                      break;
+                                    case "3Y":
+                                      returnValue = compareETF.priceReturn3Yr ?? null;
+                                      break;
+                                    default:
+                                      returnValue = compareETF.priceReturn12Mo ?? null;
+                                  }
+                                }
+                              }
+
+                              const isPositiveReturn = returnValue !== null && returnValue >= 0;
+
+                              return (
+                                <div key={sym} className="flex items-center justify-between gap-2 sm:gap-3 py-1">
+                                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-shrink">
+                                    <div
+                                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
+                                      style={{ backgroundColor: color }}
+                                    />
+                                    <span className="font-semibold text-xs sm:text-sm truncate">{sym}</span>
+                                  </div>
+                                  <span className={`font-bold text-xs sm:text-sm tabular-nums whitespace-nowrap flex-shrink-0 ${isPositiveReturn ? "text-green-600" : "text-red-600"
+                                    }`}>
+                                    {returnValue != null && typeof returnValue === 'number' && !isNaN(returnValue) && isFinite(returnValue)
+                                      ? `${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(1)}%`
+                                      : 'N/A'
+                                    }
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div className="mt-4 pt-3 border-t border-slate-200">
+                          <p className="text-[10px] text-muted-foreground leading-relaxed">
+                            {chartType === "totalReturn"
+                              ? "Total return includes dividends reinvested (DRIP)."
+                              : "Price return excludes dividends."
                             }
-                          }
-                          return '';
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.98)",
-                          border: "none",
-                          borderRadius: "12px",
-                          boxShadow:
-                            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                          padding: "12px 16px",
-                        }}
-                        labelStyle={{
-                          color: "#64748b",
-                          fontSize: "12px",
-                          marginBottom: "4px",
-                        }}
-                        formatter={(value: any, name: string) => {
-                          if (value === null || value === undefined) {
-                            return ['N/A', name];
-                          }
-                          const numValue = typeof value === 'number' ? value : parseFloat(String(value));
-                          if (typeof numValue === 'number' && !isNaN(numValue) && isFinite(numValue)) {
-                            try {
-                              return [`${numValue.toFixed(2)}%`, name];
-                            } catch (e) {
-                              return ['N/A', name];
-                            }
-                          }
-                          return ['N/A', name];
-                        }}
-                      />
-                      {/* Primary ETF with gradient Area (only when no comparisons) */}
-                      {comparisonETFs.length === 0 && (
-                        <Area
-                          type="monotone"
-                          dataKey="price"
-                          stroke={isPositive ? "#10b981" : "#ef4444"}
-                          strokeWidth={3}
-                          fill="url(#colorPricePrimary)"
-                          fillOpacity={1}
-                          dot={false}
-                          name={selectedETF.symbol}
-                          animationDuration={500}
-                          strokeLinecap="round"
-                          connectNulls={false}
-                        />
-                      )}
-                      {/* All ETFs as Lines (when comparing) */}
-                      {[
-                        selectedETF.symbol,
-                        ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
-                      ].map((symbol, index) => {
-                        const colors = [
-                          "#3b82f6",
-                          "#f97316",
-                          "#8b5cf6",
-                          "#10b981",
-                          "#ef4444",
-                        ];
-                        const color = colors[index % colors.length];
-                        const dataKey =
-                          chartType === "totalReturn"
-                            ? `return_${symbol}`
-                            : `price_${symbol}`;
-                        return (
-                          <Line
-                            key={symbol}
-                            type="monotone"
-                            dataKey={dataKey}
-                            stroke={color}
-                            strokeWidth={index === 0 ? 3 : 2.5}
-                            dot={false}
-                            name={symbol}
-                            animationDuration={500}
-                            animationBegin={(index + 1) * 100}
-                            strokeLinecap="round"
-                            connectNulls={false}
-                          />
-                        );
-                        })}
-                      </ComposedChart>
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <div className="text-center">
-                          <p className="text-muted-foreground">Chart data is loading or unavailable.</p>
-                          {isChartLoading && <RefreshCw className="h-4 w-4 animate-spin mx-auto mt-2" />}
+                          </p>
                         </div>
                       </div>
-                    )}
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Right Side - Return Percentages Legend */}
-                <div className="w-full lg:w-52 flex-shrink-0 bg-slate-50 rounded-lg p-3 sm:p-4 border border-slate-200 order-1 lg:order-2">
-                  <h4 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 sm:mb-3">
-                    {chartType === "totalReturn" ? "Total Return" : "Price Return"} ({selectedTimeframe})
-                  </h4>
-                  
-                  {isChartLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
-                  ) : (
-                    <div className="space-y-2 sm:space-y-3">
-                      {[
-                        selectedETF.symbol,
-                        ...comparisonETFs.filter((s) => s !== selectedETF.symbol),
-                      ].map((sym, index) => {
-                        const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
-                        const color = colors[index % colors.length];
-                        
-                        // Use the same data source as the table (uniqueSymbolETFs) to ensure consistency
-                        const compareETF = uniqueSymbolETFs.find((e) => e.symbol === sym) || rankedETFs.find((e) => e.symbol === sym);
-                        let returnValue: number | null = null;
-                        
-                        if (compareETF) {
-                          if (chartType === "totalReturn") {
-                            switch (selectedTimeframe) {
-                              case "1W":
-                                returnValue = compareETF.trDrip1Wk ?? compareETF.totalReturn1Wk ?? null;
-                                break;
-                              case "1M":
-                                returnValue = compareETF.trDrip1Mo ?? compareETF.totalReturn1Mo ?? null;
-                                break;
-                              case "3M":
-                                returnValue = compareETF.trDrip3Mo ?? compareETF.totalReturn3Mo ?? null;
-                                break;
-                              case "6M":
-                                returnValue = compareETF.trDrip6Mo ?? compareETF.totalReturn6Mo ?? null;
-                                break;
-                              case "1Y":
-                                returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
-                                break;
-                              case "3Y":
-                                returnValue = compareETF.trDrip3Yr ?? compareETF.totalReturn3Yr ?? null;
-                                break;
-                              default:
-                                returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
-                            }
-                          } else {
-                            switch (selectedTimeframe) {
-                              case "1W":
-                                returnValue = compareETF.priceReturn1Wk ?? null;
-                                break;
-                              case "1M":
-                                returnValue = compareETF.priceReturn1Mo ?? null;
-                                break;
-                              case "3M":
-                                returnValue = compareETF.priceReturn3Mo ?? null;
-                                break;
-                              case "6M":
-                                returnValue = compareETF.priceReturn6Mo ?? null;
-                                break;
-                              case "1Y":
-                                returnValue = compareETF.priceReturn12Mo ?? null;
-                                break;
-                              case "3Y":
-                                returnValue = compareETF.priceReturn3Yr ?? null;
-                                break;
-                              default:
-                                returnValue = compareETF.priceReturn12Mo ?? null;
-                            }
-                          }
-                        }
-                        
-                        const isPositiveReturn = returnValue !== null && returnValue >= 0;
-                        
-                        return (
-                          <div key={sym} className="flex items-center justify-between gap-2 sm:gap-3 py-1">
-                            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-shrink">
-                              <div 
-                                className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0" 
-                                style={{ backgroundColor: color }}
-                              />
-                              <span className="font-semibold text-xs sm:text-sm truncate">{sym}</span>
-                            </div>
-                            <span className={`font-bold text-xs sm:text-sm tabular-nums whitespace-nowrap flex-shrink-0 ${
-                              isPositiveReturn ? "text-green-600" : "text-red-600"
-                            }`}>
-                              {returnValue != null && typeof returnValue === 'number' && !isNaN(returnValue) && isFinite(returnValue)
-                                ? `${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(1)}%`
-                                : 'N/A'
-                              }
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  
-                  <div className="mt-4 pt-3 border-t border-slate-200">
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      {chartType === "totalReturn" 
-                        ? "Total return includes dividends reinvested (DRIP)."
-                        : "Price return excludes dividends."
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-              );
-            })()}
+                  );
+                })()}
               </Card>
 
               {/* Quick Stats Card - Matching home version */}
@@ -2025,16 +1997,16 @@ export default function Dashboard() {
                   <div className="text-center p-3 bg-slate-50 rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">Forward Yield</p>
                     <p className="text-xl font-bold text-primary">
-                      {selectedETF.forwardYield != null && typeof selectedETF.forwardYield === 'number' && !isNaN(selectedETF.forwardYield) && isFinite(selectedETF.forwardYield) 
-                        ? `${selectedETF.forwardYield.toFixed(2)}%` 
+                      {selectedETF.forwardYield != null && typeof selectedETF.forwardYield === 'number' && !isNaN(selectedETF.forwardYield) && isFinite(selectedETF.forwardYield)
+                        ? `${selectedETF.forwardYield.toFixed(2)}%`
                         : 'N/A'}
                     </p>
                   </div>
                   <div className="text-center p-3 bg-slate-50 rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">52-Week Range</p>
                     <p className="text-sm font-medium">
-                      {selectedETF.week52Low != null && typeof selectedETF.week52Low === 'number' && !isNaN(selectedETF.week52Low) && isFinite(selectedETF.week52Low) && 
-                       selectedETF.week52High != null && typeof selectedETF.week52High === 'number' && !isNaN(selectedETF.week52High) && isFinite(selectedETF.week52High)
+                      {selectedETF.week52Low != null && typeof selectedETF.week52Low === 'number' && !isNaN(selectedETF.week52Low) && isFinite(selectedETF.week52Low) &&
+                        selectedETF.week52High != null && typeof selectedETF.week52High === 'number' && !isNaN(selectedETF.week52High) && isFinite(selectedETF.week52High)
                         ? `$${selectedETF.week52Low.toFixed(2)} - $${selectedETF.week52High.toFixed(2)}`
                         : 'N/A'}
                     </p>
@@ -2044,8 +2016,8 @@ export default function Dashboard() {
                     <p className="text-xl font-bold text-green-600">
                       {(() => {
                         // Calculate Annual Div = Div × #Pmt to ensure accuracy
-                        const calculatedAnnualDiv = selectedETF.dividend && selectedETF.numPayments 
-                          ? selectedETF.dividend * selectedETF.numPayments 
+                        const calculatedAnnualDiv = selectedETF.dividend && selectedETF.numPayments
+                          ? selectedETF.dividend * selectedETF.numPayments
                           : null;
                         // Use calculated value if available, fallback to database value
                         const annualDiv = calculatedAnnualDiv ?? selectedETF.annualDividend;
@@ -2080,13 +2052,12 @@ export default function Dashboard() {
                         {metric.label}
                       </p>
                       <p
-                        className={`text-xl font-bold ${
-                          metric.isPercentage && metric.value_raw !== undefined
-                            ? metric.value_raw >= 0
-                              ? "text-green-600"
-                              : "text-red-600"
-                            : "text-foreground"
-                        }`}
+                        className={`text-xl font-bold ${metric.isPercentage && metric.value_raw !== undefined
+                          ? metric.value_raw >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                          : "text-foreground"
+                          }`}
                       >
                         {metric.value}
                       </p>
@@ -2111,16 +2082,13 @@ export default function Dashboard() {
       )}
 
       <aside
-        className={`${
-          sidebarCollapsed ? "w-16" : "w-64"
-        } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${
-          mobileSidebarOpen ? "fixed left-0 top-0 z-[100]" : "hidden lg:flex"
-        }`}
+        className={`${sidebarCollapsed ? "w-16" : "w-64"
+          } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-[100]" : "hidden lg:flex"
+          }`}
       >
         <div
-          className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${
-            sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
-          }`}
+          className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
+            }`}
         >
           {!sidebarCollapsed && <Logo simple />}
           <button
@@ -2143,9 +2111,8 @@ export default function Dashboard() {
         </div>
 
         <nav
-          className={`flex-1 overflow-y-auto ${
-            sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
-          }`}
+          className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
+            }`}
         >
           <button
             onClick={() => {
@@ -2153,11 +2120,10 @@ export default function Dashboard() {
               setAdminSection(null);
               navigate("/");
             }}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
             title={sidebarCollapsed ? "Home" : ""}
           >
             <Home className="w-5 h-5" />
@@ -2168,17 +2134,15 @@ export default function Dashboard() {
               setShowFavoritesOnly(false);
               setAdminSection(null);
             }}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium transition-colors ${
-              !showFavoritesOnly && !adminSection
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium transition-colors ${!showFavoritesOnly && !adminSection
                 ? sidebarCollapsed
                   ? "bg-primary/10 text-primary"
                   : "bg-primary text-white"
                 : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            }`}
+              }`}
             title={sidebarCollapsed ? "Dashboard" : ""}
           >
             <BarChart3
@@ -2191,38 +2155,34 @@ export default function Dashboard() {
               setShowFavoritesOnly(!showFavoritesOnly);
               setAdminSection(null);
             }}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium transition-colors ${
-              showFavoritesOnly
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium transition-colors ${showFavoritesOnly
                 ? sidebarCollapsed
                   ? "bg-yellow-50 text-yellow-600"
                   : "bg-yellow-500 text-white"
                 : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            }`}
+              }`}
             title={sidebarCollapsed ? "Favorites" : ""}
           >
             <Star
-              className={`w-5 h-5 ${
-                showFavoritesOnly && !sidebarCollapsed
-                  ? "fill-white"
-                  : showFavoritesOnly
+              className={`w-5 h-5 ${showFavoritesOnly && !sidebarCollapsed
+                ? "fill-white"
+                : showFavoritesOnly
                   ? "fill-yellow-400 text-yellow-400"
                   : ""
-              }`}
+                }`}
             />
             {!sidebarCollapsed && (
               <span className="flex items-center gap-2">
                 Favorites
                 {favorites.size > 0 && (
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      showFavoritesOnly
-                        ? "bg-yellow-600 text-white"
-                        : "bg-yellow-100 text-yellow-700"
-                    }`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${showFavoritesOnly
+                      ? "bg-yellow-600 text-white"
+                      : "bg-yellow-100 text-yellow-700"
+                      }`}
                   >
                     {favorites.size}
                   </span>
@@ -2237,11 +2197,10 @@ export default function Dashboard() {
               setAdminSection(null);
               navigate("/settings");
             }}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
             title={sidebarCollapsed ? "Settings" : ""}
           >
             <Settings className="w-5 h-5" />
@@ -2250,17 +2209,15 @@ export default function Dashboard() {
         </nav>
 
         <div
-          className={`border-t border-slate-200 flex-shrink-0 ${
-            sidebarCollapsed ? "p-2" : "p-4"
-          }`}
+          className={`border-t border-slate-200 flex-shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"
+            }`}
         >
           <button
             onClick={logout}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
             title={sidebarCollapsed ? "Logout" : ""}
           >
             <LogOut className="w-5 h-5" />
@@ -2441,9 +2398,8 @@ export default function Dashboard() {
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;
-                              a.download = `users-${
-                                new Date().toISOString().split("T")[0]
-                              }.csv`;
+                              a.download = `users-${new Date().toISOString().split("T")[0]
+                                }.csv`;
                               a.click();
                               URL.revokeObjectURL(url);
                             }}
@@ -2462,9 +2418,8 @@ export default function Dashboard() {
                             className="h-10 border-2"
                           >
                             <RefreshCw
-                              className={`w-4 h-4 mr-2 ${
-                                adminLoading ? "animate-spin" : ""
-                              }`}
+                              className={`w-4 h-4 mr-2 ${adminLoading ? "animate-spin" : ""
+                                }`}
                             />
                             Refresh
                           </Button>
@@ -2532,11 +2487,10 @@ export default function Dashboard() {
                                     </td>
                                     <td className="px-4 py-3 text-sm text-foreground">
                                       <span
-                                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                                          row.role === "admin"
-                                            ? "border-primary/30 bg-primary/10 text-primary"
-                                            : "border-green-300 bg-green-50 text-green-700"
-                                        }`}
+                                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${row.role === "admin"
+                                          ? "border-primary/30 bg-primary/10 text-primary"
+                                          : "border-green-300 bg-green-50 text-green-700"
+                                          }`}
                                       >
                                         {row.role === "admin"
                                           ? "Admin"
@@ -2566,32 +2520,32 @@ export default function Dashboard() {
                                     <td className="px-4 py-3 text-sm text-muted-foreground">
                                       {row.last_login
                                         ? (() => {
-                                            try {
-                                              const date = new Date(
-                                                row.last_login
-                                              );
-                                              if (isNaN(date.getTime())) {
-                                                return "—";
-                                              }
-                                              return new Intl.DateTimeFormat(
-                                                "en-US",
-                                                {
-                                                  month: "short",
-                                                  day: "numeric",
-                                                  year: "numeric",
-                                                  hour: "2-digit",
-                                                  minute: "2-digit",
-                                                }
-                                              ).format(date);
-                                            } catch (error) {
-                                              console.error(
-                                                "Error formatting last_login:",
-                                                error,
-                                                row.last_login
-                                              );
+                                          try {
+                                            const date = new Date(
+                                              row.last_login
+                                            );
+                                            if (isNaN(date.getTime())) {
                                               return "—";
                                             }
-                                          })()
+                                            return new Intl.DateTimeFormat(
+                                              "en-US",
+                                              {
+                                                month: "short",
+                                                day: "numeric",
+                                                year: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                              }
+                                            ).format(date);
+                                          } catch (error) {
+                                            console.error(
+                                              "Error formatting last_login:",
+                                              error,
+                                              row.last_login
+                                            );
+                                            return "—";
+                                          }
+                                        })()
                                         : "—"}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-right">
@@ -2689,15 +2643,15 @@ export default function Dashboard() {
                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto md:flex-nowrap">
                             {/* Search - Hidden on mobile landscape */}
                             {!(isLandscape && typeof window !== 'undefined' && window.innerWidth < 1024) && (
-                            <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input
-                                placeholder="Search ETFs..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
-                              />
-                            </div>
+                              <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="Search ETFs..."
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
+                                />
+                              </div>
                             )}
                             {/* Customize Rankings with ranking numbers positioned above without affecting alignment */}
                             <div className="relative">
@@ -2724,29 +2678,26 @@ export default function Dashboard() {
                             </div>
                             {/* Total Return / Price Return Toggle - 50/50 split with blue background */}
                             <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
-                              <div 
-                                className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${
-                                  showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
-                                }`}
+                              <div
+                                className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
+                                  }`}
                                 style={{ zIndex: 0 }}
                               />
                               <button
                                 onClick={() => setShowTotalReturns(true)}
-                                className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${
-                                  showTotalReturns
-                                    ? "text-white"
-                                    : "text-slate-600 hover:text-slate-900"
-                                }`}
+                                className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${showTotalReturns
+                                  ? "text-white"
+                                  : "text-slate-600 hover:text-slate-900"
+                                  }`}
                               >
                                 Total Returns
                               </button>
                               <button
                                 onClick={() => setShowTotalReturns(false)}
-                                className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${
-                                  !showTotalReturns
-                                    ? "text-white"
-                                    : "text-slate-600 hover:text-slate-900"
-                                }`}
+                                className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${!showTotalReturns
+                                  ? "text-white"
+                                  : "text-slate-600 hover:text-slate-900"
+                                  }`}
                               >
                                 Price Returns
                               </button>
@@ -2758,18 +2709,16 @@ export default function Dashboard() {
                               onClick={() =>
                                 setShowFavoritesOnly(!showFavoritesOnly)
                               }
-                              className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${
-                                showFavoritesOnly
-                                  ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
-                                  : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                              }`}
+                              className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${showFavoritesOnly
+                                ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
+                                : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
+                                }`}
                             >
                               <Star
-                                className={`h-4 w-4 mr-2 ${
-                                  showFavoritesOnly
-                                    ? "fill-white"
-                                    : "fill-yellow-400"
-                                }`}
+                                className={`h-4 w-4 mr-2 ${showFavoritesOnly
+                                  ? "fill-white"
+                                  : "fill-yellow-400"
+                                  }`}
                               />
                               {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
                               {favorites.size > 0 && `(${favorites.size})`}
@@ -2808,8 +2757,8 @@ export default function Dashboard() {
                                         <Info className="h-5 w-5 mx-auto text-slate-600 hover:text-primary transition-colors" />
                                       </button>
                                     </TooltipTrigger>
-                                    <TooltipContent 
-                                      side="top" 
+                                    <TooltipContent
+                                      side="top"
                                       sideOffset={8}
                                       className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[200px]"
                                     >
@@ -2917,11 +2866,10 @@ export default function Dashboard() {
                                 {returnColumns.map((col, index) => (
                                   <th
                                     key={col.key as string}
-                                    className={`h-6 px-1 text-center align-middle font-bold text-foreground bg-slate-50 text-xs ${
-                                      index === returnColumns.length - 1
-                                        ? "border-r-2 border-slate-300"
-                                        : ""
-                                    }`}
+                                    className={`h-6 px-1 text-center align-middle font-bold text-foreground bg-slate-50 text-xs ${index === returnColumns.length - 1
+                                      ? "border-r-2 border-slate-300"
+                                      : ""
+                                      }`}
                                   >
                                     <SortButton field={col.key}>
                                       <span className="font-bold">
@@ -2947,11 +2895,10 @@ export default function Dashboard() {
                                     title="Click to add to Favorites"
                                   >
                                     <Star
-                                      className={`h-4 w-4 mx-auto cursor-pointer transition-all ${
-                                        favorites.has(etf.symbol)
-                                          ? "fill-yellow-400 text-yellow-400"
-                                          : "text-slate-500 hover:text-yellow-500 hover:scale-110"
-                                      }`}
+                                      className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(etf.symbol)
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-slate-500 hover:text-yellow-500 hover:scale-110"
+                                        }`}
                                     />
                                   </td>
                                   <td className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200">
@@ -2976,11 +2923,10 @@ export default function Dashboard() {
                                     {etf.payDay || "N/A"}
                                   </td>
                                   <td
-                                    className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${
-                                      etf.ipoPrice && etf.price > etf.ipoPrice
-                                        ? "bg-green-100 text-green-700"
-                                        : ""
-                                    }`}
+                                    className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${etf.ipoPrice && etf.price > etf.ipoPrice
+                                      ? "bg-green-100 text-green-700"
+                                      : ""
+                                      }`}
                                   >
                                     {etf.ipoPrice != null ? `$${etf.ipoPrice.toFixed(2)}` : 'N/A'}
                                   </td>
@@ -2988,11 +2934,10 @@ export default function Dashboard() {
                                     ${etf.price.toFixed(2)}
                                   </td>
                                   <td
-                                    className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${
-                                      etf.priceChange >= 0
-                                        ? "text-green-600"
-                                        : "text-red-600"
-                                    }`}
+                                    className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${etf.priceChange >= 0
+                                      ? "text-green-600"
+                                      : "text-red-600"
+                                      }`}
                                   >
                                     {etf.priceChange >= 0 ? "+" : ""}
                                     {etf.priceChange.toFixed(2)}
@@ -3016,13 +2961,13 @@ export default function Dashboard() {
                                   <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
                                     {(() => {
                                       // Calculate Annual Div = Div × #Pmt to ensure accuracy
-                                      const calculatedAnnualDiv = etf.dividend && etf.numPayments 
-                                        ? etf.dividend * etf.numPayments 
+                                      const calculatedAnnualDiv = etf.dividend && etf.numPayments
+                                        ? etf.dividend * etf.numPayments
                                         : null;
                                       // Use calculated value if available, fallback to database value
                                       const annualDiv = calculatedAnnualDiv ?? etf.annualDividend;
-                                      return annualDiv != null && annualDiv > 0 
-                                        ? `$${annualDiv.toFixed(2)}` 
+                                      return annualDiv != null && annualDiv > 0
+                                        ? `$${annualDiv.toFixed(2)}`
                                         : 'N/A';
                                     })()}
                                   </td>
@@ -3060,21 +3005,19 @@ export default function Dashboard() {
                                       numericValue === undefined
                                         ? "text-muted-foreground"
                                         : numericValue >= 0
-                                        ? "text-green-600"
-                                        : "text-red-600";
+                                          ? "text-green-600"
+                                          : "text-red-600";
                                     return (
                                       <td
                                         key={`${etf.symbol}-${String(col.key)}`}
-                                        className={`py-0.5 px-1 align-middle text-center font-bold tabular-nums text-xs ${valueClass} ${
-                                          index === returnColumns.length - 1
-                                            ? "border-r-2 border-slate-300"
-                                            : ""
-                                        }`}
+                                        className={`py-0.5 px-1 align-middle text-center font-bold tabular-nums text-xs ${valueClass} ${index === returnColumns.length - 1
+                                          ? "border-r-2 border-slate-300"
+                                          : ""
+                                          }`}
                                       >
                                         {numericValue !== undefined
-                                          ? `${
-                                              numericValue > 0 ? "+" : ""
-                                            }${numericValue.toFixed(1)}%`
+                                          ? `${numericValue > 0 ? "+" : ""
+                                          }${numericValue.toFixed(1)}%`
                                           : "N/A"}
                                       </td>
                                     );
@@ -3247,31 +3190,28 @@ export default function Dashboard() {
                             <div className="flex gap-2 mt-2">
                               <button
                                 onClick={() => handleTimeframeChange("3mo")}
-                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                                  totalReturnTimeframe === "3mo"
-                                    ? "bg-primary text-white"
-                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                                }`}
+                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "3mo"
+                                  ? "bg-primary text-white"
+                                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                                  }`}
                               >
                                 3 Mo
                               </button>
                               <button
                                 onClick={() => handleTimeframeChange("6mo")}
-                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                                  totalReturnTimeframe === "6mo"
-                                    ? "bg-primary text-white"
-                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                                }`}
+                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "6mo"
+                                  ? "bg-primary text-white"
+                                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                                  }`}
                               >
                                 6 Mo
                               </button>
                               <button
                                 onClick={() => handleTimeframeChange("12mo")}
-                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                                  totalReturnTimeframe === "12mo"
-                                    ? "bg-primary text-white"
-                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                                }`}
+                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "12mo"
+                                  ? "bg-primary text-white"
+                                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                                  }`}
                               >
                                 12 Mo
                               </button>
@@ -3284,9 +3224,8 @@ export default function Dashboard() {
                             </span>
                             <div className="flex items-center gap-3">
                               <span
-                                className={`text-3xl font-bold tabular-nums ${
-                                  isValid ? "text-primary" : "text-destructive"
-                                }`}
+                                className={`text-3xl font-bold tabular-nums ${isValid ? "text-primary" : "text-destructive"
+                                  }`}
                               >
                                 {isNaN(totalWeight) ? 0 : totalWeight}%
                               </span>

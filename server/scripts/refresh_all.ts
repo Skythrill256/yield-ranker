@@ -251,7 +251,7 @@ async function main() {
   console.log('\n[Health Check]');
   try {
     const health = await healthCheck();
-    console.log(`  ✓ Tiingo API: ${health.status}`);
+    console.log(`  ✓ Tiingo API: ${health ? 'OK' : 'FAILED'}`);
   } catch (error) {
     console.error(`  ✗ Tiingo API check failed:`, error);
     process.exit(1);

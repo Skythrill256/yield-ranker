@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
 import { supabase } from "@/lib/supabase";
+import { getSiteSettings } from "@/services/admin";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -102,7 +103,6 @@ const Index = () => {
 
     const loadSiteSettings = async () => {
       try {
-        const { getSiteSettings } = await import("@/services/admin");
         const settings = await getSiteSettings();
         const guestMsgSetting = settings.find((s) => s.key === "guest_message");
         const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
