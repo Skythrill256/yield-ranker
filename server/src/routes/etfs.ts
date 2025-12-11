@@ -232,7 +232,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
 
     if (dividendUpdates.length > 0) {
       logger.info('Upload', `Updating dividend amounts for ${dividendUpdates.length} ticker(s)`);
-      
+
       for (const { ticker, divAmount } of dividendUpdates) {
         // Get the most recent dividend for this ticker (from Tiingo)
         const { data: recentDividends } = await supabase
@@ -298,7 +298,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       skipped: skippedRows,
       dividendsUpdated,
       message: `Successfully updated ${records.length} ticker(s)${dividendsUpdated > 0 ? ` and ${dividendsUpdated} dividend amount(s)` : ''}`,
-      note: dividendUpdates.length > 0 
+      note: dividendUpdates.length > 0
         ? 'Dividend amounts updated while preserving all Tiingo data (dates, split adjustments, etc.)'
         : 'Run "npm run seed:history" to fetch price/dividend data from Tiingo',
     });
