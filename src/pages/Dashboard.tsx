@@ -2659,6 +2659,14 @@ export default function Dashboard() {
                     </Card>
                   </div>
                 )}
+                {isLoadingData ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                      <p className="text-muted-foreground">Loading ETF data...</p>
+                    </div>
+                  </div>
+                ) : (
                 <div className="flex-1 min-h-0 flex flex-col">
                   <div className="w-full max-w-[98%] mx-auto flex flex-col min-h-0 flex-1">
                     <Card className="p-2 sm:p-3 border-2 border-slate-200 flex-1 min-h-0 flex flex-col">
@@ -3382,6 +3390,7 @@ export default function Dashboard() {
                 {/* Only use UpgradeToPremiumModal for upgrade prompts */}
               </>
             )}
+                )}
           </div>
         </div>
       </main>
