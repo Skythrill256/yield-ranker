@@ -195,43 +195,68 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    logger.info('Upload', `Upserting ${records.length} tickers to etf_static`);
+    logger.info('Upload', `Processing ${records.length} tickers (add/update only, no deletions)`);
 
     const supabase = getSupabase();
-    const uploadedTickers = new Set(records.map(r => r.ticker));
 
     const { data: existingETFs } = await supabase
       .from('etf_static')
-      .select('ticker');
+      .select('*')
+      .in('ticker', records.map(r => r.ticker));
 
-    const existingTickers = new Set((existingETFs || []).map((e: any) => e.ticker));
-    const tickersToDelete = Array.from(existingTickers).filter(t => !uploadedTickers.has(t));
+    const existingETFsMap = new Map((existingETFs || []).map((e: any) => [e.ticker, e]));
+    const newTickers: Partial<ETFStaticRecord>[] = [];
+    const updatedTickers: Partial<ETFStaticRecord>[] = [];
 
-    if (tickersToDelete.length > 0) {
-      logger.info('Upload', `Removing ${tickersToDelete.length} ticker(s) not in upload: ${tickersToDelete.join(', ')}`);
-      
-      const { error: deleteStaticError } = await supabase
-        .from('etf_static')
-        .delete()
-        .in('ticker', tickersToDelete);
-
-      if (deleteStaticError) {
-        logger.warn('Upload', `Failed to delete from etf_static: ${deleteStaticError.message}`);
-      }
-
-      const { error: deleteLegacyError } = await supabase
-        .from('etfs')
-        .delete()
-        .in('symbol', tickersToDelete);
-
-      if (deleteLegacyError) {
-        logger.warn('Upload', `Failed to delete from etfs: ${deleteLegacyError.message}`);
+    for (const record of records) {
+      const existing = existingETFsMap.get(record.ticker);
+      if (existing) {
+        const updateRecord: Partial<ETFStaticRecord> = {
+          ticker: record.ticker,
+          updated_at: now,
+        };
+        
+        if (record.issuer !== null && record.issuer !== undefined) updateRecord.issuer = record.issuer;
+        if (record.description !== null && record.description !== undefined) updateRecord.description = record.description;
+        if (record.pay_day_text !== null && record.pay_day_text !== undefined) updateRecord.pay_day_text = record.pay_day_text;
+        if (record.payments_per_year !== null && record.payments_per_year !== undefined) updateRecord.payments_per_year = record.payments_per_year;
+        if (record.ipo_price !== null && record.ipo_price !== undefined) updateRecord.ipo_price = record.ipo_price;
+        
+        updatedTickers.push(updateRecord);
+      } else {
+        newTickers.push(record);
       }
     }
 
-    const { error: upsertError } = await supabase
-      .from('etf_static')
-      .upsert(records, { onConflict: 'ticker' });
+    logger.info('Upload', `Adding ${newTickers.length} new ticker(s), updating ${updatedTickers.length} existing ticker(s)`);
+
+    if (newTickers.length > 0) {
+      const { error: insertError } = await supabase
+        .from('etf_static')
+        .insert(newTickers);
+      
+      if (insertError) {
+        cleanupFile(filePath);
+        res.status(500).json({
+          error: 'Failed to add new ETFs',
+          details: insertError.message,
+        });
+        return;
+      }
+    }
+
+    if (updatedTickers.length > 0) {
+      for (const updateRecord of updatedTickers) {
+        const { error: updateError } = await supabase
+          .from('etf_static')
+          .update(updateRecord)
+          .eq('ticker', updateRecord.ticker);
+        
+        if (updateError) {
+          logger.warn('Upload', `Failed to update ${updateRecord.ticker}: ${updateError.message}`);
+        }
+      }
+    }
 
     if (upsertError) {
       cleanupFile(filePath);
@@ -242,17 +267,20 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const legacyRecords = records.map(r => ({
+    const allProcessedRecords = [...newTickers, ...updatedTickers];
+    const legacyRecords = allProcessedRecords.map(r => ({
       symbol: r.ticker,
-      issuer: r.issuer,
-      description: r.description,
-      pay_day: r.pay_day_text,
-      payments_per_year: r.payments_per_year,
-      ipo_price: r.ipo_price,
+      issuer: r.issuer ?? undefined,
+      description: r.description ?? undefined,
+      pay_day: r.pay_day_text ?? undefined,
+      payments_per_year: r.payments_per_year ?? undefined,
+      ipo_price: r.ipo_price ?? undefined,
       spreadsheet_updated_at: now,
-    }));
+    })).filter(r => r.symbol);
 
-    await supabase.from('etfs').upsert(legacyRecords, { onConflict: 'symbol' });
+    if (legacyRecords.length > 0) {
+      await supabase.from('etfs').upsert(legacyRecords, { onConflict: 'symbol' });
+    }
 
     // If div column was provided, update only the most recent dividend amount for each ticker
     // This keeps all Tiingo data (dates, split adjustments, etc.) intact
@@ -321,14 +349,14 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       }
     }
 
-    const deletedCount = tickersToDelete.length;
     res.json({
       success: true,
       count: records.length,
-      deleted: deletedCount,
+      added: newTickers.length,
+      updated: updatedTickers.length,
       skipped: skippedRows,
       dividendsUpdated,
-      message: `Successfully updated ${records.length} ticker(s)${deletedCount > 0 ? `, removed ${deletedCount} ticker(s)` : ''}${dividendsUpdated > 0 ? ` and updated ${dividendsUpdated} dividend amount(s)` : ''}`,
+      message: `Successfully processed ${records.length} ticker(s): ${newTickers.length} added, ${updatedTickers.length} updated${dividendsUpdated > 0 ? `, ${dividendsUpdated} dividend amount(s) updated` : ''}`,
       note: dividendUpdates.length > 0 
         ? 'Dividend amounts updated while preserving all Tiingo data (dates, split adjustments, etc.)'
         : 'Run "npm run seed:history" to fetch price/dividend data from Tiingo',
@@ -1208,6 +1236,108 @@ router.get('/:ticker/latest-dividend', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Routes', `Error fetching latest dividend: ${(error as Error).message}`);
     res.status(500).json({ error: 'Failed to fetch latest dividend' });
+  }
+});
+
+/**
+ * DELETE /api/etfs/:ticker - Delete a specific ETF
+ */
+router.delete('/:ticker', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ticker } = req.params;
+    const upperTicker = ticker.toUpperCase();
+    const supabase = getSupabase();
+
+    const { error: deleteStaticError } = await supabase
+      .from('etf_static')
+      .delete()
+      .eq('ticker', upperTicker);
+
+    if (deleteStaticError) {
+      logger.error('Routes', `Failed to delete from etf_static: ${deleteStaticError.message}`);
+      res.status(500).json({
+        error: 'Failed to delete ETF',
+        details: deleteStaticError.message,
+      });
+      return;
+    }
+
+    const { error: deleteLegacyError } = await supabase
+      .from('etfs')
+      .delete()
+      .eq('symbol', upperTicker);
+
+    if (deleteLegacyError) {
+      logger.warn('Routes', `Failed to delete from etfs: ${deleteLegacyError.message}`);
+    }
+
+    logger.info('Routes', `Deleted ETF: ${upperTicker}`);
+    res.json({
+      success: true,
+      message: `Successfully deleted ${upperTicker}`,
+    });
+  } catch (error) {
+    logger.error('Routes', `Error deleting ETF: ${(error as Error).message}`);
+    res.status(500).json({
+      error: 'Failed to delete ETF',
+      message: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * DELETE /api/etfs/batch - Delete multiple ETFs
+ */
+router.delete('/batch', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { tickers } = req.body;
+    
+    if (!Array.isArray(tickers) || tickers.length === 0) {
+      res.status(400).json({
+        error: 'Invalid request',
+        details: 'tickers must be a non-empty array',
+      });
+      return;
+    }
+
+    const upperTickers = tickers.map((t: string) => String(t).toUpperCase());
+    const supabase = getSupabase();
+
+    const { error: deleteStaticError } = await supabase
+      .from('etf_static')
+      .delete()
+      .in('ticker', upperTickers);
+
+    if (deleteStaticError) {
+      logger.error('Routes', `Failed to delete from etf_static: ${deleteStaticError.message}`);
+      res.status(500).json({
+        error: 'Failed to delete ETFs',
+        details: deleteStaticError.message,
+      });
+      return;
+    }
+
+    const { error: deleteLegacyError } = await supabase
+      .from('etfs')
+      .delete()
+      .in('symbol', upperTickers);
+
+    if (deleteLegacyError) {
+      logger.warn('Routes', `Failed to delete from etfs: ${deleteLegacyError.message}`);
+    }
+
+    logger.info('Routes', `Deleted ${upperTickers.length} ETF(s): ${upperTickers.join(', ')}`);
+    res.json({
+      success: true,
+      count: upperTickers.length,
+      message: `Successfully deleted ${upperTickers.length} ETF(s)`,
+    });
+  } catch (error) {
+    logger.error('Routes', `Error deleting ETFs: ${(error as Error).message}`);
+    res.status(500).json({
+      error: 'Failed to delete ETFs',
+      message: (error as Error).message,
+    });
   }
 });
 
