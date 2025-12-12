@@ -2234,1151 +2234,1153 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-h-0">
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
-          <div className="flex items-center justify-between w-full gap-4">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden h-10 w-10"
-                onClick={() => setMobileSidebarOpen(true)}
-              >
-                <Menu className="h-6 w-6" />
-              </Button>
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                Dashboard
-              </h1>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4">
-              <div className="hidden sm:flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-foreground">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isAdmin ? "Admin" : "Premium"}
-                  </p>
+      <div className="flex-1 flex flex-col min-h-screen">
+        <main className="flex-1 flex flex-col min-h-0">
+          <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
+            <div className="flex items-center justify-between w-full gap-4">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden h-10 w-10"
+                  onClick={() => setMobileSidebarOpen(true)}
+                >
+                  <Menu className="h-6 w-6" />
+                </Button>
+                <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+                  Dashboard
+                </h1>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-4">
+                <div className="hidden sm:flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-foreground">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {isAdmin ? "Admin" : "Premium"}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold">
+                <div className="sm:hidden w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-sm">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               </div>
-              <div className="sm:hidden w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold text-sm">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <div className="flex-1 overflow-auto min-h-0">
-          <div className="h-full p-2 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3">
-            {adminSection === "users" ? (
-              <div className="flex-1 overflow-auto">
-                <div className="p-2 sm:p-3 lg:p-4 space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <Card className="p-5 border-2 border-slate-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm text-muted-foreground font-medium">
-                          Total users
-                        </span>
-                        <Users className="w-5 h-5 text-slate-500" />
-                      </div>
-                      <p className="text-3xl font-bold text-foreground">
-                        {totalUsers}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {adminCount} admins, {premiumCount} premium users
-                      </p>
-                    </Card>
-                    <Card className="p-5 border-2 border-slate-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm text-muted-foreground font-medium">
-                          Admins
-                        </span>
-                        <ShieldCheck className="w-5 h-5 text-primary" />
-                      </div>
-                      <p className="text-3xl font-bold text-foreground">
-                        {adminCount}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Full system access
-                      </p>
-                    </Card>
-                    <Card className="p-5 border-2 border-slate-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm text-muted-foreground font-medium">
-                          Premium users
-                        </span>
-                        <ShieldCheck className="w-5 h-5 text-green-600" />
-                      </div>
-                      <p className="text-3xl font-bold text-foreground">
-                        {premiumCount}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        All signed-up users
-                      </p>
-                    </Card>
-                  </div>
-
-                  <Card className="border-2 border-slate-200">
-                    <div className="p-6 space-y-6">
-                      {lastDataUpdate && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground pb-4 border-b border-slate-200">
-                          <RefreshCw className="w-4 h-4" />
-                          <span>
-                            <strong>Data Last Updated:</strong> {lastDataUpdate}
+          <div className="flex-1 overflow-auto min-h-0">
+            <div className="h-full p-2 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3">
+              {adminSection === "users" ? (
+                <div className="flex-1 overflow-auto">
+                  <div className="p-2 sm:p-3 lg:p-4 space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <Card className="p-5 border-2 border-slate-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-muted-foreground font-medium">
+                            Total users
                           </span>
+                          <Users className="w-5 h-5 text-slate-500" />
                         </div>
-                      )}
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="relative w-full sm:max-w-xs">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                          <Input
-                            value={adminSearchQuery}
-                            onChange={(e) =>
-                              setAdminSearchQuery(e.target.value)
-                            }
-                            placeholder="Search by name, email, or role"
-                            className="pl-10 h-10 border-2"
-                          />
+                        <p className="text-3xl font-bold text-foreground">
+                          {totalUsers}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {adminCount} admins, {premiumCount} premium users
+                        </p>
+                      </Card>
+                      <Card className="p-5 border-2 border-slate-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-muted-foreground font-medium">
+                            Admins
+                          </span>
+                          <ShieldCheck className="w-5 h-5 text-primary" />
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              const csv = [
-                                [
-                                  "Name",
-                                  "Email",
-                                  "Role",
-                                  "Premium",
-                                  "Created",
-                                  "Last In",
-                                ].join(","),
-                                ...filteredAdminProfiles.map((row) => {
-                                  let createdDate = "";
-                                  let lastLoginDate = "Never";
+                        <p className="text-3xl font-bold text-foreground">
+                          {adminCount}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Full system access
+                        </p>
+                      </Card>
+                      <Card className="p-5 border-2 border-slate-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-sm text-muted-foreground font-medium">
+                            Premium users
+                          </span>
+                          <ShieldCheck className="w-5 h-5 text-green-600" />
+                        </div>
+                        <p className="text-3xl font-bold text-foreground">
+                          {premiumCount}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          All signed-up users
+                        </p>
+                      </Card>
+                    </div>
 
-                                  try {
-                                    const created = new Date(row.created_at);
-                                    if (!isNaN(created.getTime())) {
-                                      createdDate =
-                                        created.toLocaleString("en-US");
-                                    }
-                                  } catch (error) {
-                                    console.error(
-                                      "Error formatting created_at:",
-                                      error
-                                    );
-                                  }
+                    <Card className="border-2 border-slate-200">
+                      <div className="p-6 space-y-6">
+                        {lastDataUpdate && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground pb-4 border-b border-slate-200">
+                            <RefreshCw className="w-4 h-4" />
+                            <span>
+                              <strong>Data Last Updated:</strong> {lastDataUpdate}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="relative w-full sm:max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                            <Input
+                              value={adminSearchQuery}
+                              onChange={(e) =>
+                                setAdminSearchQuery(e.target.value)
+                              }
+                              placeholder="Search by name, email, or role"
+                              className="pl-10 h-10 border-2"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                const csv = [
+                                  [
+                                    "Name",
+                                    "Email",
+                                    "Role",
+                                    "Premium",
+                                    "Created",
+                                    "Last In",
+                                  ].join(","),
+                                  ...filteredAdminProfiles.map((row) => {
+                                    let createdDate = "";
+                                    let lastLoginDate = "Never";
 
-                                  if (row.last_login) {
                                     try {
-                                      const lastLogin = new Date(
-                                        row.last_login
-                                      );
-                                      if (!isNaN(lastLogin.getTime())) {
-                                        lastLoginDate =
-                                          lastLogin.toLocaleString("en-US");
+                                      const created = new Date(row.created_at);
+                                      if (!isNaN(created.getTime())) {
+                                        createdDate =
+                                          created.toLocaleString("en-US");
                                       }
                                     } catch (error) {
                                       console.error(
-                                        "Error formatting last_login:",
+                                        "Error formatting created_at:",
                                         error
                                       );
                                     }
-                                  }
 
-                                  return [
-                                    row.display_name || "",
-                                    row.email,
-                                    row.role,
-                                    row.is_premium ? "Yes" : "No",
-                                    createdDate,
-                                    lastLoginDate,
-                                  ].join(",");
-                                }),
-                              ].join("\n");
-                              const blob = new Blob([csv], {
-                                type: "text/csv",
-                              });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = url;
-                              a.download = `users-${new Date().toISOString().split("T")[0]
-                                }.csv`;
-                              a.click();
-                              URL.revokeObjectURL(url);
-                            }}
-                            disabled={
-                              adminLoading || filteredAdminProfiles.length === 0
-                            }
-                            className="h-10 border-2"
-                          >
-                            <Upload className="w-4 h-4 mr-2" />
-                            Download Emails CSV
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={fetchAdminProfiles}
-                            disabled={adminLoading}
-                            className="h-10 border-2"
-                          >
-                            <RefreshCw
-                              className={`w-4 h-4 mr-2 ${adminLoading ? "animate-spin" : ""
-                                }`}
-                            />
-                            Refresh
-                          </Button>
+                                    if (row.last_login) {
+                                      try {
+                                        const lastLogin = new Date(
+                                          row.last_login
+                                        );
+                                        if (!isNaN(lastLogin.getTime())) {
+                                          lastLoginDate =
+                                            lastLogin.toLocaleString("en-US");
+                                        }
+                                      } catch (error) {
+                                        console.error(
+                                          "Error formatting last_login:",
+                                          error
+                                        );
+                                      }
+                                    }
+
+                                    return [
+                                      row.display_name || "",
+                                      row.email,
+                                      row.role,
+                                      row.is_premium ? "Yes" : "No",
+                                      createdDate,
+                                      lastLoginDate,
+                                    ].join(",");
+                                  }),
+                                ].join("\n");
+                                const blob = new Blob([csv], {
+                                  type: "text/csv",
+                                });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `users-${new Date().toISOString().split("T")[0]
+                                  }.csv`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              disabled={
+                                adminLoading || filteredAdminProfiles.length === 0
+                              }
+                              className="h-10 border-2"
+                            >
+                              <Upload className="w-4 h-4 mr-2" />
+                              Download Emails CSV
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={fetchAdminProfiles}
+                              disabled={adminLoading}
+                              className="h-10 border-2"
+                            >
+                              <RefreshCw
+                                className={`w-4 h-4 mr-2 ${adminLoading ? "animate-spin" : ""
+                                  }`}
+                              />
+                              Refresh
+                            </Button>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table className="min-w-full divide-y divide-slate-200 bg-white">
-                          <thead className="bg-slate-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                Name
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                Email
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                Role
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                Premium
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                Created
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                                Last In
-                              </th>
-                              <th className="px-4 py-3" />
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {adminLoading ? (
+                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                          <table className="min-w-full divide-y divide-slate-200 bg-white">
+                            <thead className="bg-slate-50">
                               <tr>
-                                <td
-                                  colSpan={6}
-                                  className="px-4 py-10 text-center text-sm text-muted-foreground"
-                                >
-                                  Loading users...
-                                </td>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                  Name
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                  Email
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                  Role
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                  Premium
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                  Created
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                  Last In
+                                </th>
+                                <th className="px-4 py-3" />
                               </tr>
-                            ) : filteredAdminProfiles.length === 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={6}
-                                  className="px-4 py-10 text-center text-sm text-muted-foreground"
-                                >
-                                  No users found for “{adminSearchQuery}”
-                                </td>
-                              </tr>
-                            ) : (
-                              filteredAdminProfiles.map((row) => {
-                                const roleKey = `${row.id}-role`;
-                                const premiumKey = `${row.id}-premium`;
-                                return (
-                                  <tr
-                                    key={row.id}
-                                    className="hover:bg-slate-50 transition-colors"
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {adminLoading ? (
+                                <tr>
+                                  <td
+                                    colSpan={6}
+                                    className="px-4 py-10 text-center text-sm text-muted-foreground"
                                   >
-                                    <td className="px-4 py-3 text-sm font-medium text-foreground">
-                                      {row.display_name || "—"}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                                      {row.email}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-foreground">
-                                      <span
-                                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${row.role === "admin"
-                                          ? "border-primary/30 bg-primary/10 text-primary"
-                                          : "border-green-300 bg-green-50 text-green-700"
-                                          }`}
-                                      >
-                                        {row.role === "admin"
-                                          ? "Admin"
-                                          : "Premium"}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-foreground">
-                                      <Switch
-                                        checked={row.is_premium}
-                                        onCheckedChange={(checked) =>
-                                          handleAdminPremiumToggle(row, checked)
-                                        }
-                                        disabled={
-                                          adminUpdatingId === premiumKey
-                                        }
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                                      {new Intl.DateTimeFormat("en-US", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      }).format(new Date(row.created_at))}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                                      {row.last_login
-                                        ? (() => {
-                                          try {
-                                            const date = new Date(
-                                              row.last_login
-                                            );
-                                            if (isNaN(date.getTime())) {
+                                    Loading users...
+                                  </td>
+                                </tr>
+                              ) : filteredAdminProfiles.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={6}
+                                    className="px-4 py-10 text-center text-sm text-muted-foreground"
+                                  >
+                                    No users found for “{adminSearchQuery}”
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredAdminProfiles.map((row) => {
+                                  const roleKey = `${row.id}-role`;
+                                  const premiumKey = `${row.id}-premium`;
+                                  return (
+                                    <tr
+                                      key={row.id}
+                                      className="hover:bg-slate-50 transition-colors"
+                                    >
+                                      <td className="px-4 py-3 text-sm font-medium text-foreground">
+                                        {row.display_name || "—"}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                                        {row.email}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-foreground">
+                                        <span
+                                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${row.role === "admin"
+                                            ? "border-primary/30 bg-primary/10 text-primary"
+                                            : "border-green-300 bg-green-50 text-green-700"
+                                            }`}
+                                        >
+                                          {row.role === "admin"
+                                            ? "Admin"
+                                            : "Premium"}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-foreground">
+                                        <Switch
+                                          checked={row.is_premium}
+                                          onCheckedChange={(checked) =>
+                                            handleAdminPremiumToggle(row, checked)
+                                          }
+                                          disabled={
+                                            adminUpdatingId === premiumKey
+                                          }
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                                        {new Intl.DateTimeFormat("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                          year: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        }).format(new Date(row.created_at))}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                                        {row.last_login
+                                          ? (() => {
+                                            try {
+                                              const date = new Date(
+                                                row.last_login
+                                              );
+                                              if (isNaN(date.getTime())) {
+                                                return "—";
+                                              }
+                                              return new Intl.DateTimeFormat(
+                                                "en-US",
+                                                {
+                                                  month: "short",
+                                                  day: "numeric",
+                                                  year: "numeric",
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                                }
+                                              ).format(date);
+                                            } catch (error) {
+                                              console.error(
+                                                "Error formatting last_login:",
+                                                error,
+                                                row.last_login
+                                              );
                                               return "—";
                                             }
-                                            return new Intl.DateTimeFormat(
-                                              "en-US",
-                                              {
-                                                month: "short",
-                                                day: "numeric",
-                                                year: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                              }
-                                            ).format(date);
-                                          } catch (error) {
-                                            console.error(
-                                              "Error formatting last_login:",
-                                              error,
-                                              row.last_login
-                                            );
-                                            return "—";
+                                          })()
+                                          : "—"}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-right">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleAdminRoleToggle(row)
                                           }
-                                        })()
-                                        : "—"}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-right">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() =>
-                                          handleAdminRoleToggle(row)
-                                        }
-                                        disabled={adminUpdatingId === roleKey}
-                                        className="border-2"
-                                      >
-                                        {row.role === "admin"
-                                          ? "Remove admin"
-                                          : "Make admin"}
-                                      </Button>
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
+                                          disabled={adminUpdatingId === roleKey}
+                                          className="border-2"
+                                        >
+                                          {row.role === "admin"
+                                            ? "Remove admin"
+                                            : "Make admin"}
+                                        </Button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              ) : adminSection === "upload" ? (
+                <div className="flex-1 overflow-auto">
+                  <Card className="p-6 border-2 border-slate-200">
+                    <h2 className="text-2xl font-bold text-foreground mb-6">
+                      Upload Data
+                    </h2>
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
+                        <Upload className="w-12 h-12 mx-auto text-slate-400 mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">
+                          Upload ETF Data
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Upload CSV or JSON files to update ETF information
+                        </p>
+                        <Button>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Choose File
+                        </Button>
+                      </div>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-sm text-yellow-900">
+                          <strong>Note:</strong> Upload functionality will process
+                          and update ETF data in the database. Supported formats:
+                          CSV, JSON.
+                        </p>
                       </div>
                     </div>
                   </Card>
                 </div>
-              </div>
-            ) : adminSection === "upload" ? (
-              <div className="flex-1 overflow-auto">
-                <Card className="p-6 border-2 border-slate-200">
-                  <h2 className="text-2xl font-bold text-foreground mb-6">
-                    Upload Data
-                  </h2>
-                  <div className="space-y-4">
-                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
-                      <Upload className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                      <h3 className="text-lg font-semibold text-foreground mb-2">
-                        Upload ETF Data
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Upload CSV or JSON files to update ETF information
-                      </p>
-                      <Button>
-                        <Upload className="w-4 h-4 mr-2" />
-                        Choose File
-                      </Button>
+              ) : (
+                <>
+                  {((isGuest && guestMessage) || (isPremium && premiumMessage)) && (
+                    <div className="w-full max-w-[98%] mx-auto">
+                      <Card className="p-4 border-2 border-primary/20 bg-primary/5">
+                        <p className="text-base md:text-lg text-foreground leading-relaxed font-medium">
+                          {isGuest ? guestMessage : premiumMessage}
+                        </p>
+                      </Card>
                     </div>
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <p className="text-sm text-yellow-900">
-                        <strong>Note:</strong> Upload functionality will process
-                        and update ETF data in the database. Supported formats:
-                        CSV, JSON.
-                      </p>
+                  )}
+                  {isLoadingData ? (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                        <p className="text-muted-foreground">Loading ETF data...</p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </div>
-            ) : (
-              <>
-                {((isGuest && guestMessage) || (isPremium && premiumMessage)) && (
-                  <div className="w-full max-w-[98%] mx-auto">
-                    <Card className="p-4 border-2 border-primary/20 bg-primary/5">
-                      <p className="text-base md:text-lg text-foreground leading-relaxed font-medium">
-                        {isGuest ? guestMessage : premiumMessage}
-                      </p>
-                    </Card>
-                  </div>
-                )}
-                {isLoadingData ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-                      <p className="text-muted-foreground">Loading ETF data...</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex-1 min-h-0 flex flex-col">
-                    <div className="w-full max-w-[98%] mx-auto flex flex-col min-h-0 flex-1">
-                      <Card className="p-2 sm:p-3 border-2 border-slate-200 flex-1 min-h-0 flex flex-col">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2 sm:mb-3 flex-shrink-0">
-                          <div className="flex flex-col gap-1">
-                            <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
-                              Covered Call Option ETFs
-                            </h3>
-                            <div className="text-xs text-muted-foreground leading-tight">
-                              {lastDataUpdate ? (
-                                <div className="flex items-center gap-1 mb-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span>Last updated: {lastDataUpdate}</span>
-                                  <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                                </div>
-                              ) : (
-                                <div className="mb-1">
-                                  <span>Last updated: {lastDataUpdate || 'N/A'}</span>
-                                  <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                                </div>
-                              )}
-                              <div className="mt-1">Records: {uniqueSymbolETFs.length}</div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto md:flex-nowrap">
-                              {/* Search - Hidden on mobile landscape */}
-                              {!(isLandscape && typeof window !== 'undefined' && window.innerWidth < 1024) && (
-                                <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
-                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                  <Input
-                                    placeholder="Search ETFs..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
-                                  />
-                                </div>
-                              )}
-                              {/* Customize Rankings with ranking numbers positioned above without affecting alignment */}
-                              <div className="relative">
-                                {isPremium && (
-                                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
-                                    {yieldWeight} {volatilityWeight ?? 0} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
+                  ) : (
+                    <div className="flex-1 min-h-0 flex flex-col">
+                      <div className="w-full max-w-[98%] mx-auto flex flex-col min-h-0 flex-1">
+                        <Card className="p-2 sm:p-3 border-2 border-slate-200 flex-1 min-h-0 flex flex-col">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2 sm:mb-3 flex-shrink-0">
+                            <div className="flex flex-col gap-1">
+                              <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+                                Covered Call Option ETFs
+                              </h3>
+                              <div className="text-xs text-muted-foreground leading-tight">
+                                {lastDataUpdate ? (
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Last updated: {lastDataUpdate}</span>
+                                    <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
+                                  </div>
+                                ) : (
+                                  <div className="mb-1">
+                                    <span>Last updated: {lastDataUpdate || 'N/A'}</span>
+                                    <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
                                   </div>
                                 )}
+                                <div className="mt-1">Records: {uniqueSymbolETFs.length}</div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 w-full sm:w-auto md:flex-nowrap">
+                                {/* Search - Hidden on mobile landscape */}
+                                {!(isLandscape && typeof window !== 'undefined' && window.innerWidth < 1024) && (
+                                  <div className="relative w-full sm:w-auto min-w-[200px] sm:max-w-xs md:max-w-sm">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                    <Input
+                                      placeholder="Search ETFs..."
+                                      value={searchQuery}
+                                      onChange={(e) => setSearchQuery(e.target.value)}
+                                      className="pl-10 w-full h-10 sm:h-9 md:h-9 border-2 text-sm"
+                                    />
+                                  </div>
+                                )}
+                                {/* Customize Rankings with ranking numbers positioned above without affecting alignment */}
+                                <div className="relative">
+                                  {isPremium && (
+                                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
+                                      {yieldWeight} {volatilityWeight ?? 0} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
+                                    </div>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (isGuest) {
+                                        setShowUpgradeModal(true);
+                                      } else {
+                                        setShowRankingPanel(true);
+                                      }
+                                    }}
+                                    className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
+                                  >
+                                    <Sliders className="h-4 w-4 mr-2" />
+                                    Customize Rankings
+                                  </Button>
+                                </div>
+                                {/* Total Return / Price Return Toggle - 50/50 split with blue background */}
+                                <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
+                                  <div
+                                    className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
+                                      }`}
+                                    style={{ zIndex: 0 }}
+                                  />
+                                  <button
+                                    onClick={() => setShowTotalReturns(true)}
+                                    className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${showTotalReturns
+                                      ? "text-white"
+                                      : "text-slate-600 hover:text-slate-900"
+                                      }`}
+                                  >
+                                    Total Returns
+                                  </button>
+                                  <button
+                                    onClick={() => setShowTotalReturns(false)}
+                                    className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${!showTotalReturns
+                                      ? "text-white"
+                                      : "text-slate-600 hover:text-slate-900"
+                                      }`}
+                                  >
+                                    Price Returns
+                                  </button>
+                                </div>
+                                {/* Favorites - Rightmost */}
                                 <Button
-                                  variant="outline"
+                                  variant={showFavoritesOnly ? "default" : "outline"}
                                   size="sm"
-                                  onClick={() => {
-                                    if (isGuest) {
-                                      setShowUpgradeModal(true);
-                                    } else {
-                                      setShowRankingPanel(true);
-                                    }
-                                  }}
-                                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
+                                  onClick={() =>
+                                    setShowFavoritesOnly(!showFavoritesOnly)
+                                  }
+                                  className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${showFavoritesOnly
+                                    ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
+                                    : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
+                                    }`}
                                 >
-                                  <Sliders className="h-4 w-4 mr-2" />
-                                  Customize Rankings
+                                  <Star
+                                    className={`h-4 w-4 mr-2 ${showFavoritesOnly
+                                      ? "fill-white"
+                                      : "fill-yellow-400"
+                                      }`}
+                                  />
+                                  {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
+                                  {favorites.size > 0 && `(${favorites.size})`}
                                 </Button>
                               </div>
-                              {/* Total Return / Price Return Toggle - 50/50 split with blue background */}
-                              <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
-                                <div
-                                  className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
-                                    }`}
-                                  style={{ zIndex: 0 }}
-                                />
+                            </div>
+                          </div>
+
+                          <div className="flex-1 min-h-0 flex flex-col">
+                            <div className="flex-1 min-h-0 overflow-auto">
+                              <table className="w-full caption-bottom text-xs min-w-max border-collapse">
+                                <thead className="sticky top-0 z-[100] bg-slate-50 shadow-sm border-b border-slate-200">
+                                  <tr className="bg-slate-50">
+                                    <th
+                                      colSpan={14}
+                                      className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm border-r-2 border-slate-300"
+                                    >
+                                      ETF DETAILS
+                                    </th>
+                                    <th
+                                      colSpan={returnColumns.length}
+                                      className="h-7 px-1.5 text-center align-middle font-bold bg-primary/10 text-primary text-sm"
+                                    >
+                                      TOTAL RETURNS (DRIP)
+                                    </th>
+                                  </tr>
+                                  <tr className="bg-slate-50">
+                                    <th className="h-6 px-1 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
+                                      <UITooltip delayDuration={200}>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className="flex items-center justify-center w-full h-full hover:bg-slate-100 rounded transition-colors"
+                                            aria-label="Favorites help"
+                                          >
+                                            <Info className="h-5 w-5 mx-auto text-slate-600 hover:text-primary transition-colors" />
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                          side="top"
+                                          sideOffset={8}
+                                          className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[200px]"
+                                        >
+                                          <p className="text-center">Click the star icon in any row to add ETFs to your favorites</p>
+                                        </TooltipContent>
+                                      </UITooltip>
+                                    </th>
+                                    <th className="h-6 px-1 text-left sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs">
+                                      <SortButton field="symbol">Symbol</SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-left bg-slate-50 text-xs">
+                                      <SortButton field="issuer">Issuer</SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-left bg-slate-50 text-xs">
+                                      <SortButton field="description">
+                                        Description
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="payDay">
+                                        <div className="whitespace-normal leading-tight">
+                                          Pay
+                                          <br />
+                                          Day
+                                        </div>
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="ipoPrice">
+                                        <div className="whitespace-normal leading-tight">
+                                          IPO
+                                          <br />
+                                          Price
+                                        </div>
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="price">Price</SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="priceChange">
+                                        <div className="whitespace-normal leading-tight">
+                                          Price
+                                          <br />
+                                          Chg
+                                        </div>
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="dividend">Div</SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="numPayments">
+                                        # Pmt
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="annualDividend">
+                                        <div className="whitespace-normal leading-tight">
+                                          Annual
+                                          <br />
+                                          Div
+                                        </div>
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <SortButton field="forwardYield">
+                                        Yield
+                                      </SortButton>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs">
+                                      <UITooltip delayDuration={200}>
+                                        <TooltipTrigger asChild>
+                                          <div>
+                                            <SortButton field="standardDeviation">
+                                              DVI
+                                            </SortButton>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent
+                                          side="top"
+                                          sideOffset={8}
+                                          className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[300px]"
+                                        >
+                                          <p>Dividend Volatility Index is computed using the Coefficient of Variation (CV) with Adjusted Dividends that have been annualized to normalize for frequency changes</p>
+                                        </TooltipContent>
+                                      </UITooltip>
+                                    </th>
+                                    <th className="h-6 px-1 text-center bg-slate-50 text-xs border-r-2 border-slate-300">
+                                      {isGuest ? (
+                                        <button
+                                          onClick={() => setShowUpgradeModal(true)}
+                                          className="flex items-center justify-center gap-1 w-full hover:bg-slate-100 rounded px-2 py-1 transition-colors"
+                                          title="Upgrade to Premium to access rankings"
+                                        >
+                                          <Lock className="h-3 w-3 text-primary" />
+                                          <span>Rank</span>
+                                        </button>
+                                      ) : (
+                                        <SortButton field="weightedRank">
+                                          Rank
+                                        </SortButton>
+                                      )}
+                                    </th>
+                                    {returnColumns.map((col, index) => (
+                                      <th
+                                        key={col.key as string}
+                                        className={`h-6 px-1 text-center align-middle font-bold text-foreground bg-slate-50 text-xs ${index === returnColumns.length - 1
+                                          ? "border-r-2 border-slate-300"
+                                          : ""
+                                          }`}
+                                      >
+                                        <SortButton field={col.key}>
+                                          <span className="font-bold">
+                                            {col.label}
+                                          </span>
+                                        </SortButton>
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody className="[&_tr:last-child]:border-0">
+                                  {displayedETFs.map((etf, idx) => (
+                                    <tr
+                                      key={`${etf.symbol}-${idx}`}
+                                      className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
+                                    >
+                                      <td
+                                        className="py-0.5 px-1 align-middle text-center sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 cursor-pointer"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleFavorite(etf.symbol);
+                                        }}
+                                        title="Click to add to Favorites"
+                                      >
+                                        <Star
+                                          className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(etf.symbol)
+                                            ? "fill-yellow-400 text-yellow-400"
+                                            : "text-slate-500 hover:text-yellow-500 hover:scale-110"
+                                            }`}
+                                        />
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleETFClick(etf);
+                                          }}
+                                          className="font-bold text-primary text-xs hover:underline cursor-pointer transition-colors"
+                                          title={`View ${etf.symbol} details and charts`}
+                                        >
+                                          {etf.symbol}
+                                        </button>
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground uppercase font-medium">
+                                        {etf.issuer}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle max-w-[120px] truncate text-xs text-muted-foreground">
+                                        {etf.description}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center text-xs text-muted-foreground">
+                                        {etf.payDay || "N/A"}
+                                      </td>
+                                      <td
+                                        className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${etf.ipoPrice && etf.price > etf.ipoPrice
+                                          ? "bg-green-100 text-green-700"
+                                          : ""
+                                          }`}
+                                      >
+                                        {etf.ipoPrice != null ? `$${etf.ipoPrice.toFixed(2)}` : 'N/A'}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-foreground">
+                                        ${etf.price.toFixed(2)}
+                                      </td>
+                                      <td
+                                        className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${etf.priceChange >= 0
+                                          ? "text-green-600"
+                                          : "text-red-600"
+                                          }`}
+                                      >
+                                        {etf.priceChange >= 0 ? "+" : ""}
+                                        {etf.priceChange.toFixed(2)}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setDividendModalSymbol(etf.symbol);
+                                            setShowDividendModal(true);
+                                          }}
+                                          className="tabular-nums text-xs text-primary font-medium hover:underline cursor-pointer transition-colors"
+                                          title="Click to view dividend history"
+                                        >
+                                          {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
+                                        </button>
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                                        {etf.numPayments}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                                        {(() => {
+                                          // Calculate Annual Div = Div × #Pmt to ensure accuracy
+                                          const calculatedAnnualDiv = etf.dividend && etf.numPayments
+                                            ? etf.dividend * etf.numPayments
+                                            : null;
+                                          // Use calculated value if available, fallback to database value
+                                          const annualDiv = calculatedAnnualDiv ?? etf.annualDividend;
+                                          return annualDiv != null && annualDiv > 0
+                                            ? `$${annualDiv.toFixed(2)}`
+                                            : 'N/A';
+                                        })()}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center font-bold tabular-nums text-primary text-xs">
+                                        {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                                        {etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendCV != null ? `${(etf.dividendCV * 100).toFixed(1)}%` : (etf.standardDeviation != null ? `${etf.standardDeviation.toFixed(1)}%` : 'N/A'))}
+                                      </td>
+                                      <td className="py-0.5 px-1 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
+                                        {isGuest ? (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setShowUpgradeModal(true);
+                                            }}
+                                            className="flex items-center justify-center w-full"
+                                            title="Upgrade to Premium to see rankings"
+                                          >
+                                            <Lock className="h-3 w-3 text-primary" />
+                                          </button>
+                                        ) : (
+                                          <span className="text-primary">
+                                            {etf.weightedRank || 0}
+                                          </span>
+                                        )}
+                                      </td>
+                                      {returnColumns.map((col, index) => {
+                                        const rawValue = etf[col.key];
+                                        const numericValue =
+                                          typeof rawValue === "number"
+                                            ? rawValue
+                                            : undefined;
+                                        const valueClass =
+                                          numericValue === undefined
+                                            ? "text-muted-foreground"
+                                            : numericValue >= 0
+                                              ? "text-green-600"
+                                              : "text-red-600";
+                                        return (
+                                          <td
+                                            key={`${etf.symbol}-${String(col.key)}`}
+                                            className={`py-0.5 px-1 align-middle text-center font-bold tabular-nums text-xs ${valueClass} ${index === returnColumns.length - 1
+                                              ? "border-r-2 border-slate-300"
+                                              : ""
+                                              }`}
+                                          >
+                                            {numericValue !== undefined
+                                              ? `${numericValue > 0 ? "+" : ""
+                                              }${numericValue.toFixed(1)}%`
+                                              : "N/A"}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {!showAllETFs &&
+                              filteredETFs.length > initialETFCount && (
+                                <div className="mt-3 text-center flex-shrink-0 border-t border-slate-200 pt-3">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowAllETFs(true)}
+                                    className="border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors text-xs h-8"
+                                  >
+                                    Show More (
+                                    {filteredETFs.length - initialETFCount} more
+                                    ETFs)
+                                  </Button>
+                                </div>
+                              )}
+                            {showAllETFs &&
+                              filteredETFs.length > initialETFCount && (
+                                <div className="mt-3 text-center flex-shrink-0 border-t border-slate-200 pt-3">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowAllETFs(false)}
+                                    className="border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors text-xs h-8"
+                                  >
+                                    Show Less (Show first {initialETFCount} ETFs)
+                                  </Button>
+                                </div>
+                              )}
+                          </div>
+                        </Card>
+                      </div>
+                    </div>
+                  )}
+
+                  {showRankingPanel && isPremium && (
+                    <div
+                      className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-4"
+                      onClick={() => setShowRankingPanel(false)}
+                    >
+                      <Card
+                        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="p-6 space-y-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-xl font-bold text-foreground">
+                                Customize Rankings
+                              </h3>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Personalize your ETF rankings by adjusting the
+                                importance of each metric
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => setShowRankingPanel(false)}
+                              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                              <X className="h-5 w-5" />
+                            </button>
+                          </div>
+
+                          {/* Presets Section */}
+                          {rankingPresets.length > 0 && (
+                            <div className="space-y-3">
+                              <Label className="text-base font-semibold text-foreground">
+                                Saved Presets
+                              </Label>
+                              <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  {rankingPresets.map((preset) => (
+                                    <div
+                                      key={preset.name}
+                                      className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-blue-50 hover:border-primary hover:bg-primary/5 transition-all"
+                                    >
+                                      <button
+                                        onClick={() => handleLoadPreset(preset)}
+                                        className="flex-1 text-left min-w-0"
+                                      >
+                                        <p className="text-sm font-semibold text-foreground truncate">
+                                          {preset.name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          Y:{preset.weights.yield}% D:
+                                          {preset.weights.volatility ?? preset.weights.stdDev ?? 30}% R:
+                                          {preset.weights.totalReturn}%
+                                        </p>
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleDeletePreset(preset.name)
+                                        }
+                                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-all flex-shrink-0"
+                                        title="Delete preset"
+                                      >
+                                        <X className="h-4 w-4 text-red-600" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-6">
+                            <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-medium text-foreground">
+                                  Yield
+                                </Label>
+                                <span className="text-2xl font-bold tabular-nums text-primary">
+                                  {yieldWeight}%
+                                </span>
+                              </div>
+                              <Slider
+                                value={[yieldWeight]}
+                                onValueChange={handleYieldChange}
+                                min={0}
+                                max={100}
+                                step={5}
+                                className="w-full"
+                              />
+                            </div>
+
+                            <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-medium text-foreground">
+                                  Dividend Volatility Index (DVI)
+                                </Label>
+                                <span className="text-2xl font-bold tabular-nums text-primary">
+                                  {volatilityWeight ?? 0}%
+                                </span>
+                              </div>
+                              <Slider
+                                value={[volatilityWeight ?? 0]}
+                                onValueChange={handleStdDevChange}
+                                min={0}
+                                max={100}
+                                step={5}
+                                className="w-full"
+                              />
+                            </div>
+
+                            <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-medium text-foreground">
+                                  Total Return
+                                </Label>
+                                <span className="text-2xl font-bold tabular-nums text-primary">
+                                  {totalReturnWeight}%
+                                </span>
+                              </div>
+                              <Slider
+                                value={[totalReturnWeight]}
+                                onValueChange={handleTotalReturnChange}
+                                min={0}
+                                max={100}
+                                step={5}
+                                className="w-full"
+                              />
+                              <div className="flex gap-2 mt-2">
                                 <button
-                                  onClick={() => setShowTotalReturns(true)}
-                                  className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${showTotalReturns
-                                    ? "text-white"
-                                    : "text-slate-600 hover:text-slate-900"
+                                  onClick={() => handleTimeframeChange("3mo")}
+                                  className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "3mo"
+                                    ? "bg-primary text-white"
+                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
                                     }`}
                                 >
-                                  Total Returns
+                                  3 Mo
                                 </button>
                                 <button
-                                  onClick={() => setShowTotalReturns(false)}
-                                  className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${!showTotalReturns
-                                    ? "text-white"
-                                    : "text-slate-600 hover:text-slate-900"
+                                  onClick={() => handleTimeframeChange("6mo")}
+                                  className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "6mo"
+                                    ? "bg-primary text-white"
+                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
                                     }`}
                                 >
-                                  Price Returns
+                                  6 Mo
+                                </button>
+                                <button
+                                  onClick={() => handleTimeframeChange("12mo")}
+                                  className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "12mo"
+                                    ? "bg-primary text-white"
+                                    : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                                    }`}
+                                >
+                                  12 Mo
                                 </button>
                               </div>
-                              {/* Favorites - Rightmost */}
-                              <Button
-                                variant={showFavoritesOnly ? "default" : "outline"}
-                                size="sm"
-                                onClick={() =>
-                                  setShowFavoritesOnly(!showFavoritesOnly)
-                                }
-                                className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center ${showFavoritesOnly
-                                  ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
-                                  : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                                  }`}
-                              >
-                                <Star
-                                  className={`h-4 w-4 mr-2 ${showFavoritesOnly
-                                    ? "fill-white"
-                                    : "fill-yellow-400"
+                            </div>
+
+                            <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-white">
+                              <span className="text-base font-semibold text-muted-foreground">
+                                Total Weight
+                              </span>
+                              <div className="flex items-center gap-3">
+                                <span
+                                  className={`text-3xl font-bold tabular-nums ${isValid ? "text-primary" : "text-destructive"
                                     }`}
-                                />
-                                {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
-                                {favorites.size > 0 && `(${favorites.size})`}
+                                >
+                                  {isNaN(totalWeight) ? 0 : totalWeight}%
+                                </span>
+                                {isValid ? (
+                                  <span className="text-sm px-3 py-1.5 rounded-full bg-green-100 text-green-700 font-medium border border-green-300">
+                                    Valid
+                                  </span>
+                                ) : (
+                                  <span className="text-sm px-3 py-1.5 rounded-full bg-red-100 text-red-700 font-medium border border-red-300">
+                                    Not Valid
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 pt-4 border-t">
+                            {/* Save Preset Dialog */}
+                            {showPresetSaveDialog ? (
+                              <div className="p-4 rounded-lg border-2 border-primary bg-primary/5 space-y-3">
+                                <Label className="text-sm font-semibold text-foreground">
+                                  Save Current Settings as Preset
+                                </Label>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={newPresetName}
+                                    onChange={(e) =>
+                                      setNewPresetName(e.target.value)
+                                    }
+                                    placeholder="Enter preset name..."
+                                    className="flex-1 border-2"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSavePreset();
+                                      if (e.key === "Escape") {
+                                        setShowPresetSaveDialog(false);
+                                        setNewPresetName("");
+                                      }
+                                    }}
+                                    autoFocus
+                                  />
+                                  <Button
+                                    onClick={handleSavePreset}
+                                    size="sm"
+                                    disabled={!newPresetName.trim() || !isValid}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    onClick={() => {
+                                      setShowPresetSaveDialog(false);
+                                      setNewPresetName("");
+                                    }}
+                                    size="sm"
+                                    variant="outline"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                onClick={() => setShowPresetSaveDialog(true)}
+                                className="w-full border-2 border-dashed border-primary text-primary hover:bg-primary/10 hover:text-primary"
+                                disabled={!isValid}
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Save as Preset
+                              </Button>
+                            )}
+
+                            <div className="flex items-center gap-3">
+                              <Button
+                                variant="outline"
+                                onClick={resetToDefaults}
+                                className="flex-1 border-2"
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Reset to Defaults
+                              </Button>
+                              <Button
+                                onClick={applyRankings}
+                                className="flex-1"
+                                disabled={!isValid}
+                              >
+                                Apply Rankings
                               </Button>
                             </div>
                           </div>
                         </div>
-
-                        <div className="flex-1 min-h-0 flex flex-col">
-                          <div className="flex-1 min-h-0 overflow-auto">
-                            <table className="w-full caption-bottom text-xs min-w-max border-collapse">
-                              <thead className="sticky top-0 z-[100] bg-slate-50 shadow-sm border-b border-slate-200">
-                                <tr className="bg-slate-50">
-                                  <th
-                                    colSpan={14}
-                                    className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm border-r-2 border-slate-300"
-                                  >
-                                    ETF DETAILS
-                                  </th>
-                                  <th
-                                    colSpan={returnColumns.length}
-                                    className="h-7 px-1.5 text-center align-middle font-bold bg-primary/10 text-primary text-sm"
-                                  >
-                                    TOTAL RETURNS (DRIP)
-                                  </th>
-                                </tr>
-                                <tr className="bg-slate-50">
-                                  <th className="h-6 px-1 text-center sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
-                                    <UITooltip delayDuration={200}>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          type="button"
-                                          className="flex items-center justify-center w-full h-full hover:bg-slate-100 rounded transition-colors"
-                                          aria-label="Favorites help"
-                                        >
-                                          <Info className="h-5 w-5 mx-auto text-slate-600 hover:text-primary transition-colors" />
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                        side="top"
-                                        sideOffset={8}
-                                        className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[200px]"
-                                      >
-                                        <p className="text-center">Click the star icon in any row to add ETFs to your favorites</p>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  </th>
-                                  <th className="h-6 px-1 text-left sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs">
-                                    <SortButton field="symbol">Symbol</SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-left bg-slate-50 text-xs">
-                                    <SortButton field="issuer">Issuer</SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-left bg-slate-50 text-xs">
-                                    <SortButton field="description">
-                                      Description
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="payDay">
-                                      <div className="whitespace-normal leading-tight">
-                                        Pay
-                                        <br />
-                                        Day
-                                      </div>
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="ipoPrice">
-                                      <div className="whitespace-normal leading-tight">
-                                        IPO
-                                        <br />
-                                        Price
-                                      </div>
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="price">Price</SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="priceChange">
-                                      <div className="whitespace-normal leading-tight">
-                                        Price
-                                        <br />
-                                        Chg
-                                      </div>
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="dividend">Div</SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="numPayments">
-                                      # Pmt
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="annualDividend">
-                                      <div className="whitespace-normal leading-tight">
-                                        Annual
-                                        <br />
-                                        Div
-                                      </div>
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <SortButton field="forwardYield">
-                                      Yield
-                                    </SortButton>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs">
-                                    <UITooltip delayDuration={200}>
-                                      <TooltipTrigger asChild>
-                                        <div>
-                                          <SortButton field="standardDeviation">
-                                            DVI
-                                          </SortButton>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                        side="top"
-                                        sideOffset={8}
-                                        className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[300px]"
-                                      >
-                                        <p>Dividend Volatility Index is computed using the Coefficient of Variation (CV) with Adjusted Dividends that have been annualized to normalize for frequency changes</p>
-                                      </TooltipContent>
-                                    </UITooltip>
-                                  </th>
-                                  <th className="h-6 px-1 text-center bg-slate-50 text-xs border-r-2 border-slate-300">
-                                    {isGuest ? (
-                                      <button
-                                        onClick={() => setShowUpgradeModal(true)}
-                                        className="flex items-center justify-center gap-1 w-full hover:bg-slate-100 rounded px-2 py-1 transition-colors"
-                                        title="Upgrade to Premium to access rankings"
-                                      >
-                                        <Lock className="h-3 w-3 text-primary" />
-                                        <span>Rank</span>
-                                      </button>
-                                    ) : (
-                                      <SortButton field="weightedRank">
-                                        Rank
-                                      </SortButton>
-                                    )}
-                                  </th>
-                                  {returnColumns.map((col, index) => (
-                                    <th
-                                      key={col.key as string}
-                                      className={`h-6 px-1 text-center align-middle font-bold text-foreground bg-slate-50 text-xs ${index === returnColumns.length - 1
-                                        ? "border-r-2 border-slate-300"
-                                        : ""
-                                        }`}
-                                    >
-                                      <SortButton field={col.key}>
-                                        <span className="font-bold">
-                                          {col.label}
-                                        </span>
-                                      </SortButton>
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody className="[&_tr:last-child]:border-0">
-                                {displayedETFs.map((etf, idx) => (
-                                  <tr
-                                    key={`${etf.symbol}-${idx}`}
-                                    className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
-                                  >
-                                    <td
-                                      className="py-0.5 px-1 align-middle text-center sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleFavorite(etf.symbol);
-                                      }}
-                                      title="Click to add to Favorites"
-                                    >
-                                      <Star
-                                        className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(etf.symbol)
-                                          ? "fill-yellow-400 text-yellow-400"
-                                          : "text-slate-500 hover:text-yellow-500 hover:scale-110"
-                                          }`}
-                                      />
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleETFClick(etf);
-                                        }}
-                                        className="font-bold text-primary text-xs hover:underline cursor-pointer transition-colors"
-                                        title={`View ${etf.symbol} details and charts`}
-                                      >
-                                        {etf.symbol}
-                                      </button>
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground uppercase font-medium">
-                                      {etf.issuer}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle max-w-[120px] truncate text-xs text-muted-foreground">
-                                      {etf.description}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center text-xs text-muted-foreground">
-                                      {etf.payDay || "N/A"}
-                                    </td>
-                                    <td
-                                      className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${etf.ipoPrice && etf.price > etf.ipoPrice
-                                        ? "bg-green-100 text-green-700"
-                                        : ""
-                                        }`}
-                                    >
-                                      {etf.ipoPrice != null ? `$${etf.ipoPrice.toFixed(2)}` : 'N/A'}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-foreground">
-                                      ${etf.price.toFixed(2)}
-                                    </td>
-                                    <td
-                                      className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${etf.priceChange >= 0
-                                        ? "text-green-600"
-                                        : "text-red-600"
-                                        }`}
-                                    >
-                                      {etf.priceChange >= 0 ? "+" : ""}
-                                      {etf.priceChange.toFixed(2)}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDividendModalSymbol(etf.symbol);
-                                          setShowDividendModal(true);
-                                        }}
-                                        className="tabular-nums text-xs text-primary font-medium hover:underline cursor-pointer transition-colors"
-                                        title="Click to view dividend history"
-                                      >
-                                        {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
-                                      </button>
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                      {etf.numPayments}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                      {(() => {
-                                        // Calculate Annual Div = Div × #Pmt to ensure accuracy
-                                        const calculatedAnnualDiv = etf.dividend && etf.numPayments
-                                          ? etf.dividend * etf.numPayments
-                                          : null;
-                                        // Use calculated value if available, fallback to database value
-                                        const annualDiv = calculatedAnnualDiv ?? etf.annualDividend;
-                                        return annualDiv != null && annualDiv > 0
-                                          ? `$${annualDiv.toFixed(2)}`
-                                          : 'N/A';
-                                      })()}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center font-bold tabular-nums text-primary text-xs">
-                                      {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                      {etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendCV != null ? `${(etf.dividendCV * 100).toFixed(1)}%` : (etf.standardDeviation != null ? `${etf.standardDeviation.toFixed(1)}%` : 'N/A'))}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
-                                      {isGuest ? (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowUpgradeModal(true);
-                                          }}
-                                          className="flex items-center justify-center w-full"
-                                          title="Upgrade to Premium to see rankings"
-                                        >
-                                          <Lock className="h-3 w-3 text-primary" />
-                                        </button>
-                                      ) : (
-                                        <span className="text-primary">
-                                          {etf.weightedRank || 0}
-                                        </span>
-                                      )}
-                                    </td>
-                                    {returnColumns.map((col, index) => {
-                                      const rawValue = etf[col.key];
-                                      const numericValue =
-                                        typeof rawValue === "number"
-                                          ? rawValue
-                                          : undefined;
-                                      const valueClass =
-                                        numericValue === undefined
-                                          ? "text-muted-foreground"
-                                          : numericValue >= 0
-                                            ? "text-green-600"
-                                            : "text-red-600";
-                                      return (
-                                        <td
-                                          key={`${etf.symbol}-${String(col.key)}`}
-                                          className={`py-0.5 px-1 align-middle text-center font-bold tabular-nums text-xs ${valueClass} ${index === returnColumns.length - 1
-                                            ? "border-r-2 border-slate-300"
-                                            : ""
-                                            }`}
-                                        >
-                                          {numericValue !== undefined
-                                            ? `${numericValue > 0 ? "+" : ""
-                                            }${numericValue.toFixed(1)}%`
-                                            : "N/A"}
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {!showAllETFs &&
-                            filteredETFs.length > initialETFCount && (
-                              <div className="mt-3 text-center flex-shrink-0 border-t border-slate-200 pt-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowAllETFs(true)}
-                                  className="border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors text-xs h-8"
-                                >
-                                  Show More (
-                                  {filteredETFs.length - initialETFCount} more
-                                  ETFs)
-                                </Button>
-                              </div>
-                            )}
-                          {showAllETFs &&
-                            filteredETFs.length > initialETFCount && (
-                              <div className="mt-3 text-center flex-shrink-0 border-t border-slate-200 pt-3">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setShowAllETFs(false)}
-                                  className="border-2 border-transparent hover:border-slate-200 hover:bg-slate-100 hover:text-foreground transition-colors text-xs h-8"
-                                >
-                                  Show Less (Show first {initialETFCount} ETFs)
-                                </Button>
-                              </div>
-                            )}
-                        </div>
                       </Card>
                     </div>
-                  </div>
-                )}
-
-                {showRankingPanel && isPremium && (
-                  <div
-                    className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-4"
-                    onClick={() => setShowRankingPanel(false)}
-                  >
-                    <Card
-                      className="w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="p-6 space-y-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-xl font-bold text-foreground">
-                              Customize Rankings
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Personalize your ETF rankings by adjusting the
-                              importance of each metric
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setShowRankingPanel(false)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-
-                        {/* Presets Section */}
-                        {rankingPresets.length > 0 && (
-                          <div className="space-y-3">
-                            <Label className="text-base font-semibold text-foreground">
-                              Saved Presets
-                            </Label>
-                            <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
-                                {rankingPresets.map((preset) => (
-                                  <div
-                                    key={preset.name}
-                                    className="group relative flex items-center gap-2 p-3 rounded-lg border-2 border-slate-200 bg-blue-50 hover:border-primary hover:bg-primary/5 transition-all"
-                                  >
-                                    <button
-                                      onClick={() => handleLoadPreset(preset)}
-                                      className="flex-1 text-left min-w-0"
-                                    >
-                                      <p className="text-sm font-semibold text-foreground truncate">
-                                        {preset.name}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground truncate">
-                                        Y:{preset.weights.yield}% D:
-                                        {preset.weights.volatility ?? preset.weights.stdDev ?? 30}% R:
-                                        {preset.weights.totalReturn}%
-                                      </p>
-                                    </button>
-                                    <button
-                                      onClick={() =>
-                                        handleDeletePreset(preset.name)
-                                      }
-                                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded transition-all flex-shrink-0"
-                                      title="Delete preset"
-                                    >
-                                      <X className="h-4 w-4 text-red-600" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="space-y-6">
-                          <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-medium text-foreground">
-                                Yield
-                              </Label>
-                              <span className="text-2xl font-bold tabular-nums text-primary">
-                                {yieldWeight}%
-                              </span>
-                            </div>
-                            <Slider
-                              value={[yieldWeight]}
-                              onValueChange={handleYieldChange}
-                              min={0}
-                              max={100}
-                              step={5}
-                              className="w-full"
-                            />
-                          </div>
-
-                          <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-medium text-foreground">
-                                Dividend Volatility Index (DVI)
-                              </Label>
-                              <span className="text-2xl font-bold tabular-nums text-primary">
-                                {volatilityWeight ?? 0}%
-                              </span>
-                            </div>
-                            <Slider
-                              value={[volatilityWeight ?? 0]}
-                              onValueChange={handleStdDevChange}
-                              min={0}
-                              max={100}
-                              step={5}
-                              className="w-full"
-                            />
-                          </div>
-
-                          <div className="space-y-3 p-4 rounded-lg bg-slate-50 border border-slate-200">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-medium text-foreground">
-                                Total Return
-                              </Label>
-                              <span className="text-2xl font-bold tabular-nums text-primary">
-                                {totalReturnWeight}%
-                              </span>
-                            </div>
-                            <Slider
-                              value={[totalReturnWeight]}
-                              onValueChange={handleTotalReturnChange}
-                              min={0}
-                              max={100}
-                              step={5}
-                              className="w-full"
-                            />
-                            <div className="flex gap-2 mt-2">
-                              <button
-                                onClick={() => handleTimeframeChange("3mo")}
-                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "3mo"
-                                  ? "bg-primary text-white"
-                                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                                  }`}
-                              >
-                                3 Mo
-                              </button>
-                              <button
-                                onClick={() => handleTimeframeChange("6mo")}
-                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "6mo"
-                                  ? "bg-primary text-white"
-                                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                                  }`}
-                              >
-                                6 Mo
-                              </button>
-                              <button
-                                onClick={() => handleTimeframeChange("12mo")}
-                                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${totalReturnTimeframe === "12mo"
-                                  ? "bg-primary text-white"
-                                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
-                                  }`}
-                              >
-                                12 Mo
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between p-4 border-2 rounded-lg bg-white">
-                            <span className="text-base font-semibold text-muted-foreground">
-                              Total Weight
-                            </span>
-                            <div className="flex items-center gap-3">
-                              <span
-                                className={`text-3xl font-bold tabular-nums ${isValid ? "text-primary" : "text-destructive"
-                                  }`}
-                              >
-                                {isNaN(totalWeight) ? 0 : totalWeight}%
-                              </span>
-                              {isValid ? (
-                                <span className="text-sm px-3 py-1.5 rounded-full bg-green-100 text-green-700 font-medium border border-green-300">
-                                  Valid
-                                </span>
-                              ) : (
-                                <span className="text-sm px-3 py-1.5 rounded-full bg-red-100 text-red-700 font-medium border border-red-300">
-                                  Not Valid
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 pt-4 border-t">
-                          {/* Save Preset Dialog */}
-                          {showPresetSaveDialog ? (
-                            <div className="p-4 rounded-lg border-2 border-primary bg-primary/5 space-y-3">
-                              <Label className="text-sm font-semibold text-foreground">
-                                Save Current Settings as Preset
-                              </Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  value={newPresetName}
-                                  onChange={(e) =>
-                                    setNewPresetName(e.target.value)
-                                  }
-                                  placeholder="Enter preset name..."
-                                  className="flex-1 border-2"
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleSavePreset();
-                                    if (e.key === "Escape") {
-                                      setShowPresetSaveDialog(false);
-                                      setNewPresetName("");
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                                <Button
-                                  onClick={handleSavePreset}
-                                  size="sm"
-                                  disabled={!newPresetName.trim() || !isValid}
-                                >
-                                  Save
-                                </Button>
-                                <Button
-                                  onClick={() => {
-                                    setShowPresetSaveDialog(false);
-                                    setNewPresetName("");
-                                  }}
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              onClick={() => setShowPresetSaveDialog(true)}
-                              className="w-full border-2 border-dashed border-primary text-primary hover:bg-primary/10 hover:text-primary"
-                              disabled={!isValid}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Save as Preset
-                            </Button>
-                          )}
-
-                          <div className="flex items-center gap-3">
-                            <Button
-                              variant="outline"
-                              onClick={resetToDefaults}
-                              className="flex-1 border-2"
-                            >
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Reset to Defaults
-                            </Button>
-                            <Button
-                              onClick={applyRankings}
-                              className="flex-1"
-                              disabled={!isValid}
-                            >
-                              Apply Rankings
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Only use UpgradeToPremiumModal for upgrade prompts */}
-              </>
-            )}
-          </div>
-        </div>
-      </main>
-
-      <UpgradeToPremiumModal
-        open={showUpgradeModal}
-        onOpenChange={setShowUpgradeModal}
-      />
-
-      {/* Dividend History Modal */}
-      <Dialog open={showDividendModal} onOpenChange={setShowDividendModal}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {dividendModalSymbol && (
-                <>
-                  {dividendModalSymbol.toUpperCase()} - Dividend Yield & Payments
-                  {etfData.find(e => e.symbol === dividendModalSymbol) ? (
-                    <p className="text-sm font-normal text-muted-foreground mt-1">
-                      {etfData.find(e => e.symbol === dividendModalSymbol)?.name}
-                    </p>
-                  ) : (
-                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                      <strong>Note:</strong> This ETF is not currently in our database, but dividend history may still be available.
-                    </div>
                   )}
+
+                  {/* Only use UpgradeToPremiumModal for upgrade prompts */}
                 </>
               )}
-            </DialogTitle>
-          </DialogHeader>
-          {dividendModalSymbol && (
-            <DividendHistory
-              ticker={dividendModalSymbol}
-              annualDividend={etfData.find(e => e.symbol === dividendModalSymbol)?.annualDividend ?? null}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-      <Footer />
+            </div>
+          </div>
+        </main>
+
+        <UpgradeToPremiumModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+        />
+
+        {/* Dividend History Modal */}
+        <Dialog open={showDividendModal} onOpenChange={setShowDividendModal}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {dividendModalSymbol && (
+                  <>
+                    {dividendModalSymbol.toUpperCase()} - Dividend Yield & Payments
+                    {etfData.find(e => e.symbol === dividendModalSymbol) ? (
+                      <p className="text-sm font-normal text-muted-foreground mt-1">
+                        {etfData.find(e => e.symbol === dividendModalSymbol)?.name}
+                      </p>
+                    ) : (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                        <strong>Note:</strong> This ETF is not currently in our database, but dividend history may still be available.
+                      </div>
+                    )}
+                  </>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            {dividendModalSymbol && (
+              <DividendHistory
+                ticker={dividendModalSymbol}
+                annualDividend={etfData.find(e => e.symbol === dividendModalSymbol)?.annualDividend ?? null}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+        <Footer />
+      </div>
     </div>
   );
 }
