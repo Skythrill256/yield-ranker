@@ -147,37 +147,43 @@ export default function Dashboard() {
   useEffect(() => {
     const loadETFData = async () => {
       setIsLoadingData(true);
-      const result = await fetchETFDataWithMetadata();
-      const seen = new Set<string>();
-      const deduplicated = result.etfs.filter((etf) => {
-        if (seen.has(etf.symbol)) {
-          return false;
-        }
-        seen.add(etf.symbol);
-        return true;
-      });
-      setEtfData(deduplicated);
-
-      // Clean up favorites to remove symbols that no longer exist
-      cleanupFavorites(deduplicated.map(etf => etf.symbol));
-
-      // Format the last updated timestamp
-      if (result.lastUpdatedTimestamp) {
-        const date = new Date(result.lastUpdatedTimestamp);
-        const formatted = date.toLocaleString("en-US", {
-          month: "numeric",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
+      try {
+        const result = await fetchETFDataWithMetadata();
+        const seen = new Set<string>();
+        const deduplicated = result.etfs.filter((etf) => {
+          if (seen.has(etf.symbol)) {
+            return false;
+          }
+          seen.add(etf.symbol);
+          return true;
         });
-        setLastDataUpdate(formatted);
-      } else if (result.lastUpdated) {
-        setLastDataUpdate(result.lastUpdated);
-      }
+        setEtfData(deduplicated);
 
-      setIsLoadingData(false);
+        // Clean up favorites to remove symbols that no longer exist
+        cleanupFavorites(deduplicated.map(etf => etf.symbol));
+
+        // Format the last updated timestamp
+        if (result.lastUpdatedTimestamp) {
+          const date = new Date(result.lastUpdatedTimestamp);
+          const formatted = date.toLocaleString("en-US", {
+            month: "numeric",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+          setLastDataUpdate(formatted);
+        } else if (result.lastUpdated) {
+          setLastDataUpdate(result.lastUpdated);
+        }
+      } catch (error) {
+        console.error("[Dashboard] Failed to load ETF data:", error);
+        // Set empty array so the page doesn't stay in a broken state
+        setEtfData([]);
+      } finally {
+        setIsLoadingData(false);
+      }
     };
 
     const loadSiteSettings = async () => {
