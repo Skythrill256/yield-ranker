@@ -2234,7 +2234,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col min-h-0">
         <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
           <div className="flex items-center justify-between w-full gap-4">
             <div className="flex items-center gap-3">
@@ -2271,7 +2271,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto min-h-0">
           <div className="h-full p-2 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3">
             {adminSection === "users" ? (
               <div className="flex-1 overflow-auto">
