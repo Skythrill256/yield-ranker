@@ -452,12 +452,16 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
       const ticker = String(symbolValue).trim().toUpperCase();
       
       let divAmount: number | null = null;
+      let divAmountStr: string | null = null;
+      
       if (typeof divValue === 'number') {
         divAmount = divValue;
+        divAmountStr = divValue.toString();
       } else {
         const str = String(divValue).trim();
         if (str && str !== 'n/a' && str !== 'N/A' && str !== '' && str !== '-') {
           const cleaned = str.replace(/[^0-9.-]/g, '');
+          divAmountStr = cleaned;
           const parsed = parseFloat(cleaned);
           if (!isNaN(parsed) && isFinite(parsed)) {
             divAmount = parsed;
@@ -471,7 +475,7 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
         continue;
       }
 
-      logger.info('Upload', `Processing ${ticker}: dividend=${divAmount} (exact value: ${divValue}, type: ${typeof divValue})`);
+      logger.info('Upload', `Processing ${ticker}: dividend=${divAmountStr} (raw: ${divValue}, parsed: ${divAmount})`);
 
       let exDate: string | null = null;
       let declareDate: string | null = null;
@@ -536,20 +540,22 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
         declareDate = now.toISOString().split('T')[0];
       }
 
+      const finalDivAmount = divAmountStr ? parseFloat(divAmountStr) : divAmount;
       records.push({
         ticker,
         ex_date: exDate,
         pay_date: payDate,
         record_date: null,
         declare_date: declareDate,
-        div_cash: divAmount,
-        adj_amount: divAmount,
+        div_cash: finalDivAmount,
+        adj_amount: finalDivAmount,
         scaled_amount: null,
         split_factor: 1,
         div_type: 'Cash',
         frequency: null,
         description: 'Manual upload - Early announcement',
         currency: 'USD',
+        _rawDivValue: divAmountStr || String(finalDivAmount),
       });
     }
 
@@ -564,9 +570,14 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
 
     logger.info('Upload', `Upserting ${records.length} manual dividend records`);
 
+    const recordsToSave = records.map((r: any) => {
+      const { _rawDivValue, ...recordWithoutRaw } = r;
+      return recordWithoutRaw;
+    });
+
     const { error: upsertError } = await supabase
       .from('dividends_detail')
-      .upsert(records, {
+      .upsert(recordsToSave, {
         onConflict: 'ticker,ex_date',
         ignoreDuplicates: false,
       });
@@ -581,11 +592,15 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
     }
 
     const tickersToRecalc = [...new Set(records.map(r => r.ticker))];
-    const uploadedDividends = new Map<string, { amount: number; exDate: string }>();
-    records.forEach(r => {
+    const uploadedDividends = new Map<string, { amount: number; exDate: string; rawValue: string }>();
+    records.forEach((r: any) => {
       const existing = uploadedDividends.get(r.ticker);
       if (!existing || new Date(r.ex_date) > new Date(existing.exDate)) {
-        uploadedDividends.set(r.ticker, { amount: r.div_cash, exDate: r.ex_date });
+        uploadedDividends.set(r.ticker, { 
+          amount: r.div_cash, 
+          exDate: r.ex_date,
+          rawValue: r._rawDivValue || String(r.div_cash)
+        });
       }
     });
 
@@ -597,6 +612,13 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
       try {
         const uploadedDivData = uploadedDividends.get(ticker);
         const uploadedDiv = uploadedDivData?.amount ?? null;
+        const uploadedDivRaw = uploadedDivData?.rawValue ?? null;
+        
+        if (uploadedDiv === null) {
+          logger.warn('Upload', `No uploaded dividend found for ${ticker}, skipping update`);
+          continue;
+        }
+
         const metrics = await calculateMetrics(ticker);
         const staticData = await supabase
           .from('etf_static')
@@ -607,13 +629,11 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
         const paymentsPerYear = staticData.data?.payments_per_year ?? 12;
         const currentPrice = metrics.currentPrice ?? staticData.data?.price ?? null;
         
-        const lastDividend = uploadedDiv ?? metrics.lastDividend;
-        const annualDividend = lastDividend ? lastDividend * paymentsPerYear : metrics.annualizedDividend;
-        const forwardYield = currentPrice && annualDividend ? (annualDividend / currentPrice) * 100 : metrics.forwardYield;
+        const lastDividend = parseFloat(uploadedDivRaw || String(uploadedDiv));
+        const annualDividend = lastDividend * paymentsPerYear;
+        const forwardYield = currentPrice ? (annualDividend / currentPrice) * 100 : null;
 
-        if (uploadedDiv !== null) {
-          logger.info('Upload', `Using exact uploaded dividend for ${ticker}: ${uploadedDiv} (not recalculated from DB)`);
-        }
+        logger.info('Upload', `Updating ${ticker}: last_dividend=${lastDividend} (raw: ${uploadedDivRaw}), annual_dividend=${annualDividend}, forward_yield=${forwardYield}`);
 
         const { error: updateError } = await supabase
           .from('etf_static')
