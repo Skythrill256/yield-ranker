@@ -246,6 +246,114 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
         });
         return;
       }
+
+      // Automatically fetch data for newly added ETFs
+      logger.info('Upload', `Fetching price/dividend data for ${newTickers.length} newly added ticker(s)...`);
+      const LOOKBACK_DAYS = 365;
+      const priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
+      const dividendStartDate = getDateDaysAgo(LOOKBACK_DAYS);
+
+      for (const record of newTickers) {
+        const ticker = record.ticker;
+        try {
+          logger.info('Upload', `Fetching data for ${ticker}...`);
+          
+          // Fetch and insert prices
+          const prices = await fetchPriceHistory(ticker, priceStartDate);
+          if (prices.length > 0) {
+            const priceRecords = prices.map(p => ({
+              ticker: ticker.toUpperCase(),
+              date: p.date.split('T')[0],
+              open: p.open,
+              high: p.high,
+              low: p.low,
+              close: p.close,
+              adj_close: p.adjClose,
+              volume: p.volume,
+              div_cash: p.divCash || 0,
+              split_factor: p.splitFactor || 1,
+            }));
+
+            const { error: priceError } = await supabase
+              .from('prices_daily')
+              .upsert(priceRecords, {
+                onConflict: 'ticker,date',
+                ignoreDuplicates: false,
+              });
+
+            if (priceError) {
+              logger.warn('Upload', `Failed to insert prices for ${ticker}: ${priceError.message}`);
+            } else {
+              logger.info('Upload', `Inserted ${priceRecords.length} price records for ${ticker}`);
+            }
+          }
+
+          // Fetch and insert dividends
+          const dividends = await fetchDividendHistory(ticker, dividendStartDate);
+          if (dividends.length > 0) {
+            const dividendRecords = dividends.map(d => ({
+              ticker: ticker.toUpperCase(),
+              ex_date: d.date.split('T')[0],
+              record_date: d.recordDate?.split('T')[0] || null,
+              pay_date: d.paymentDate?.split('T')[0] || null,
+              declare_date: d.declarationDate?.split('T')[0] || null,
+              div_cash: d.dividend,
+              adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
+              scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
+              split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+            }));
+
+            const { error: divError } = await supabase
+              .from('dividends_detail')
+              .upsert(dividendRecords, {
+                onConflict: 'ticker,ex_date',
+                ignoreDuplicates: false,
+              });
+
+            if (divError) {
+              logger.warn('Upload', `Failed to insert dividends for ${ticker}: ${divError.message}`);
+            } else {
+              logger.info('Upload', `Inserted ${dividendRecords.length} dividend records for ${ticker}`);
+            }
+          }
+
+          // Calculate and update metrics
+          logger.info('Upload', `Calculating metrics for ${ticker}...`);
+          const metrics = await calculateMetrics(ticker);
+          await supabase
+            .from('etf_static')
+            .update({
+              price: metrics.currentPrice,
+              price_change: metrics.priceChange,
+              price_change_pct: metrics.priceChangePercent,
+              last_dividend: metrics.lastDividend,
+              annual_dividend: metrics.annualizedDividend,
+              forward_yield: metrics.forwardYield,
+              dividend_sd: metrics.dividendSD,
+              dividend_cv: metrics.dividendCV,
+              dividend_cv_percent: metrics.dividendCVPercent,
+              dividend_volatility_index: metrics.dividendVolatilityIndex,
+              week_52_high: metrics.week52High,
+              week_52_low: metrics.week52Low,
+              tr_drip_3y: metrics.totalReturnDrip?.['3Y'],
+              tr_drip_12m: metrics.totalReturnDrip?.['1Y'],
+              tr_drip_6m: metrics.totalReturnDrip?.['6M'],
+              tr_drip_3m: metrics.totalReturnDrip?.['3M'],
+              tr_drip_1m: metrics.totalReturnDrip?.['1M'],
+              tr_drip_1w: metrics.totalReturnDrip?.['1W'],
+              price_return_3y: metrics.priceReturn?.['3Y'],
+              price_return_12m: metrics.priceReturn?.['1Y'],
+              price_return_6m: metrics.priceReturn?.['6M'],
+              price_return_3m: metrics.priceReturn?.['3M'],
+              price_return_1m: metrics.priceReturn?.['1M'],
+              price_return_1w: metrics.priceReturn?.['1W'],
+            })
+            .eq('ticker', ticker);
+          logger.info('Upload', `✓ ${ticker} complete - Price: $${metrics.currentPrice?.toFixed(2) || 'N/A'}, Yield: ${metrics.forwardYield?.toFixed(2) || 'N/A'}%, DVI: ${metrics.dividendCVPercent?.toFixed(1) || 'N/A'}%`);
+        } catch (error) {
+          logger.warn('Upload', `Failed to fetch/calculate data for ${ticker}: ${(error as Error).message}`);
+        }
+      }
     }
 
     if (updatedTickers.length > 0) {
