@@ -426,7 +426,8 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield }: D
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
       <div className="flex gap-1 mb-4 flex-wrap">
         {(['1Y', '3Y', '5Y', '10Y', '20Y', 'ALL'] as TimeRange[]).map((range) => (
