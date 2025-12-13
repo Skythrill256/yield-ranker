@@ -117,13 +117,26 @@ const DividendHistoryPage = () => {
             </div>
             {etf.symbol && (
               <div className="mb-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
-                  <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
+                <div className="flex items-baseline justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl sm:text-3xl font-bold">{etf.symbol}</span>
+                      <span className="text-base sm:text-lg text-muted-foreground">{etf.name}</span>
+                    </div>
+                    {etf.price != null && (
+                      <div className="text-xl sm:text-2xl font-bold mt-1">${etf.price.toFixed(2)}</div>
+                    )}
+                  </div>
+                  {etf.forwardYield != null && typeof etf.forwardYield === 'number' && !isNaN(etf.forwardYield) && (
+                    <div className="text-right">
+                      <div className="text-xs sm:text-sm text-muted-foreground mb-1">Yield</div>
+                      <div className="text-2xl sm:text-3xl font-bold text-primary">{etf.forwardYield.toFixed(2)}%</div>
+                      {etf.annualDividend != null && typeof etf.annualDividend === 'number' && !isNaN(etf.annualDividend) && (
+                        <div className="text-xs text-muted-foreground mt-1">Forward Yield</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {etf.price != null && (
-                  <div className="text-xl sm:text-2xl font-bold mt-1">${etf.price.toFixed(2)}</div>
-                )}
                 {lastUpdated && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                     <Clock className="h-3 w-3" />

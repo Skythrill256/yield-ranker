@@ -383,25 +383,8 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield }: D
   return (
     <Card className="p-3 sm:p-4 md:p-6">
 
-      <div className="mb-4 sm:mb-6 space-y-4">
-        {forwardYield != null && typeof forwardYield === 'number' && !isNaN(forwardYield) && (
-          <div className="p-4 bg-gradient-to-r from-green-50 to-slate-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-sm sm:text-base font-bold text-foreground">Yield</h3>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-bold text-primary">{forwardYield.toFixed(2)}%</span>
-              <span className="text-xs sm:text-sm text-muted-foreground">Forward Yield</span>
-            </div>
-            {annualDividend != null && typeof annualDividend === 'number' && !isNaN(annualDividend) && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Based on annual dividend of ${annualDividend.toFixed(4)}
-              </p>
-            )}
-          </div>
-        )}
-
-        {dvi != null && typeof dvi === 'number' && !isNaN(dvi) && (
+      {dvi != null && typeof dvi === 'number' && !isNaN(dvi) && (
+        <div className="mb-4 sm:mb-6">
           <div className="p-4 bg-gradient-to-r from-blue-50 to-slate-50 border border-blue-200 rounded-lg">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
@@ -444,7 +427,6 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield }: D
             </div>
           </div>
         )}
-      </div>
 
       <div className="flex gap-1 mb-4 flex-wrap">
         {(['1Y', '3Y', '5Y', '10Y', '20Y', 'ALL'] as TimeRange[]).map((range) => (
