@@ -215,13 +215,13 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           ticker: record.ticker,
           updated_at: now,
         };
-        
+
         if (record.issuer !== null && record.issuer !== undefined) updateRecord.issuer = record.issuer;
         if (record.description !== null && record.description !== undefined) updateRecord.description = record.description;
         if (record.pay_day_text !== null && record.pay_day_text !== undefined) updateRecord.pay_day_text = record.pay_day_text;
         if (record.payments_per_year !== null && record.payments_per_year !== undefined) updateRecord.payments_per_year = record.payments_per_year;
         if (record.ipo_price !== null && record.ipo_price !== undefined) updateRecord.ipo_price = record.ipo_price;
-        
+
         updatedTickers.push(updateRecord);
       } else {
         newTickers.push(record);
@@ -234,7 +234,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       const { error: insertError } = await supabase
         .from('etf_static')
         .insert(newTickers);
-      
+
       if (insertError) {
         cleanupFile(filePath);
         res.status(500).json({
@@ -251,7 +251,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           .from('etf_static')
           .update(updateRecord)
           .eq('ticker', updateRecord.ticker);
-        
+
         if (updateError) {
           logger.warn('Upload', `Failed to update ${updateRecord.ticker}: ${updateError.message}`);
         }
@@ -280,7 +280,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
 
     if (dividendUpdates.length > 0) {
       logger.info('Upload', `Updating dividend amounts for ${dividendUpdates.length} ticker(s)`);
-      
+
       for (const { ticker, divAmount } of dividendUpdates) {
         // Get the most recent dividend for this ticker (from Tiingo)
         const { data: recentDividends } = await supabase
@@ -348,7 +348,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       skipped: skippedRows,
       dividendsUpdated,
       message: `Successfully processed ${records.length} ticker(s): ${newTickers.length} added, ${updatedTickers.length} updated${dividendsUpdated > 0 ? `, ${dividendsUpdated} dividend amount(s) updated` : ''}`,
-      note: dividendUpdates.length > 0 
+      note: dividendUpdates.length > 0
         ? 'Dividend amounts updated while preserving all Tiingo data (dates, split adjustments, etc.)'
         : 'Run "npm run seed:history" to fetch price/dividend data from Tiingo',
     });
@@ -469,10 +469,10 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
       }
 
       const ticker = String(symbolValue).trim().toUpperCase();
-      
+
       let divAmount: number | null = null;
       let divAmountStr: string | null = null;
-      
+
       if (typeof divValue === 'number') {
         divAmount = divValue;
         divAmountStr = divValue.toString();
@@ -615,8 +615,8 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
     records.forEach((r: any) => {
       const existing = uploadedDividends.get(r.ticker);
       if (!existing || new Date(r.ex_date) > new Date(existing.exDate)) {
-        uploadedDividends.set(r.ticker, { 
-          amount: r.div_cash, 
+        uploadedDividends.set(r.ticker, {
+          amount: r.div_cash,
           exDate: r.ex_date,
           rawValue: r._rawDivValue || String(r.div_cash)
         });
@@ -632,7 +632,7 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
         const uploadedDivData = uploadedDividends.get(ticker);
         const uploadedDiv = uploadedDivData?.amount ?? null;
         const uploadedDivRaw = uploadedDivData?.rawValue ?? null;
-        
+
         if (uploadedDiv === null) {
           logger.warn('Upload', `No uploaded dividend found for ${ticker}, skipping update`);
           continue;
@@ -647,7 +647,7 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
 
         const paymentsPerYear = staticData.data?.payments_per_year ?? 12;
         const currentPrice = metrics.currentPrice ?? staticData.data?.price ?? null;
-        
+
         const lastDividend = parseFloat(uploadedDivRaw || String(uploadedDiv));
         const annualDividend = lastDividend * paymentsPerYear;
         const forwardYield = currentPrice ? (annualDividend / currentPrice) * 100 : null;
@@ -1282,7 +1282,7 @@ router.delete('/:ticker', async (req: Request, res: Response): Promise<void> => 
 router.delete('/batch', async (req: Request, res: Response): Promise<void> => {
   try {
     const { tickers } = req.body;
-    
+
     if (!Array.isArray(tickers) || tickers.length === 0) {
       res.status(400).json({
         error: 'Invalid request',

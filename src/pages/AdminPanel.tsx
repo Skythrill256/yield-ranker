@@ -121,10 +121,10 @@ const AdminPanel = () => {
       const response = await fetch(`${apiUrl}/api/etfs`);
       if (response.ok) {
         const data = await response.json();
-        const tickers = Array.isArray(data) 
+        const tickers = Array.isArray(data)
           ? data.map((etf: any) => etf.ticker || etf.symbol).filter(Boolean).sort()
           : (data.data || []).map((etf: any) => etf.ticker || etf.symbol).filter(Boolean).sort();
-        setAvailableTickers([...new Set(tickers)]);
+        setAvailableTickers([...new Set<string>(tickers)]);
       }
     } catch (error) {
       console.error("Failed to load tickers:", error);
@@ -219,19 +219,19 @@ const AdminPanel = () => {
         { key: "guest_message", value: settingsValues["guest_message"] || "" },
         { key: "premium_message", value: settingsValues["premium_message"] || "" },
       ];
-      
+
       // Save message settings first
       for (const { key, value } of messagesToSave) {
         await updateSiteSetting(key, value, profile?.id ?? null);
       }
-      
+
       // Save all other settings
       for (const [key, value] of Object.entries(settingsValues)) {
         if (key !== "guest_message" && key !== "premium_message") {
           await updateSiteSetting(key, value as string, profile?.id ?? null);
         }
       }
-      
+
       toast({
         title: "Settings saved",
         description: "Site settings have been updated successfully",
@@ -249,7 +249,7 @@ const AdminPanel = () => {
   const filteredAndSortedProfiles = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
     let filtered = profiles;
-    
+
     if (term) {
       filtered = profiles.filter((profile) => {
         const name = profile.display_name ?? "";
@@ -276,7 +276,7 @@ const AdminPanel = () => {
 
         // Handle different data types properly
         let comparison: number;
-        
+
         // Check if this is a date field (created_at, updated_at, last_login)
         if (sortField === 'created_at' || sortField === 'updated_at' || sortField === 'last_login') {
           const aDate = new Date(aValue as string).getTime();
@@ -319,7 +319,7 @@ const AdminPanel = () => {
     const key = `${profile.id}-role`;
     setUpdatingId(key);
     try {
-      const updated = await updateProfile(profile.id, { 
+      const updated = await updateProfile(profile.id, {
         role: nextRole,
         is_premium: nextRole === "admin" ? true : true // Always true for both admin and premium
       });
@@ -461,7 +461,7 @@ const AdminPanel = () => {
         throw new Error(result.error || "Upload failed");
       }
 
-      const statusMsg = result.dividendsUpdated > 0 
+      const statusMsg = result.dividendsUpdated > 0
         ? `Success! Processed ${result.count} ETFs (${result.added} added, ${result.updated} updated) and updated ${result.dividendsUpdated} dividend amount(s)`
         : `Success! Processed ${result.count} ETFs (${result.added} added, ${result.updated} updated)`;
       setUploadStatus(statusMsg);
@@ -585,16 +585,13 @@ const AdminPanel = () => {
         />
       )}
       <aside
-        className={`${
-          sidebarCollapsed ? "w-16" : "w-64"
-        } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${
-          mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
-        }`}
+        className={`${sidebarCollapsed ? "w-16" : "w-64"
+          } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
+          }`}
       >
         <div
-          className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${
-            sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
-          }`}
+          className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
+            }`}
         >
           {!sidebarCollapsed && <Logo simple />}
           <button
@@ -616,17 +613,15 @@ const AdminPanel = () => {
           </button>
         </div>
         <nav
-          className={`flex-1 overflow-y-auto ${
-            sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
-          }`}
+          className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
+            }`}
         >
           <button
             onClick={() => navigate("/dashboard")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
             title={sidebarCollapsed ? "Dashboard" : ""}
           >
             <BarChart3 className="w-5 h-5" />
@@ -634,15 +629,13 @@ const AdminPanel = () => {
           </button>
           <button
             onClick={() => navigate("/admin/users")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium ${
-              activeTab === "users"
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium ${activeTab === "users"
                 ? "bg-primary text-white"
                 : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            } transition-colors`}
+              } transition-colors`}
             title={sidebarCollapsed ? "Users" : ""}
           >
             <Users className="w-5 h-5" />
@@ -650,15 +643,13 @@ const AdminPanel = () => {
           </button>
           <button
             onClick={() => navigate("/admin/data")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium ${
-              activeTab === "etf-data"
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium ${activeTab === "etf-data"
                 ? "bg-primary text-white"
                 : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            } transition-colors`}
+              } transition-colors`}
             title={sidebarCollapsed ? "ETF Data" : ""}
           >
             <Database className="w-5 h-5" />
@@ -666,15 +657,13 @@ const AdminPanel = () => {
           </button>
           <button
             onClick={() => navigate("/admin/settings")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium ${
-              activeTab === "site-settings"
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium ${activeTab === "site-settings"
                 ? "bg-primary text-white"
                 : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-            } transition-colors`}
+              } transition-colors`}
             title={sidebarCollapsed ? "Site Settings" : ""}
           >
             <Globe className="w-5 h-5" />
@@ -682,11 +671,10 @@ const AdminPanel = () => {
           </button>
           <button
             onClick={() => navigate("/settings")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
             title={sidebarCollapsed ? "Settings" : ""}
           >
             <Settings className="w-5 h-5" />
@@ -694,17 +682,15 @@ const AdminPanel = () => {
           </button>
         </nav>
         <div
-          className={`border-t border-slate-200 flex-shrink-0 ${
-            sidebarCollapsed ? "p-2" : "p-4"
-          }`}
+          className={`border-t border-slate-200 flex-shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"
+            }`}
         >
           <button
             onClick={signOutAndRedirect}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
-                ? "justify-center px-0 py-2.5"
-                : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
             title={sidebarCollapsed ? "Logout" : ""}
           >
             <LogOut className="w-5 h-5" />
@@ -728,8 +714,8 @@ const AdminPanel = () => {
                 {activeTab === "users"
                   ? "User Administration"
                   : activeTab === "etf-data"
-                  ? "ETF Data Management"
-                  : "Site Settings"}
+                    ? "ETF Data Management"
+                    : "Site Settings"}
               </h1>
             </div>
             <div className="flex items-center gap-3">
@@ -812,10 +798,10 @@ const AdminPanel = () => {
                           variant="outline"
                           onClick={() => {
                             if (profiles.length === 0) return;
-                            
+
                             const emails = profiles.map((p) => p.email).filter(Boolean);
                             const csvContent = emails.join("\n");
-                            
+
                             const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
                             const link = document.createElement("a");
                             const url = URL.createObjectURL(blob);
@@ -827,7 +813,7 @@ const AdminPanel = () => {
                             link.click();
                             document.body.removeChild(link);
                             URL.revokeObjectURL(url);
-                            
+
                             toast({
                               title: "CSV Downloaded",
                               description: `Exported ${emails.length} emails to CSV file.`,
@@ -846,9 +832,8 @@ const AdminPanel = () => {
                           className="h-10 border-2 w-full sm:w-auto"
                         >
                           <RefreshCw
-                            className={`w-4 h-4 sm:mr-2 ${
-                              loading ? "animate-spin" : ""
-                            }`}
+                            className={`w-4 h-4 sm:mr-2 ${loading ? "animate-spin" : ""
+                              }`}
                           />
                           <span className="hidden sm:inline">Refresh</span>
                         </Button>
@@ -960,11 +945,10 @@ const AdminPanel = () => {
                                   </td>
                                   <td className="px-3 sm:px-4 py-3 text-sm text-foreground whitespace-nowrap">
                                     <span
-                                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                                        profile.role === "admin"
-                                          ? "border-primary/30 bg-primary/10 text-primary"
-                                          : "border-green-300 bg-green-50 text-green-700"
-                                      }`}
+                                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${profile.role === "admin"
+                                        ? "border-primary/30 bg-primary/10 text-primary"
+                                        : "border-green-300 bg-green-50 text-green-700"
+                                        }`}
                                     >
                                       {profile.role === "admin" ? "Admin" : "Premium"}
                                     </span>
@@ -980,11 +964,10 @@ const AdminPanel = () => {
                                   </td>
                                   <td className="px-3 sm:px-4 py-3 text-sm text-foreground whitespace-nowrap">
                                     <span
-                                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                                        profile.preferences?.emailNotifications !== false
-                                          ? "border-green-300 bg-green-50 text-green-700"
-                                          : "border-slate-300 bg-slate-50 text-slate-700"
-                                      }`}
+                                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${profile.preferences?.emailNotifications !== false
+                                        ? "border-green-300 bg-green-50 text-green-700"
+                                        : "border-slate-300 bg-slate-50 text-slate-700"
+                                        }`}
                                     >
                                       {profile.preferences?.emailNotifications !== false ? "ON" : "OFF"}
                                     </span>
@@ -1042,14 +1025,14 @@ const AdminPanel = () => {
               <Card className="border-2 border-slate-200">
                 <div className="p-6 space-y-6">
                   <div>
-                      <h2 className="text-lg font-bold text-foreground mb-2">
-                        Upload DTR Spreadsheet
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
-                        update all ETF data in the system. The file should have a
-                        Sheet1 with the standard DTR format. Optional: Include a "Div" column to update latest dividend amounts (keeps all Tiingo dates and data intact).
-                      </p>
+                    <h2 className="text-lg font-bold text-foreground mb-2">
+                      Upload DTR Spreadsheet
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
+                      update all ETF data in the system. The file should have a
+                      Sheet1 with the standard DTR format. Optional: Include a "Div" column to update latest dividend amounts (keeps all Tiingo dates and data intact).
+                    </p>
                   </div>
 
                   <div className="space-y-4">
@@ -1095,21 +1078,20 @@ const AdminPanel = () => {
                           </Button>
                         </div>
                       </div>
+                    </div>
 
                     {uploadStatus && (
                       <Card
-                        className={`p-4 ${
-                          uploadStatus.startsWith("Error")
-                            ? "bg-red-50 border-red-200"
-                            : "bg-green-50 border-green-200"
-                        }`}
+                        className={`p-4 ${uploadStatus.startsWith("Error")
+                          ? "bg-red-50 border-red-200"
+                          : "bg-green-50 border-green-200"
+                          }`}
                       >
                         <p
-                          className={`text-sm font-medium ${
-                            uploadStatus.startsWith("Error")
-                              ? "text-red-800"
-                              : "text-green-800"
-                          }`}
+                          className={`text-sm font-medium ${uploadStatus.startsWith("Error")
+                            ? "text-red-800"
+                            : "text-green-800"
+                            }`}
                         >
                           {uploadStatus}
                         </p>
@@ -1196,18 +1178,16 @@ const AdminPanel = () => {
                     </div>
                     {deleteETFStatus && (
                       <Card
-                        className={`p-4 mt-4 ${
-                          deleteETFStatus.startsWith("Error")
-                            ? "bg-red-50 border-red-200"
-                            : "bg-green-50 border-green-200"
-                        }`}
+                        className={`p-4 mt-4 ${deleteETFStatus.startsWith("Error")
+                          ? "bg-red-50 border-red-200"
+                          : "bg-green-50 border-green-200"
+                          }`}
                       >
                         <p
-                          className={`text-sm font-medium ${
-                            deleteETFStatus.startsWith("Error")
-                              ? "text-red-800"
-                              : "text-green-800"
-                          }`}
+                          className={`text-sm font-medium ${deleteETFStatus.startsWith("Error")
+                            ? "text-red-800"
+                            : "text-green-800"
+                            }`}
                         >
                           {deleteETFStatus}
                         </p>
@@ -1328,43 +1308,42 @@ const AdminPanel = () => {
                       {siteSettings
                         .filter((s) => s.key !== "guest_message" && s.key !== "premium_message")
                         .map((setting) => (
-                        <div key={setting.key} className="space-y-2">
-                          <label className="block text-sm font-medium text-foreground">
-                            {setting.description || setting.key}
-                          </label>
-                          {setting.key === "data_last_updated" ? (
-                            <Input
-                              type="datetime-local"
-                              value={settingsValues[setting.key] || ""}
-                              onChange={(event) =>
-                                setSettingsValues((prev) => ({
-                                  ...prev,
-                                  [setting.key]: event.target.value,
-                                }))
-                              }
-                              className="border-2"
-                            />
-                          ) : (
-                            <Input
-                              value={settingsValues[setting.key] || ""}
-                              onChange={(event) =>
-                                setSettingsValues((prev) => ({
-                                  ...prev,
-                                  [setting.key]: event.target.value,
-                                }))
-                              }
-                              placeholder={`Enter ${
-                                setting.description || setting.key
-                              }`}
-                              className="border-2"
-                            />
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            Last updated: {formatDate(setting.updated_at)}
-                            {setting.updated_by && ` by ${setting.updated_by}`}
-                          </p>
-                        </div>
-                      ))}
+                          <div key={setting.key} className="space-y-2">
+                            <label className="block text-sm font-medium text-foreground">
+                              {setting.description || setting.key}
+                            </label>
+                            {setting.key === "data_last_updated" ? (
+                              <Input
+                                type="datetime-local"
+                                value={settingsValues[setting.key] || ""}
+                                onChange={(event) =>
+                                  setSettingsValues((prev) => ({
+                                    ...prev,
+                                    [setting.key]: event.target.value,
+                                  }))
+                                }
+                                className="border-2"
+                              />
+                            ) : (
+                              <Input
+                                value={settingsValues[setting.key] || ""}
+                                onChange={(event) =>
+                                  setSettingsValues((prev) => ({
+                                    ...prev,
+                                    [setting.key]: event.target.value,
+                                  }))
+                                }
+                                placeholder={`Enter ${setting.description || setting.key
+                                  }`}
+                                className="border-2"
+                              />
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Last updated: {formatDate(setting.updated_at)}
+                              {setting.updated_by && ` by ${setting.updated_by}`}
+                            </p>
+                          </div>
+                        ))}
 
                       <div className="flex justify-end pt-4 border-t">
                         <Button onClick={handleSaveSettings} className="gap-2">
