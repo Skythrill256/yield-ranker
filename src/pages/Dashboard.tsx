@@ -145,6 +145,7 @@ export default function Dashboard() {
   const isPremium = !!profile;
   const isGuest = !profile;
 
+  // Load ETF data and site settings on initial mount only
   useEffect(() => {
     const loadETFData = async () => {
       console.log("[Dashboard] Starting to load ETF data...");
@@ -162,9 +163,6 @@ export default function Dashboard() {
         });
         console.log("[Dashboard] Deduplicated ETFs:", deduplicated.length);
         setEtfData(deduplicated);
-
-        // Clean up favorites to remove symbols that no longer exist
-        cleanupFavorites(deduplicated.map(etf => etf.symbol));
 
         // Format the last updated timestamp
         if (result.lastUpdatedTimestamp) {
@@ -209,7 +207,18 @@ export default function Dashboard() {
 
     loadETFData();
     loadSiteSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Clean up favorites when ETF data changes
+  useEffect(() => {
+    if (etfData.length > 0) {
+      cleanupFavorites(etfData.map(etf => etf.symbol));
+    }
+  }, [etfData, cleanupFavorites]);
+
+  // Handle ETF deletion events
+  useEffect(() => {
     const handleETFDeleted = (event: CustomEvent<{ ticker: string }>) => {
       const deletedTicker = event.detail.ticker;
       setEtfData((prev) => prev.filter((etf) => etf.symbol !== deletedTicker));
@@ -230,7 +239,6 @@ export default function Dashboard() {
           return true;
         });
         setEtfData(deduplicated);
-        cleanupFavorites(deduplicated.map(etf => etf.symbol));
       };
       reloadData();
     };
@@ -239,7 +247,7 @@ export default function Dashboard() {
     return () => {
       window.removeEventListener('etfDeleted', handleETFDeleted as EventListener);
     };
-  }, [selectedETF, cleanupFavorites]);
+  }, [selectedETF]);
 
 
   const fetchAdminProfiles = useCallback(async () => {
