@@ -80,6 +80,11 @@ export function useFavorites() {
    * Also normalizes favorites to match the exact symbol format from the data
    */
   const cleanupFavorites = (validSymbols: string[]) => {
+    // Only cleanup if we have valid symbols - don't remove all favorites if ETF data is empty
+    if (!validSymbols || validSymbols.length === 0) {
+      return;
+    }
+
     const validMap = new Map<string, string>();
     validSymbols.forEach(s => {
       const upper = s.toUpperCase();
@@ -88,15 +93,22 @@ export function useFavorites() {
     
     setFavorites(prev => {
       const cleaned = new Set<string>();
+      let hasChanges = false;
+      
       prev.forEach(favSymbol => {
         const upperFav = favSymbol.toUpperCase();
         const matchedSymbol = validMap.get(upperFav);
         if (matchedSymbol) {
-          cleaned.add(matchedSymbol);
+          // Only normalize if the casing is different, otherwise keep original
+          cleaned.add(favSymbol === matchedSymbol ? favSymbol : matchedSymbol);
+        } else {
+          // Symbol doesn't exist in valid list - this is intentional removal
+          hasChanges = true;
         }
       });
       
-      if (cleaned.size !== prev.size || Array.from(cleaned).some(s => !validMap.has(s.toUpperCase()))) {
+      // Only update if we actually removed invalid symbols
+      if (hasChanges) {
         return cleaned;
       }
       return prev;

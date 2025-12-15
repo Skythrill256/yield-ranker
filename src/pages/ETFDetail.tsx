@@ -164,29 +164,38 @@ const ETFDetail = () => {
     );
   }
 
-  const priceChange = etf.totalReturn1Mo || 0;
-  const priceChangePercent = ((priceChange / etf.price) * 100).toFixed(2);
-  const isPositive = priceChange >= 0;
+  const timeframes: ComparisonTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "YTD", "1Y", "3Y", "5Y", "10Y", "20Y", "MAX"];
+
+  // Get the return value for display based on timeframe and chart type
+  const getReturnForTimeframe = () => {
+    if (chartType === "price") {
+      switch (selectedTimeframe) {
+        case '1W': return etf.priceReturn1Wk ?? null;
+        case '1M': return etf.priceReturn1Mo ?? null;
+        case '3M': return etf.priceReturn3Mo ?? null;
+        case '6M': return etf.priceReturn6Mo ?? null;
+        case '1Y': return etf.priceReturn12Mo ?? null;
+        case '3Y': return etf.priceReturn3Yr ?? null;
+        default: return etf.priceReturn12Mo ?? null;
+      }
+    } else {
+      switch (selectedTimeframe) {
+        case '1W': return etf.trDrip1Wk ?? etf.totalReturn1Wk;
+        case '1M': return etf.trDrip1Mo ?? etf.totalReturn1Mo;
+        case '3M': return etf.trDrip3Mo ?? etf.totalReturn3Mo;
+        case '6M': return etf.trDrip6Mo ?? etf.totalReturn6Mo;
+        case '1Y': return etf.trDrip12Mo ?? etf.totalReturn12Mo;
+        case '3Y': return etf.trDrip3Yr ?? etf.totalReturn3Yr;
+        default: return etf.trDrip12Mo ?? etf.totalReturn12Mo;
+      }
+    }
+  };
+  const currentReturn = getReturnForTimeframe();
+  const isPositive = currentReturn != null && currentReturn >= 0;
   
   const chartValues = (chartData && Array.isArray(chartData) ? chartData : []).map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
   const minValue = chartValues.length > 0 ? Math.min(...chartValues, 0) : -10;
   const maxValue = chartValues.length > 0 ? Math.max(...chartValues, 0) : 10;
-
-  const timeframes: ComparisonTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "YTD", "1Y", "3Y", "5Y", "10Y", "20Y", "MAX"];
-
-  // Get the return value for display based on timeframe
-  const getReturnForTimeframe = () => {
-    switch (selectedTimeframe) {
-      case '1W': return etf.trDrip1Wk ?? etf.totalReturn1Wk;
-      case '1M': return etf.trDrip1Mo ?? etf.totalReturn1Mo;
-      case '3M': return etf.trDrip3Mo ?? etf.totalReturn3Mo;
-      case '6M': return etf.trDrip6Mo ?? etf.totalReturn6Mo;
-      case '1Y': return etf.trDrip12Mo ?? etf.totalReturn12Mo;
-      case '3Y': return etf.trDrip3Yr ?? etf.totalReturn3Yr;
-      default: return etf.trDrip12Mo ?? etf.totalReturn12Mo;
-    }
-  };
-  const currentReturn = getReturnForTimeframe();
 
   return (
     <div className="min-h-screen bg-background">
@@ -207,7 +216,9 @@ const ETFDetail = () => {
         {/* Header with symbol, price, and return indicator */}
         <div className="mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl sm:text-2xl font-bold">TOTAL RETURN CHART</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">
+              {chartType === "price" ? "PRICE RETURN CHART" : "TOTAL RETURN CHART"}
+            </h2>
             <Button
               variant="default"
               onClick={() => navigate(`/etf/${etf.symbol}/dividends`)}
@@ -329,10 +340,26 @@ const ETFDetail = () => {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-sm">
-                <div className="text-right">
+              <div className="flex items-center gap-4 text-sm flex-wrap">
+                <div>
                   <span className="text-muted-foreground">Fwd Yield: </span>
                   <span className="font-bold text-primary">{etf.forwardYield?.toFixed(2) ?? 'N/A'}%</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">52 Wk Range: </span>
+                  <span className="font-semibold">${etf.week52Low?.toFixed(2) ?? 'N/A'} - ${etf.week52High?.toFixed(2) ?? 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Annual Div </span>
+                  <span className="font-bold text-green-600">${etf.annualDividend?.toFixed(2) ?? 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Dividend Volatility </span>
+                  <span className="font-semibold">
+                    {etf.dividendCVPercent != null && etf.dividendCVPercent > 0 
+                      ? `${etf.dividendCVPercent.toFixed(1)}%` 
+                      : (etf.dividendVolatilityIndex || 'N/A')}
+                  </span>
                 </div>
               </div>
             </div>
@@ -343,7 +370,9 @@ const ETFDetail = () => {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200 relative z-0" data-chart-section>
           <Card className="p-6 mb-8 relative z-0">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg sm:text-xl font-bold">TOTAL RETURN CHART</h2>
+              <h2 className="text-lg sm:text-xl font-bold">
+                {chartType === "price" ? "PRICE RETURN CHART" : "TOTAL RETURN CHART"}
+              </h2>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
               <div className="flex items-center gap-3 flex-wrap">
@@ -601,10 +630,10 @@ const ETFDetail = () => {
               </div>
             )}
 
-            {/* Chart with Right-Side Return Legend */}
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Chart Area */}
-              <div className="flex-1 min-w-0 order-2 lg:order-1">
+            {/* Chart Area - Full Width */}
+            <div className="w-full">
+              {/* Chart */}
+              <div className="w-full">
                 <ResponsiveContainer width="100%" height={400}>
                   {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
                     <ComposedChart data={chartData}>
@@ -732,118 +761,6 @@ const ETFDetail = () => {
                   )}
                 </ResponsiveContainer>
               </div>
-
-              {/* Right Side - Return Percentages Legend */}
-              <div className="w-full lg:w-52 flex-shrink-0 bg-slate-50 rounded-lg p-4 border border-slate-200 order-1 lg:order-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  {chartType === "totalReturn" ? "Total Return" : "Price Return"} ({selectedTimeframe})
-                </h4>
-                
-                {isChartLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                <div className="space-y-3">
-                  {[etf.symbol, ...comparisonETFs].map((sym, index) => {
-                    const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
-                    const color = colors[index % colors.length];
-                    
-                    // Get precomputed return value from ETF data to match top metrics bar
-                    const compareETF = allETFs.find((e) => e.symbol === sym);
-                    let returnValue: number | null = null;
-                    
-                    if (compareETF) {
-                      if (chartType === "totalReturn") {
-                        // Use precomputed tr_drip values (same as top metrics bar)
-                        switch (selectedTimeframe) {
-                          case "1W":
-                            returnValue = compareETF.trDrip1Wk ?? compareETF.totalReturn1Wk ?? null;
-                            break;
-                          case "1M":
-                            returnValue = compareETF.trDrip1Mo ?? compareETF.totalReturn1Mo ?? null;
-                            break;
-                          case "3M":
-                            returnValue = compareETF.trDrip3Mo ?? compareETF.totalReturn3Mo ?? null;
-                            break;
-                          case "6M":
-                            returnValue = compareETF.trDrip6Mo ?? compareETF.totalReturn6Mo ?? null;
-                            break;
-                          case "1Y":
-                            returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
-                            break;
-                          case "3Y":
-                            returnValue = compareETF.trDrip3Yr ?? compareETF.totalReturn3Yr ?? null;
-                            break;
-                          default:
-                            returnValue = compareETF.trDrip12Mo ?? compareETF.totalReturn12Mo ?? null;
-                        }
-                      } else {
-                        // For price return, use precomputed price return values
-                        switch (selectedTimeframe) {
-                          case "1W":
-                            returnValue = compareETF.priceReturn1Wk ?? null;
-                            break;
-                          case "1M":
-                            returnValue = compareETF.priceReturn1Mo ?? null;
-                            break;
-                          case "3M":
-                            returnValue = compareETF.priceReturn3Mo ?? null;
-                            break;
-                          case "6M":
-                            returnValue = compareETF.priceReturn6Mo ?? null;
-                            break;
-                          case "1Y":
-                            returnValue = compareETF.priceReturn12Mo ?? null;
-                            break;
-                          case "3Y":
-                            returnValue = compareETF.priceReturn3Yr ?? null;
-                            break;
-                          default:
-                            returnValue = compareETF.priceReturn12Mo ?? null;
-                        }
-                      }
-                    }
-                    
-                    const isPositiveReturn = returnValue !== null && returnValue >= 0;
-                    
-                    return (
-                      <div key={sym} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: color }}
-                          />
-                          <span className="font-semibold text-sm">{sym}</span>
-                        </div>
-                        <span className={`font-bold text-sm tabular-nums ${
-                          returnValue === null 
-                            ? "text-muted-foreground" 
-                            : isPositiveReturn 
-                              ? "text-green-600" 
-                              : "text-red-600"
-                        }`}>
-                          {returnValue !== null 
-                            ? `${isPositiveReturn ? "+" : ""}${returnValue.toFixed(2)}%`
-                            : "N/A"
-                          }
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                )}
-                
-                {/* Period Summary */}
-                <div className="mt-4 pt-3 border-t border-slate-200">
-                  <p className="text-xs text-muted-foreground">
-                    {chartType === "totalReturn" 
-                      ? "Total return includes dividends reinvested (DRIP)." 
-                      : "Price return excludes dividends (capital gains only)."
-                    }
-                  </p>
-                </div>
-              </div>
             </div>
             
             {/* Trading Volume Chart - Section 3.4: gray vertical volume bars */}
@@ -944,37 +861,6 @@ const ETFDetail = () => {
           </Card>
         </div>
 
-        {/* Quick Stats Card - Minimal key info only */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-300">
-          <Card className="p-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Forward Yield</p>
-                <p className="text-xl font-bold text-primary">
-                  {etf.forwardYield != null ? `${etf.forwardYield.toFixed(2)}%` : 'N/A'}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">52-Week Range</p>
-                <p className="text-sm font-medium">
-                  ${etf.week52Low?.toFixed(2) ?? 'N/A'} - ${etf.week52High?.toFixed(2) ?? 'N/A'}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Annual Dividend</p>
-                <p className="text-xl font-bold text-green-600">
-                  ${etf.annualDividend?.toFixed(2) ?? 'N/A'}
-                </p>
-              </div>
-              <div className="text-center p-3 bg-slate-50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Dividend Volatility</p>
-                <p className="text-sm font-medium">
-                  {etf.dividendCVPercent != null && etf.dividendCVPercent > 0 ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendVolatilityIndex || 'N/A')}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
       </main>
       <Footer />
     </div>

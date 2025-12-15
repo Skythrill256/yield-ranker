@@ -536,13 +536,16 @@ export default function Dashboard() {
       console.log("⚠️ No ranking_weights in preferences, using defaults");
     }
 
-    // Load presets
+    // Load presets - ensure it's an array
     const savedPresets = profile.preferences.ranking_presets as
       | RankingPreset[]
       | undefined;
-    if (savedPresets) {
+    if (Array.isArray(savedPresets) && savedPresets.length > 0) {
       setRankingPresets(savedPresets);
       console.log("✅ Loaded presets:", savedPresets);
+    } else {
+      setRankingPresets([]);
+      console.log("⚠️ No valid presets found, using empty array");
     }
 
     // Load chart settings

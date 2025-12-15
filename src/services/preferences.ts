@@ -155,10 +155,11 @@ export const loadRankingWeights = async (
 export const saveRankingPreset = async (
   userId: string,
   presetName: string,
-  weights: RankingWeights
+  weights: RankingWeights,
+  setAsDefault: boolean = false
 ): Promise<void> => {
-  const existing = await loadUserPreferences(userId);
-  const existingPresets = existing?.ranking_presets || [];
+  const existing = await loadUserPreferences(userId) || {};
+  const existingPresets = Array.isArray(existing?.ranking_presets) ? existing.ranking_presets : [];
   
   // Check if preset with same name exists
   const filteredPresets = existingPresets.filter(p => p.name !== presetName);
@@ -173,6 +174,11 @@ export const saveRankingPreset = async (
     ...existing,
     ranking_presets: [...filteredPresets, newPreset],
   };
+  
+  // If setAsDefault is true, also save as default ranking weights
+  if (setAsDefault) {
+    updated.ranking_weights = weights;
+  }
   
   const { error } = await supabase
     .from("profiles")
