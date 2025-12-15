@@ -255,9 +255,10 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
 
       for (const record of newTickers) {
         const ticker = record.ticker;
+        if (!ticker) continue; // Skip if ticker is undefined
         try {
           logger.info('Upload', `Fetching data for ${ticker}...`);
-          
+
           // Fetch and insert prices
           const prices = await fetchPriceHistory(ticker, priceStartDate);
           if (prices.length > 0) {
@@ -461,7 +462,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       message: `Successfully processed ${records.length} ticker(s): ${newTickers.length} added, ${updatedTickers.length} updated${dividendsUpdated > 0 ? `, ${dividendsUpdated} dividend amount(s) updated` : ''}${newTickers.length > 0 ? `. Automatically fetched price/dividend data and calculated metrics for new tickers.` : ''}`,
       note: dividendUpdates.length > 0
         ? 'Dividend amounts updated while preserving all Tiingo data (dates, split adjustments, etc.)'
-        : newTickers.length > 0 
+        : newTickers.length > 0
           ? 'Price/dividend data automatically fetched from Tiingo and metrics calculated'
           : 'All data up to date',
     });
