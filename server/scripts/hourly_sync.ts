@@ -205,18 +205,42 @@ async function upsertDividends(
     
     const { data: existingDividends } = await supabase
         .from('dividends_detail')
-        .select('ex_date, description')
+        .select('ex_date, description, div_cash')
         .eq('ticker', ticker)
         .in('ex_date', exDatesToUpdate);
 
-    const manualUploadDates = new Set(
-        (existingDividends || [])
-            .filter(d => d.description?.includes('Manual upload') || d.description?.includes('Early announcement'))
-            .map(d => d.ex_date.split('T')[0])
-    );
+    const manualUploadsMap = new Map<string, number>();
+    (existingDividends || []).forEach(d => {
+        if (d.description?.includes('Manual upload') || d.description?.includes('Early announcement')) {
+            const exDate = d.ex_date.split('T')[0];
+            manualUploadsMap.set(exDate, parseFloat(d.div_cash));
+        }
+    });
+
+    let alignedCount = 0;
+    let preservedCount = 0;
 
     const recordsToUpsert = dividends
-        .filter(d => !manualUploadDates.has(d.date.split('T')[0]))
+        .filter(d => {
+            const exDate = d.date.split('T')[0];
+            const manualDivCash = manualUploadsMap.get(exDate);
+            
+            if (manualDivCash !== undefined) {
+                const tiingoDivCash = d.dividend;
+                const tolerance = 0.001;
+                const isAligned = Math.abs(manualDivCash - tiingoDivCash) < tolerance;
+                
+                if (isAligned) {
+                    alignedCount++;
+                    return true;
+                } else {
+                    preservedCount++;
+                    return false;
+                }
+            }
+            
+            return true;
+        })
         .map(d => ({
             ticker,
             ex_date: d.date.split('T')[0],
@@ -229,8 +253,11 @@ async function upsertDividends(
             split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
         }));
 
-    if (manualUploadDates.size > 0) {
-        console.log(`  Preserving ${manualUploadDates.size} manual dividend upload(s)`);
+    if (alignedCount > 0) {
+        console.log(`  Updating ${alignedCount} dividend(s) where Tiingo aligns with manual upload`);
+    }
+    if (preservedCount > 0) {
+        console.log(`  Preserving ${preservedCount} manual dividend upload(s) (values don't align)`);
     }
 
     if (recordsToUpsert.length === 0) {
