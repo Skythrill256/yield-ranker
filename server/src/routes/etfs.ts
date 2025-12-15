@@ -292,29 +292,51 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           // Fetch and insert dividends
           const dividends = await fetchDividendHistory(ticker, dividendStartDate);
           if (dividends.length > 0) {
-            const dividendRecords = dividends.map(d => ({
-              ticker: ticker.toUpperCase(),
-              ex_date: d.date.split('T')[0],
-              record_date: d.recordDate?.split('T')[0] || null,
-              pay_date: d.paymentDate?.split('T')[0] || null,
-              declare_date: d.declarationDate?.split('T')[0] || null,
-              div_cash: d.dividend,
-              adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
-              scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
-              split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
-            }));
-
-            const { error: divError } = await supabase
+            const exDatesToUpdate = dividends.map(d => d.date.split('T')[0]);
+            
+            const { data: existingDividends } = await supabase
               .from('dividends_detail')
-              .upsert(dividendRecords, {
-                onConflict: 'ticker,ex_date',
-                ignoreDuplicates: false,
-              });
+              .select('ex_date, description')
+              .eq('ticker', ticker.toUpperCase())
+              .in('ex_date', exDatesToUpdate);
 
-            if (divError) {
-              logger.warn('Upload', `Failed to insert dividends for ${ticker}: ${divError.message}`);
-            } else {
-              logger.info('Upload', `Inserted ${dividendRecords.length} dividend records for ${ticker}`);
+            const manualUploadDates = new Set(
+              (existingDividends || [])
+                .filter(d => d.description?.includes('Manual upload') || d.description?.includes('Early announcement'))
+                .map(d => d.ex_date.split('T')[0])
+            );
+
+            const dividendRecords = dividends
+              .filter(d => !manualUploadDates.has(d.date.split('T')[0]))
+              .map(d => ({
+                ticker: ticker.toUpperCase(),
+                ex_date: d.date.split('T')[0],
+                record_date: d.recordDate?.split('T')[0] || null,
+                pay_date: d.paymentDate?.split('T')[0] || null,
+                declare_date: d.declarationDate?.split('T')[0] || null,
+                div_cash: d.dividend,
+                adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
+                scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
+                split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+              }));
+
+            if (manualUploadDates.size > 0) {
+              logger.info('Upload', `Preserving ${manualUploadDates.size} manual dividend upload(s) for ${ticker}`);
+            }
+
+            if (dividendRecords.length > 0) {
+              const { error: divError } = await supabase
+                .from('dividends_detail')
+                .upsert(dividendRecords, {
+                  onConflict: 'ticker,ex_date',
+                  ignoreDuplicates: false,
+                });
+
+              if (divError) {
+                logger.warn('Upload', `Failed to insert dividends for ${ticker}: ${divError.message}`);
+              } else {
+                logger.info('Upload', `Inserted ${dividendRecords.length} dividend records for ${ticker}`);
+              }
             }
           }
 

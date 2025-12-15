@@ -201,21 +201,45 @@ async function upsertDividends(
 ): Promise<number> {
     if (dividends.length === 0) return 0;
 
-    const records = dividends.map(d => ({
-        ticker,
-        ex_date: d.date.split('T')[0],
-        pay_date: d.paymentDate?.split('T')[0] || null,
-        record_date: d.recordDate?.split('T')[0] || null,
-        declare_date: d.declarationDate?.split('T')[0] || null,
-        div_cash: d.dividend,
-        adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
-        scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
-        split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
-    }));
+    const exDatesToUpdate = dividends.map(d => d.date.split('T')[0]);
+    
+    const { data: existingDividends } = await supabase
+        .from('dividends_detail')
+        .select('ex_date, description')
+        .eq('ticker', ticker)
+        .in('ex_date', exDatesToUpdate);
+
+    const manualUploadDates = new Set(
+        (existingDividends || [])
+            .filter(d => d.description?.includes('Manual upload') || d.description?.includes('Early announcement'))
+            .map(d => d.ex_date.split('T')[0])
+    );
+
+    const recordsToUpsert = dividends
+        .filter(d => !manualUploadDates.has(d.date.split('T')[0]))
+        .map(d => ({
+            ticker,
+            ex_date: d.date.split('T')[0],
+            pay_date: d.paymentDate?.split('T')[0] || null,
+            record_date: d.recordDate?.split('T')[0] || null,
+            declare_date: d.declarationDate?.split('T')[0] || null,
+            div_cash: d.dividend,
+            adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
+            scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
+            split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+        }));
+
+    if (manualUploadDates.size > 0) {
+        console.log(`  Preserving ${manualUploadDates.size} manual dividend upload(s)`);
+    }
+
+    if (recordsToUpsert.length === 0) {
+        return 0;
+    }
 
     const { error } = await supabase
         .from('dividends_detail')
-        .upsert(records, {
+        .upsert(recordsToUpsert, {
             onConflict: 'ticker,ex_date',
             ignoreDuplicates: false,
         });
@@ -225,7 +249,7 @@ async function upsertDividends(
         return 0;
     }
 
-    return records.length;
+    return recordsToUpsert.length;
 }
 
 async function updateSyncLog(

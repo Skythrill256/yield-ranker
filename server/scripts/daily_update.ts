@@ -265,33 +265,57 @@ async function upsertDividends(
 ): Promise<number> {
   if (dividends.length === 0) return 0;
 
-  const records = dividends.map(d => ({
-    ticker,
-    ex_date: d.date.split('T')[0],
-    pay_date: d.paymentDate?.split('T')[0] || null,
-    record_date: d.recordDate?.split('T')[0] || null,
-    declare_date: d.declarationDate?.split('T')[0] || null,
-    div_cash: d.dividend,
-    adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
-    scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
-    split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
-  }));
+  const exDatesToUpdate = dividends.map(d => d.date.split('T')[0]);
+  
+  const { data: existingDividends } = await supabase
+    .from('dividends_detail')
+    .select('ex_date, description')
+    .eq('ticker', ticker)
+    .in('ex_date', exDatesToUpdate);
+
+  const manualUploadDates = new Set(
+    (existingDividends || [])
+      .filter(d => d.description?.includes('Manual upload') || d.description?.includes('Early announcement'))
+      .map(d => d.ex_date.split('T')[0])
+  );
+
+  const recordsToUpsert = dividends
+    .filter(d => !manualUploadDates.has(d.date.split('T')[0]))
+    .map(d => ({
+      ticker,
+      ex_date: d.date.split('T')[0],
+      pay_date: d.paymentDate?.split('T')[0] || null,
+      record_date: d.recordDate?.split('T')[0] || null,
+      declare_date: d.declarationDate?.split('T')[0] || null,
+      div_cash: d.dividend,
+      adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
+      scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
+      split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+    }));
+
+  if (manualUploadDates.size > 0 && !dryRun) {
+    console.log(`  Preserving ${manualUploadDates.size} manual dividend upload(s)`);
+  }
+
+  if (recordsToUpsert.length === 0) {
+    return 0;
+  }
 
   if (dryRun) {
-    console.log(`  [DRY RUN] Would upsert ${records.length} dividend records`);
-    return records.length;
+    console.log(`  [DRY RUN] Would upsert ${recordsToUpsert.length} dividend records`);
+    return recordsToUpsert.length;
   }
 
   let { error } = await supabase
     .from('dividends_detail')
-    .upsert(records, {
+    .upsert(recordsToUpsert, {
       onConflict: 'ticker,ex_date',
       ignoreDuplicates: false,
     });
 
   if (error && error.message.includes('scaled_amount')) {
     console.warn(`  ⚠️  scaled_amount column missing. Saving without scaled_amount. Run migration SQL to fix.`);
-    const recordsWithoutScaled = records.map(({ scaled_amount, ...rest }) => rest);
+    const recordsWithoutScaled = recordsToUpsert.map(({ scaled_amount, ...rest }) => rest);
     const result = await supabase
       .from('dividends_detail')
       .upsert(recordsWithoutScaled, {
