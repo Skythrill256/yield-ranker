@@ -342,15 +342,19 @@ const ETFDetail = () => {
               </div>
               <div className="flex items-center gap-4 text-sm flex-wrap">
                 <div>
-                  <span className="text-muted-foreground">Annual Div: </span>
+                  <span className="text-muted-foreground font-bold">Annual Div: </span>
                   <span className="font-bold text-green-600">${etf.annualDividend?.toFixed(2) ?? 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Fwd Yield: </span>
+                  <span className="text-muted-foreground font-bold">Fwd Yield: </span>
                   <span className="font-bold text-primary">{etf.forwardYield?.toFixed(2) ?? 'N/A'}%</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Div Volatility: </span>
+                  <span className="text-muted-foreground font-bold">52 Wk Range: </span>
+                  <span className="font-semibold">${etf.week52Low?.toFixed(2) ?? 'N/A'} - ${etf.week52High?.toFixed(2) ?? 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground font-bold">Div Volatility: </span>
                   <span className="font-semibold">
                     {etf.dividendCVPercent != null && etf.dividendCVPercent > 0 
                       ? `${etf.dividendCVPercent.toFixed(1)}%` 
