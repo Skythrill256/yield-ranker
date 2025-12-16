@@ -983,18 +983,28 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       .limit(1)
       .single();
 
-    // Use actual sync time if available, otherwise fallback to most recent etf_static update
-    let lastUpdatedTimestamp: string | null = null;
-    if (syncLogs?.updated_at) {
-      lastUpdatedTimestamp = syncLogs.updated_at;
-    } else if (staticData.length > 0) {
-      // Fallback: use the most recent updated_at from etf_static
+    // Get the most recent update time from etf_static
+    let mostRecentETFUpdate: string | null = null;
+    if (staticData.length > 0) {
       const mostRecent = staticData.reduce((latest: any, current: any) => {
-        if (!latest || !latest.updated_at) return current;
-        if (!current || !current.updated_at) return latest;
-        return new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest;
+        if (!latest || !latest.last_updated) return current;
+        if (!current || !current.last_updated) return latest;
+        return new Date(current.last_updated) > new Date(latest.last_updated) ? current : latest;
       }, null);
-      lastUpdatedTimestamp = mostRecent?.updated_at || null;
+      mostRecentETFUpdate = mostRecent?.last_updated || mostRecent?.updated_at || null;
+    }
+
+    // Use the most recent timestamp from either sync log or ETF updates
+    let lastUpdatedTimestamp: string | null = null;
+    const syncLogTime = syncLogs?.updated_at ? new Date(syncLogs.updated_at).getTime() : 0;
+    const etfUpdateTime = mostRecentETFUpdate ? new Date(mostRecentETFUpdate).getTime() : 0;
+    
+    if (syncLogTime > etfUpdateTime) {
+      lastUpdatedTimestamp = syncLogs.updated_at;
+    } else if (mostRecentETFUpdate) {
+      lastUpdatedTimestamp = mostRecentETFUpdate;
+    } else if (syncLogs?.updated_at) {
+      lastUpdatedTimestamp = syncLogs.updated_at;
     }
 
     const response = {
