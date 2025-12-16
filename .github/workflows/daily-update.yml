@@ -6,10 +6,10 @@ on:
     # Run daily at 8 PM Eastern Time after market close
     
     # EST (Eastern Standard Time, UTC-5): 8 PM EST = 1 AM UTC (next day)
-    - cron: '0 1 * * 2-6'  # Tue-Sat 01:00 UTC = Mon-Fri 8 PM EST
+    - cron: '0 1 * * *'  # Every day 01:00 UTC = 8 PM EST
     
     # EDT (Eastern Daylight Time, UTC-4): 8 PM EDT = 0 AM UTC (midnight, next day)
-    - cron: '0 0 * * 2-6'  # Tue-Sat 00:00 UTC = Mon-Fri 8 PM EDT
+    - cron: '0 0 * * *'  # Every day 00:00 UTC = 8 PM EDT
   workflow_dispatch:  # Allow manual trigger
     inputs:
       force:
