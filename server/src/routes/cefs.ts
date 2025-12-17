@@ -60,24 +60,9 @@ function cleanupFile(filePath: string | null): void {
 
 function findColumn(headerMap: Record<string, string>, ...names: string[]): string | null {
   for (const name of names) {
-    const normalizedName = name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
-    
-    if (headerMap[normalizedName] !== undefined) {
-      return headerMap[normalizedName];
-    }
-    
-    if (headerMap[name.toLowerCase()] !== undefined) {
-      return headerMap[name.toLowerCase()];
-    }
-    
-    if (headerMap[name] !== undefined) {
-      return headerMap[name];
-    }
-    
-    for (const key in headerMap) {
-      if (key.includes(normalizedName) || normalizedName.includes(key)) {
-        return headerMap[key];
-      }
+    const key = name.toLowerCase();
+    if (headerMap[key] !== undefined) {
+      return headerMap[key];
     }
   }
   return null;
@@ -157,72 +142,31 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     }
 
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null }) as unknown[][];
+    const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
 
-    let headerRowIndex = -1;
+    let headerRowIndex = 0;
     for (let i = 0; i < Math.min(allRows.length, 20); i++) {
       const row = allRows[i];
-      if (!Array.isArray(row) || row.length === 0) continue;
-      
-      const firstCell = String(row[0] || '').trim().toLowerCase();
-      if (!firstCell || firstCell === 'null' || firstCell === 'undefined') continue;
-      
-      const rowStr = row.map(c => {
-        const cellValue = String(c || '').trim();
-        return cellValue.toLowerCase().replace(/[^\w\s]/g, '');
-      });
-      
-      if (rowStr.some(c => c === 'symbol' || c === 'ticker' || c === 'tickersymbol')) {
+      if (!Array.isArray(row)) continue;
+      const rowStr = row.map(c => String(c).toLowerCase().trim());
+      if (rowStr.includes('symbol') || rowStr.includes('ticker')) {
         headerRowIndex = i;
         break;
       }
     }
 
-    if (headerRowIndex === -1) {
-      cleanupFile(filePath);
-      logger.error('CEF Upload', 'Could not find header row with SYMBOL column');
-      logger.error('CEF Upload', `First few rows: ${JSON.stringify(allRows.slice(0, 5))}`);
-      res.status(400).json({ 
-        error: 'SYMBOL column not found in header row',
-        details: 'Please ensure your spreadsheet has a header row with a SYMBOL or TICKER column. The system searched the first 20 rows for a header containing "SYMBOL" or "TICKER".'
-      });
-      return;
-    }
-
-    const rawData = XLSX.utils.sheet_to_json(sheet, { 
-      range: headerRowIndex, 
-      defval: null,
-      raw: false
-    }) as Record<string, unknown>[];
+    const rawData = XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex, defval: null }) as Record<string, unknown>[];
 
     if (!rawData || rawData.length === 0) {
       cleanupFile(filePath);
-      res.status(400).json({ error: 'Excel file is empty or has no data rows' });
+      res.status(400).json({ error: 'Excel file is empty' });
       return;
     }
 
     const headers = Object.keys(rawData[0] ?? {});
-    
-    if (headers.length === 0 || headers.every(h => h.startsWith('__EMPTY'))) {
-      cleanupFile(filePath);
-      logger.error('CEF Upload', 'Header row appears to be empty or invalid');
-      logger.error('CEF Upload', `Detected headers: ${JSON.stringify(headers)}`);
-      logger.error('CEF Upload', `First data row: ${JSON.stringify(rawData[0])}`);
-      res.status(400).json({ 
-        error: 'Invalid header row detected',
-        details: 'The header row appears to be empty or contains only empty cells. Please ensure the first row of your spreadsheet contains column names like SYMBOL, NAV, Description, etc.'
-      });
-      return;
-    }
-
     const headerMap: Record<string, string> = {};
     headers.forEach(h => {
-      if (h && !h.startsWith('__EMPTY')) {
-        const normalized = String(h).trim().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
-        headerMap[normalized] = h;
-        headerMap[String(h).trim().toLowerCase()] = h;
-        headerMap[String(h).trim()] = h;
-      }
+      if (h) headerMap[String(h).trim().toLowerCase()] = h;
     });
 
     const symbolCol = findColumn(headerMap, 'symbol', 'ticker', 'ticker symbol');
