@@ -506,6 +506,65 @@ const AdminPanel = () => {
     }
   };
 
+  const handleCefFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setCefUploadFile(file);
+      setCefUploadStatus("");
+    }
+  };
+
+  const handleUploadCEF = async () => {
+    if (!cefUploadFile) {
+      setCefUploadStatus("Please select a file first");
+      return;
+    }
+
+    setCefUploading(true);
+    setCefUploadStatus("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", cefUploadFile);
+
+      const apiUrl = import.meta.env.VITE_API_URL || "";
+      const response = await fetch(`${apiUrl}/api/cefs/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Upload failed");
+      }
+
+      setCefUploadStatus(`Success! Processed ${result.count} CEFs (${result.added} added, ${result.updated} updated)`);
+      toast({
+        title: "CEF Upload successful",
+        description: result.message,
+      });
+      setCefUploadFile(null);
+      const fileInput = document.getElementById(
+        "cef-file-input"
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+      
+      clearCEFCache();
+      window.dispatchEvent(new CustomEvent('cefDataUpdated'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed";
+      setCefUploadStatus(`Error: ${message}`);
+      toast({
+        variant: "destructive",
+        title: "CEF Upload failed",
+        description: message,
+      });
+    } finally {
+      setCefUploading(false);
+    }
+  };
+
   const handleDeleteETF = async () => {
     if (!deleteTicker || !deleteTicker.trim()) {
       setDeleteETFStatus("Error: Please enter a ticker symbol");
