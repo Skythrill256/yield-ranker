@@ -237,11 +237,8 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
     }
   });
 
-  if (alignedCount > 0) {
-    console.log(`  Updating ${alignedCount} dividend(s) where Tiingo aligns with manual upload`);
-  }
   if (preservedCount > 0) {
-    console.log(`  Preserving ${preservedCount} manual dividend upload(s) (values don't align)`);
+    console.log(`  Preserving ${preservedCount} manual dividend upload(s) (manual always takes priority over Tiingo)`);
   }
 
   if (tiingoRecordsToUpsert.length === 0 && manualUploadsToPreserve.length === 0) {
