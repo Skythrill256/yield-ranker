@@ -967,14 +967,23 @@ export default function Dashboard() {
       }
       if (bValue === undefined || bValue === null) return -1;
 
-      // Handle different data types properly
-      let comparison: number;
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        comparison = aValue.localeCompare(bValue);
-      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-        comparison = aValue - bValue;
+      // Robust comparison handling numeric strings
+      let comparison: number = 0;
+
+      // Helper to check if a value is effectively numeric
+      const isNumeric = (val: any): boolean => {
+        if (typeof val === 'number') return true;
+        if (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val))) return true;
+        return false;
+      };
+
+      if (isNumeric(aValue) && isNumeric(bValue)) {
+        comparison = Number(aValue) - Number(bValue);
       } else {
-        comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+        // Fallback to string comparison
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        comparison = aStr.localeCompare(bStr);
       }
 
       if (comparison !== 0) {
