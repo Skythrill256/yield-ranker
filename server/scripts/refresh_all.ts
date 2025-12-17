@@ -206,6 +206,7 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
           div_type: manualUpload.div_type,
           frequency: manualUpload.frequency,
           currency: manualUpload.currency || 'USD',
+          is_manual: true,  // Keep as manual even when Tiingo aligns - preserve manual status
         });
       } else {
         preservedCount++;
@@ -240,6 +241,7 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
         description: null,
         currency: 'USD',
         split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+        is_manual: false,  // Explicitly mark as Tiingo data (not manual)
       });
     }
   }
@@ -277,10 +279,14 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
   }
 
   // Ensure preserved manual uploads have is_manual flag set
-  const allRecordsToUpsert = [...tiingoRecordsToUpsert, ...manualUploadsToPreserve.map(r => ({
-    ...r,
-    is_manual: true  // Mark as manual to prevent future overwrites
-  }))];
+  // Also ensure tiingoRecordsToUpsert that came from manual uploads keep is_manual flag
+  const allRecordsToUpsert = [
+    ...tiingoRecordsToUpsert.map(r => r.is_manual === undefined ? { ...r, is_manual: false } : r),
+    ...manualUploadsToPreserve.map(r => ({
+      ...r,
+      is_manual: true  // Mark as manual to prevent future overwrites
+    }))
+  ];
 
   const { error } = await supabase
     .from('dividends_detail')
