@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const FAVORITES_STORAGE_KEY = 'yield-ranker-favorites';
@@ -6,7 +6,7 @@ const FAVORITES_STORAGE_KEY = 'yield-ranker-favorites';
 export function useFavorites() {
   const { user } = useAuth();
   const storageKey = user ? `${FAVORITES_STORAGE_KEY}-${user.id}` : FAVORITES_STORAGE_KEY;
-  
+
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem(storageKey);
@@ -40,11 +40,11 @@ export function useFavorites() {
     }
   }, [favorites, storageKey]);
 
-  const toggleFavorite = (symbol: string) => {
+  const toggleFavorite = useCallback((symbol: string) => {
     setFavorites(prev => {
       const newFavorites = new Set(prev);
       const normalizedSymbol = symbol.toUpperCase();
-      
+
       let found = false;
       let existingSymbol = '';
       for (const fav of newFavorites) {
@@ -54,7 +54,7 @@ export function useFavorites() {
           break;
         }
       }
-      
+
       if (found) {
         newFavorites.delete(existingSymbol);
       } else {
@@ -62,9 +62,9 @@ export function useFavorites() {
       }
       return newFavorites;
     });
-  };
+  }, []);
 
-  const isFavorite = (symbol: string) => {
+  const isFavorite = useCallback((symbol: string) => {
     const normalizedSymbol = symbol.toUpperCase();
     for (const fav of favorites) {
       if (fav.toUpperCase() === normalizedSymbol) {
@@ -72,14 +72,14 @@ export function useFavorites() {
       }
     }
     return false;
-  };
+  }, [favorites]);
 
   /**
    * Clean up favorites by removing symbols that no longer exist in the ETF data
    * This should be called when ETF data is loaded to ensure favorites only contain valid symbols
    * Also normalizes favorites to match the exact symbol format from the data
    */
-  const cleanupFavorites = (validSymbols: string[]) => {
+  const cleanupFavorites = useCallback((validSymbols: string[]) => {
     // Only cleanup if we have valid symbols - don't remove all favorites if ETF data is empty
     if (!validSymbols || validSymbols.length === 0) {
       return;
@@ -90,11 +90,11 @@ export function useFavorites() {
       const upper = s.toUpperCase();
       validMap.set(upper, s);
     });
-    
+
     setFavorites(prev => {
       const cleaned = new Set<string>();
       let hasChanges = false;
-      
+
       prev.forEach(favSymbol => {
         const upperFav = favSymbol.toUpperCase();
         const matchedSymbol = validMap.get(upperFav);
@@ -106,20 +106,20 @@ export function useFavorites() {
           hasChanges = true;
         }
       });
-      
+
       // Only update if we actually removed invalid symbols
       if (hasChanges) {
         return cleaned;
       }
       return prev;
     });
-  };
+  }, []);
 
-  return {
+  return useMemo(() => ({
     favorites,
     toggleFavorite,
     isFavorite,
     cleanupFavorites,
-  };
+  }), [favorites, toggleFavorite, isFavorite, cleanupFavorites]);
 }
 

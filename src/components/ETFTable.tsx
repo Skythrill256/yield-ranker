@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ETF } from "@/types/etf";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { ArrowUpDown, ChevronDown, ChevronUp, Info, Star, LineChart, X, Lock, Sliders } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
