@@ -318,6 +318,9 @@ export async function getDividendHistory(
         query = query.gte('ex_date', startDate);
       }
 
+      // Order by ex_date DESC (newest first) - manual priority handled in client-side sort
+      query = query.order('ex_date', { ascending: false });
+
       const { data, error } = await query;
 
       if (error) {
@@ -326,11 +329,12 @@ export async function getDividendHistory(
 
       const dividends = (data ?? []) as DividendRecord[];
       
+      // Additional client-side sort to ensure manual always comes first
       return dividends.sort((a, b) => {
         const aManual = a.is_manual === true ? 1 : 0;
         const bManual = b.is_manual === true ? 1 : 0;
         if (aManual !== bManual) {
-          return bManual - aManual;
+          return bManual - aManual; // Manual (1) comes before non-manual (0)
         }
         return new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime();
       });
