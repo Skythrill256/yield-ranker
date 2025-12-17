@@ -254,9 +254,10 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
           updateData.dividend_cv_percent = dvi * 100;
         }
       }
-      if (return10YrCol) updateData.tr_drip_3y = parseNumeric(row[return10YrCol]);
-      if (return5YrCol) updateData.tr_drip_3y = parseNumeric(row[return5YrCol]);
-      if (return3YrCol) updateData.tr_drip_3y = parseNumeric(row[return3YrCol]);
+      const return3Yr = return3YrCol ? parseNumeric(row[return3YrCol]) : null;
+      const return5Yr = return5YrCol ? parseNumeric(row[return5YrCol]) : null;
+      const return10Yr = return10YrCol ? parseNumeric(row[return10YrCol]) : null;
+      if (return3Yr !== null) updateData.tr_drip_3y = return3Yr;
       if (return12MoCol) updateData.tr_drip_12m = parseNumeric(row[return12MoCol]);
       if (return6MoCol) updateData.tr_drip_6m = parseNumeric(row[return6MoCol]);
       if (return3MoCol) updateData.tr_drip_3m = parseNumeric(row[return3MoCol]);
