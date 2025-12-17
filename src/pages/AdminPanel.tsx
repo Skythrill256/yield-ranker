@@ -78,9 +78,6 @@ const AdminPanel = () => {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>("");
-  const [dividendUploadFile, setDividendUploadFile] = useState<File | null>(null);
-  const [dividendUploading, setDividendUploading] = useState(false);
-  const [dividendUploadStatus, setDividendUploadStatus] = useState<string>("");
   const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsValues, setSettingsValues] = useState<Record<string, string>>(
@@ -502,60 +499,6 @@ const AdminPanel = () => {
       });
     } finally {
       setUploading(false);
-    }
-  };
-
-  const handleUploadDividends = async () => {
-    if (!dividendUploadFile) {
-      setDividendUploadStatus("Please select a file first");
-      return;
-    }
-
-    setDividendUploading(true);
-    setDividendUploadStatus("");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", dividendUploadFile);
-
-      const apiUrl = import.meta.env.VITE_API_URL || "";
-      const response = await fetch(`${apiUrl}/api/etfs/upload-dividends`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Upload failed");
-      }
-
-      const statusMsg = `Success! Uploaded ${result.dividendsAdded} dividend(s) and recalculated metrics for ${result.metricsRecalculated} ticker(s)`;
-      setDividendUploadStatus(statusMsg);
-      toast({
-        title: "Dividend upload successful",
-        description: result.message,
-      });
-      setDividendUploadFile(null);
-      const fileInput = document.getElementById(
-        "dividend-file-input"
-      ) as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
-      
-      clearETFCache();
-      window.dispatchEvent(new CustomEvent('etfDataUpdated', { 
-        detail: { updatedTickers: result.updatedTickers || [] }
-      }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Upload failed";
-      setDividendUploadStatus(`Error: ${message}`);
-      toast({
-        variant: "destructive",
-        title: "Dividend upload failed",
-        description: message,
-      });
-    } finally {
-      setDividendUploading(false);
     }
   };
 
@@ -1179,74 +1122,6 @@ const AdminPanel = () => {
                             }`}
                         >
                           {uploadStatus}
-                        </p>
-                      </Card>
-                    )}
-                  </div>
-
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold text-foreground mb-3">
-                      Upload Dividends Only
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Upload an Excel file with Symbol and Div columns to update dividend amounts. Manual dividends will persist through daily updates until Tiingo matches them.
-                    </p>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end mb-6">
-                      <div className="flex-1">
-                        <label
-                          htmlFor="dividend-file-input"
-                          className="block text-sm font-medium text-foreground mb-2"
-                        >
-                          Select Excel File (Symbol, Div columns)
-                        </label>
-                        <Input
-                          id="dividend-file-input"
-                          type="file"
-                          accept=".xlsx,.xls"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setDividendUploadFile(file);
-                              setDividendUploadStatus("");
-                            }
-                          }}
-                          className="border-2"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <Button
-                          onClick={handleUploadDividends}
-                          disabled={!dividendUploadFile || dividendUploading}
-                          className="w-full sm:w-auto"
-                        >
-                          {dividendUploading ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-4 h-4 mr-2" />
-                              Upload Dividends
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    {dividendUploadStatus && (
-                      <Card
-                        className={`p-4 mb-6 ${dividendUploadStatus.startsWith("Error")
-                          ? "bg-red-50 border-red-200"
-                          : "bg-green-50 border-green-200"
-                          }`}
-                      >
-                        <p
-                          className={`text-sm font-medium ${dividendUploadStatus.startsWith("Error")
-                            ? "text-red-800"
-                            : "text-green-800"
-                            }`}
-                        >
-                          {dividendUploadStatus}
                         </p>
                       </Card>
                     )}
