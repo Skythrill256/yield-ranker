@@ -7,6 +7,7 @@ import {
   fetchComparisonData,
   generateChartData,
   clearETFCache,
+  isETFDataCached,
   ChartType,
   ComparisonTimeframe,
 } from "@/services/etfData";
@@ -136,7 +137,8 @@ export default function Dashboard() {
   const [adminSearchQuery, setAdminSearchQuery] = useState("");
   const [adminUpdatingId, setAdminUpdatingId] = useState<string | null>(null);
   const [etfData, setEtfData] = useState<ETF[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  // Start with false - only show loading if we actually need to fetch (not cached)
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [lastDataUpdate, setLastDataUpdate] = useState<string | null>(null);
   const [chartHeight, setChartHeight] = useState(300);
   const [isLandscape, setIsLandscape] = useState(false);
@@ -149,8 +151,8 @@ export default function Dashboard() {
   useEffect(() => {
     const loadETFData = async (showLoading: boolean = true) => {
       console.log("[Dashboard] Starting to load ETF data...");
-      // Only show loading state on initial load to prevent flickering
-      if (showLoading) {
+      // Only show loading state when data is not cached to prevent flickering
+      if (showLoading && !isETFDataCached()) {
         setIsLoadingData(true);
       }
       try {

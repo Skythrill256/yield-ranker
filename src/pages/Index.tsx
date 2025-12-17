@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { ETFTable } from "@/components/ETFTable";
-import { fetchETFData, fetchETFDataWithMetadata, clearETFCache } from "@/services/etfData";
+import { fetchETFData, fetchETFDataWithMetadata, clearETFCache, isETFDataCached } from "@/services/etfData";
 import { rankETFs } from "@/utils/ranking";
 import { ETF } from "@/types/etf";
 import { Loader2 } from "lucide-react";
@@ -52,7 +52,8 @@ const Index = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [etfData, setEtfData] = useState<ETF[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Start with false - only show loading if we actually need to fetch (not cached)
+  const [isLoading, setIsLoading] = useState(false);
   const [guestMessage, setGuestMessage] = useState("");
   const [premiumMessage, setPremiumMessage] = useState("");
   const [rankingPresets, setRankingPresets] = useState<RankingPreset[]>([]);
@@ -64,9 +65,9 @@ const Index = () => {
   useEffect(() => {
     const loadData = async (isInitialLoad: boolean = true) => {
       try {
-        // Only show loading state on initial load, not on refreshes
-        // This prevents flicker when data is already displayed
-        if (isInitialLoad) {
+        // Only show loading state on initial load AND when data is not cached
+        // This prevents flicker when data is already available
+        if (isInitialLoad && !isETFDataCached()) {
           setIsLoading(true);
         }
         const result = await fetchETFDataWithMetadata();

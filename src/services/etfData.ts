@@ -8,6 +8,17 @@ const dataCache = new Map<string, { data: ETF; timestamp: number }>();
 // Frontend fetches once and keeps cached data until manually refreshed or cache expires
 const CACHE_DURATION = 86400000;
 
+/**
+ * Check if ETF data is cached without triggering a fetch
+ * Used to determine if we should show loading state
+ */
+export const isETFDataCached = (): boolean => {
+  const cached = dataCache.get("__ALL__");
+  if (!cached) return false;
+  const now = Date.now();
+  return now - cached.timestamp < CACHE_DURATION;
+};
+
 const API_BASE_URL = (import.meta as any).env.VITE_API_URL || '';
 
 type DatabaseETF = {
