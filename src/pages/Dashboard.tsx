@@ -1960,6 +1960,7 @@ export default function Dashboard() {
                             </div>
                           )}
                         </ResponsiveContainer>
+                        </div>
                       </div>
 
                       {/* Right Side - Return Percentages Legend */}
