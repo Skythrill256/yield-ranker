@@ -247,18 +247,23 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     let updated = 0;
     let skipped = 0;
 
+    logger.info('CEF Upload', `Processing ${rawData.length} rows, symbol column: ${symbolCol}, allowed symbols: ${allowedCEFs.join(', ')}`);
+
     for (const row of rawData) {
       const symbolValue = row[symbolCol];
-      if (!symbolValue) {
+      if (!symbolValue || String(symbolValue).trim() === '' || String(symbolValue).trim().toLowerCase() === 'null') {
         skipped++;
         continue;
       }
 
       const ticker = String(symbolValue).trim().toUpperCase();
       if (!allowedCEFs.includes(ticker)) {
+        logger.warn('CEF Upload', `Skipping symbol "${ticker}" - not in allowed list`);
         skipped++;
         continue;
       }
+      
+      logger.info('CEF Upload', `Processing ${ticker}`);
 
       const navSymbolCol = findColumn(headerMap, 'nav symbol', 'nav_symbol', 'navsym', 'navsym symbol');
       const descCol = findColumn(headerMap, 'description', 'desc');
