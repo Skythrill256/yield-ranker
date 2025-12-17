@@ -250,13 +250,13 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       if (fYieldCol) updateData.forward_yield = parseNumeric(row[fYieldCol]);
       if (dviCol) {
         const dvi = parseNumeric(row[dviCol]);
-        if (dvi !== null) {
+        if (dvi !== null && dvi !== 0) {
           updateData.dividend_cv_percent = dvi * 100;
         }
       }
-      const return3Yr = return3YrCol ? parseNumeric(row[return3YrCol]) : null;
-      const return5Yr = return5YrCol ? parseNumeric(row[return5YrCol]) : null;
       const return10Yr = return10YrCol ? parseNumeric(row[return10YrCol]) : null;
+      const return5Yr = return5YrCol ? parseNumeric(row[return5YrCol]) : null;
+      const return3Yr = return3YrCol ? parseNumeric(row[return3YrCol]) : null;
       if (return3Yr !== null) updateData.tr_drip_3y = return3Yr;
       if (return12MoCol) updateData.tr_drip_12m = parseNumeric(row[return12MoCol]);
       if (return6MoCol) updateData.tr_drip_6m = parseNumeric(row[return6MoCol]);
