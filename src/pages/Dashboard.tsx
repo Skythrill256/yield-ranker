@@ -945,7 +945,8 @@ export default function Dashboard() {
   // Sort ETFs - preserve ranking order by default, allow manual sorting
   // Use stable sort to prevent chart from re-rendering unnecessarily
   const sortedETFs = useMemo(() => {
-    if (!sortField || sortField === "weightedRank") {
+    // If no sort field is selected, return the ranked order (default by weightedRank asc)
+    if (!sortField) {
       return filteredETFs;
     }
 
