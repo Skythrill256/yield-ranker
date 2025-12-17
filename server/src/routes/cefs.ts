@@ -60,9 +60,24 @@ function cleanupFile(filePath: string | null): void {
 
 function findColumn(headerMap: Record<string, string>, ...names: string[]): string | null {
   for (const name of names) {
-    const key = name.toLowerCase();
-    if (headerMap[key] !== undefined) {
-      return headerMap[key];
+    const normalizedName = name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+    
+    if (headerMap[normalizedName] !== undefined) {
+      return headerMap[normalizedName];
+    }
+    
+    if (headerMap[name.toLowerCase()] !== undefined) {
+      return headerMap[name.toLowerCase()];
+    }
+    
+    if (headerMap[name] !== undefined) {
+      return headerMap[name];
+    }
+    
+    for (const key in headerMap) {
+      if (key.includes(normalizedName) || normalizedName.includes(key)) {
+        return headerMap[key];
+      }
     }
   }
   return null;
@@ -144,35 +159,52 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
 
-    let headerRowIndex = 0;
+    let headerRowIndex = -1;
     for (let i = 0; i < Math.min(allRows.length, 20); i++) {
       const row = allRows[i];
       if (!Array.isArray(row)) continue;
-      const rowStr = row.map(c => String(c).toLowerCase().trim());
-      if (rowStr.includes('symbol')) {
+      const rowStr = row.map(c => String(c || '').toLowerCase().trim().replace(/[^\w\s]/g, ''));
+      if (rowStr.some(c => c === 'symbol' || c === 'ticker' || c === 'ticker symbol')) {
         headerRowIndex = i;
         break;
       }
+    }
+
+    if (headerRowIndex === -1) {
+      cleanupFile(filePath);
+      res.status(400).json({ 
+        error: 'SYMBOL column not found in header row',
+        details: 'Please ensure your spreadsheet has a header row with a SYMBOL or TICKER column'
+      });
+      return;
     }
 
     const rawData = XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex, defval: null }) as Record<string, unknown>[];
 
     if (!rawData || rawData.length === 0) {
       cleanupFile(filePath);
-      res.status(400).json({ error: 'Excel file is empty' });
+      res.status(400).json({ error: 'Excel file is empty or has no data rows' });
       return;
     }
 
     const headers = Object.keys(rawData[0] ?? {});
     const headerMap: Record<string, string> = {};
     headers.forEach(h => {
-      if (h) headerMap[String(h).trim().toLowerCase()] = h;
+      if (h) {
+        const normalized = String(h).trim().toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+        headerMap[normalized] = h;
+        headerMap[String(h).trim().toLowerCase()] = h;
+        headerMap[String(h).trim()] = h;
+      }
     });
 
-    const symbolCol = findColumn(headerMap, 'symbol', 'ticker');
+    const symbolCol = findColumn(headerMap, 'symbol', 'ticker', 'ticker symbol');
     if (!symbolCol) {
       cleanupFile(filePath);
-      res.status(400).json({ error: 'SYMBOL column not found' });
+      res.status(400).json({ 
+        error: 'SYMBOL column not found',
+        details: `Available columns: ${headers.join(', ')}. Please ensure your spreadsheet has a column named SYMBOL or TICKER.`
+      });
       return;
     }
 
@@ -197,12 +229,12 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         continue;
       }
 
-      const navSymbolCol = findColumn(headerMap, 'nav');
+      const navSymbolCol = findColumn(headerMap, 'nav symbol', 'nav_symbol', 'navsym', 'navsym symbol');
       const descCol = findColumn(headerMap, 'description', 'desc');
       const openDateCol = findColumn(headerMap, 'open', 'open date', 'opening date');
-      const ipoPriceCol = findColumn(headerMap, 'ipo price', 'ipo_price');
-      const mpCol = findColumn(headerMap, 'mp', 'market price', 'price');
-      const navCol = findColumn(headerMap, 'nav');
+      const ipoPriceCol = findColumn(headerMap, 'ipo price', 'ipo_price', 'ipo');
+      const mpCol = findColumn(headerMap, 'mp', 'market price', 'price', 'marketprice');
+      const navCol = findColumn(headerMap, 'nav', 'net asset value', 'nav value');
       const lastDivCol = findColumn(headerMap, 'last div', 'last_dividend', 'last dividend');
       const numPayCol = findColumn(headerMap, '#', 'payments', 'payments_per_year', '# payments');
       const yrlyDivCol = findColumn(headerMap, 'yrly div', 'yearly dividend', 'annual dividend', 'annual_div');
@@ -297,26 +329,22 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 
       if (lastDivCol && row[lastDivCol]) {
         const divAmount = parseNumeric(row[lastDivCol]);
-        if (divAmount && divAmount > 0) {
-          const latestDividend = await getDividendHistory(ticker);
-          if (latestDividend.length > 0) {
-            const latest = latestDividend[0];
-            const exDate = new Date().toISOString().split('T')[0];
-            await supabase
-              .from('dividends')
-              .upsert({
-                ticker,
-                ex_date: exDate,
-                div_cash: divAmount,
-                is_manual: true,
-                pay_date: null,
-                record_date: null,
-                declare_date: null,
-              }, {
-                onConflict: 'ticker,ex_date',
-                ignoreDuplicates: false,
-              });
-          }
+        if (divAmount !== null && divAmount > 0) {
+          const exDate = new Date().toISOString().split('T')[0];
+          await supabase
+            .from('dividends_detail')
+            .upsert({
+              ticker,
+              ex_date: exDate,
+              div_cash: divAmount,
+              is_manual: true,
+              pay_date: null,
+              record_date: null,
+              declare_date: null,
+            }, {
+              onConflict: 'ticker,ex_date',
+              ignoreDuplicates: false,
+            });
         }
       }
     }
