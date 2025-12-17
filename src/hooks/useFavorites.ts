@@ -88,23 +88,40 @@ export function useFavorites() {
           }
         }
 
-        if (user?.id && dbFavorites.length > 0) {
-          setFavorites(new Set(dbFavorites));
-          localStorage.setItem(storageKey, JSON.stringify(dbFavorites));
+        if (user?.id) {
+          if (dbFavorites.length > 0) {
+            setFavorites(new Set(dbFavorites));
+            localStorage.setItem(storageKey, JSON.stringify(dbFavorites));
+          } else {
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+              try {
+                const parsed = JSON.parse(stored);
+                const localFavorites = Array.isArray(parsed) ? parsed : [];
+                if (localFavorites.length > 0) {
+                  setFavorites(new Set(localFavorites));
+                  await syncToDatabase(localFavorites);
+                } else {
+                  setFavorites(new Set());
+                }
+              } catch (e) {
+                console.error('Failed to parse localStorage favorites:', e);
+                setFavorites(new Set());
+              }
+            } else {
+              setFavorites(new Set());
+            }
+          }
         } else {
           const stored = localStorage.getItem(storageKey);
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
               const localFavorites = Array.isArray(parsed) ? parsed : [];
-              if (localFavorites.length > 0) {
-                setFavorites(new Set(localFavorites));
-                if (user?.id) {
-                  await syncToDatabase(localFavorites);
-                }
-              }
+              setFavorites(new Set(localFavorites));
             } catch (e) {
               console.error('Failed to parse localStorage favorites:', e);
+              setFavorites(new Set());
             }
           }
         }
