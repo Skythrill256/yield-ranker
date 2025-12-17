@@ -102,7 +102,7 @@ export default function Dashboard() {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { favorites, toggleFavorite: toggleFavoriteHook, cleanupFavorites } = useFavorites();
+  const { favorites, toggleFavorite: toggleFavoriteHook, cleanupFavorites } = useFavorites('etf');
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllETFs, setShowAllETFs] = useState(false);

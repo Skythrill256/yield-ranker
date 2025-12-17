@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { CEFTable } from "@/components/CEFTable";
-import { CategorySelector } from "@/components/CategorySelector";
 import { fetchCEFDataWithMetadata, clearCEFCache, isCEFDataCached } from "@/services/cefData";
 import { CEF } from "@/types/cef";
 import { Loader2, Clock, Star } from "lucide-react";
@@ -12,27 +11,11 @@ import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
 import { getSiteSettings } from "@/services/admin";
 
-const CEF_FAVORITES_STORAGE_KEY = 'yield-ranker-cef-favorites';
-
 const Index = () => {
   const { user, profile } = useAuth();
   const isPremium = !!profile;
   const isGuest = !profile;
-  
-  // Use separate favorites for CEFs
-  const storageKey = user ? `${CEF_FAVORITES_STORAGE_KEY}-${user.id}` : CEF_FAVORITES_STORAGE_KEY;
-  const [cefFavorites, setCefFavorites] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return new Set(Array.isArray(parsed) ? parsed : []);
-      }
-    } catch (error) {
-      console.error('Failed to load CEF favorites from localStorage:', error);
-    }
-    return new Set();
-  });
+  const { favorites: cefFavorites, toggleFavorite, cleanupFavorites } = useFavorites('cef');
 
   const [cefData, setCefData] = useState<CEF[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,23 +24,6 @@ const Index = () => {
   const [lastDataUpdate, setLastDataUpdate] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-
-  const toggleFavorite = useCallback((symbol: string) => {
-    setCefFavorites(prev => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(symbol)) {
-        newFavorites.delete(symbol);
-      } else {
-        newFavorites.add(symbol);
-      }
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(Array.from(newFavorites)));
-      } catch (error) {
-        console.error('Failed to save CEF favorites:', error);
-      }
-      return newFavorites;
-    });
-  }, [storageKey]);
 
   useEffect(() => {
     const loadData = async (isInitialLoad: boolean = true) => {
@@ -75,6 +41,8 @@ const Index = () => {
           return true;
         });
         setCefData(deduplicated);
+        
+        cleanupFavorites(deduplicated.map(cef => cef.symbol));
 
         if (result.lastUpdatedTimestamp) {
           const date = new Date(result.lastUpdatedTimestamp);
@@ -123,7 +91,7 @@ const Index = () => {
     return () => {
       window.removeEventListener('cefDataUpdated', handleCEFDataUpdated);
     };
-  }, []);
+  }, [cleanupFavorites]);
 
   const filteredCEFs = useCallback(() => {
     if (showFavoritesOnly && isPremium) {
@@ -175,7 +143,6 @@ const Index = () => {
                   <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
                     Closed-End Funds
                   </h3>
-                  <CategorySelector />
                 </div>
                 <div className="text-xs text-muted-foreground leading-tight">
                   {lastDataUpdate ? (

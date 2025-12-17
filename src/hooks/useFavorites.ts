@@ -4,9 +4,11 @@ import { supabase } from '@/lib/supabase';
 
 const FAVORITES_STORAGE_KEY = 'yield-ranker-favorites';
 
-export function useFavorites() {
+export type FavoriteCategory = 'etf' | 'cef';
+
+export function useFavorites(category: FavoriteCategory = 'etf') {
   const { user } = useAuth();
-  const storageKey = user ? `${FAVORITES_STORAGE_KEY}-${user.id}` : FAVORITES_STORAGE_KEY;
+  const storageKey = user ? `${FAVORITES_STORAGE_KEY}-${user.id}-${category}` : `${FAVORITES_STORAGE_KEY}-${category}`;
   const isInitialLoad = useRef(true);
   const isSyncing = useRef(false);
 
@@ -30,7 +32,8 @@ export function useFavorites() {
       const { data: currentDbFavorites } = await supabase
         .from('favorites')
         .select('symbol')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('category', category);
 
       const dbSymbols = currentDbFavorites ? new Set(currentDbFavorites.map(row => row.symbol)) : new Set<string>();
       const symbolsToAdd = symbols.filter(s => !dbSymbols.has(s));
@@ -40,6 +43,7 @@ export function useFavorites() {
         const favoritesToInsert = symbolsToAdd.map(symbol => ({
           user_id: user.id,
           symbol: symbol,
+          category: category,
         }));
 
         const { error: insertError } = await supabase
@@ -56,6 +60,7 @@ export function useFavorites() {
           .from('favorites')
           .delete()
           .eq('user_id', user.id)
+          .eq('category', category)
           .in('symbol', symbolsToRemove);
 
         if (deleteError) {
@@ -65,7 +70,7 @@ export function useFavorites() {
     } catch (error) {
       console.error('Failed to sync favorites to database:', error);
     }
-  }, [user?.id]);
+  }, [user?.id, category]);
 
   useEffect(() => {
     const loadFavorites = async () => {
@@ -79,7 +84,8 @@ export function useFavorites() {
           const { data, error } = await supabase
             .from('favorites')
             .select('symbol')
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .eq('category', category);
           
           if (error) {
             console.error('Failed to load favorites from database:', error);
@@ -134,7 +140,7 @@ export function useFavorites() {
     };
 
     loadFavorites();
-  }, [user?.id, storageKey, syncToDatabase]);
+  }, [user?.id, storageKey, syncToDatabase, category]);
 
   useEffect(() => {
     if (isInitialLoad.current || isSyncing.current) return;
@@ -234,4 +240,3 @@ export function useFavorites() {
     cleanupFavorites,
   }), [favorites, toggleFavorite, isFavorite, cleanupFavorites]);
 }
-

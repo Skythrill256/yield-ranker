@@ -19,7 +19,7 @@ const Favorites = () => {
   const { profile } = useAuth();
   const isPremium = !!profile;
   const isGuest = !profile;
-  const { favorites, toggleFavorite, cleanupFavorites } = useFavorites();
+  const { favorites, toggleFavorite, cleanupFavorites } = useFavorites('etf');
 
   const [weights, setWeights] = useState<RankingWeights>({
     yield: 30,
