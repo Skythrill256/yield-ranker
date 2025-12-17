@@ -967,18 +967,37 @@ export default function Dashboard() {
       }
       if (bValue === undefined || bValue === null) return -1;
 
-      // Robust comparison handling numeric strings
-      let comparison: number = 0;
-
-      // Helper to check if a value is effectively numeric
-      const isNumeric = (val: any): boolean => {
-        if (typeof val === 'number') return true;
-        if (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val))) return true;
-        return false;
+      // Aggressive numeric parsing helper
+      const parseNumeric = (val: any): number | null => {
+        if (typeof val === 'number') {
+          return isNaN(val) ? null : val;
+        }
+        if (typeof val === 'string') {
+          // Remove currency symbols, commas, percentages, and whitespace
+          const clean = val.replace(/[$,%\s]/g, '');
+          if (clean === '') return null;
+          const num = Number(clean);
+          return isNaN(num) ? null : num;
+        }
+        return null;
       };
 
-      if (isNumeric(aValue) && isNumeric(bValue)) {
-        comparison = Number(aValue) - Number(bValue);
+      const aNum = parseNumeric(aValue);
+      const bNum = parseNumeric(bValue);
+
+      const bothNumeric = aNum !== null && bNum !== null;
+
+      // If the sort field is explicitly a text field, prefer string sort
+      // unless parsing was requested. Ideally, we distinguish by column type.
+      // But here, let's assume if it PARSES as a number, we treat it as a number 
+      // UNLESS the field is 'symbol', 'issuer', 'description'.
+      const textFields: (keyof ETF)[] = ['symbol', 'issuer', 'description', 'payDay', 'dataSource'];
+      const forceString = textFields.includes(sortField);
+
+      let comparison: number = 0;
+
+      if (bothNumeric && !forceString) {
+        comparison = aNum - bNum;
       } else {
         // Fallback to string comparison
         const aStr = String(aValue).toLowerCase();
