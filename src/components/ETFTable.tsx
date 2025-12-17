@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ETF } from "@/types/etf";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
@@ -99,32 +99,36 @@ export const ETFTable = ({
     onSelectionChange?.(symbol);
   };
 
-  const sortedETFs = [...etfs].sort((a, b) => {
-    if (!sortField) return 0;
+  const sortedETFs = useMemo(() => {
+    console.log('[ETFTable] Sorting by:', sortField, sortDirection, 'ETFs count:', etfs.length);
 
-    const aValue = a[sortField];
-    const bValue = b[sortField];
+    return [...etfs].sort((a, b) => {
+      if (!sortField) return 0;
 
-    // Handle null/undefined values - push them to the end
-    if (aValue === undefined || aValue === null) {
-      if (bValue === undefined || bValue === null) return 0;
-      return 1;
-    }
-    if (bValue === undefined || bValue === null) return -1;
+      const aValue = a[sortField];
+      const bValue = b[sortField];
 
-    // Handle different data types properly
-    let comparison: number;
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      comparison = aValue.localeCompare(bValue);
-    } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-      comparison = aValue - bValue;
-    } else {
-      // Convert to string for mixed types or fallback
-      comparison = String(aValue).localeCompare(String(bValue));
-    }
+      // Handle null/undefined values - push them to the end
+      if (aValue === undefined || aValue === null) {
+        if (bValue === undefined || bValue === null) return 0;
+        return 1;
+      }
+      if (bValue === undefined || bValue === null) return -1;
 
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
+      // Handle different data types properly
+      let comparison: number;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else {
+        // Convert to string for mixed types or fallback
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [etfs, sortField, sortDirection]);
 
   const INITIAL_DISPLAY_COUNT = sortedETFs.length;
   const displayedETFs = isExpanded
@@ -147,7 +151,7 @@ export const ETFTable = ({
         ? ChevronUp
         : ChevronDown
       : ArrowUpDown;
-    
+
     return (
       <Button
         variant="ghost"
@@ -309,8 +313,8 @@ export const ETFTable = ({
                   >
                     <Star
                       className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(etf.symbol)
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-slate-500 hover:text-yellow-500 hover:scale-110"
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-slate-500 hover:text-yellow-500 hover:scale-110"
                         }`}
                     />
                   </td>
@@ -412,8 +416,8 @@ export const ETFTable = ({
                       <td
                         key={`${etf.symbol}-${String(col.key)}`}
                         className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[60px] sm:min-w-[70px] ${colIndex === returnColumns.length - 1
-                            ? "border-r-2 border-slate-300"
-                            : ""
+                          ? "border-r-2 border-slate-300"
+                          : ""
                           }`}
                       >
                         {numericValue !== undefined

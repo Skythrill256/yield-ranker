@@ -245,6 +245,9 @@ async function upsertDividends(
     });
 
     const isManualUpload = (record: any): boolean => {
+        // Primary check: dedicated is_manual column (more reliable)
+        if (record?.is_manual === true) return true;
+        // Fallback: check description for legacy manual uploads
         const desc = record?.description || '';
         return desc.includes('Manual upload') || desc.includes('Early announcement');
     };
@@ -359,7 +362,11 @@ async function upsertDividends(
         return 0;
     }
 
-    const allRecordsToUpsert = [...recordsToUpsert, ...manualUploadsToPreserve];
+    // Ensure preserved manual uploads have is_manual flag set
+    const allRecordsToUpsert = [...recordsToUpsert, ...manualUploadsToPreserve.map(r => ({
+        ...r,
+        is_manual: true  // Mark as manual to prevent future overwrites
+    }))];
 
     const { error } = await supabase
         .from('dividends_detail')

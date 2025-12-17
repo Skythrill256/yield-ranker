@@ -266,7 +266,7 @@ async function upsertDividends(
   if (dividends.length === 0) return 0;
 
   const exDatesToUpdate = dividends.map(d => d.date.split('T')[0]);
-  
+
   const { data: allExistingDividends } = await supabase
     .from('dividends_detail')
     .select('*')
@@ -280,6 +280,9 @@ async function upsertDividends(
   });
 
   const isManualUpload = (record: any): boolean => {
+    // Primary check: dedicated is_manual column (more reliable)
+    if (record?.is_manual === true) return true;
+    // Fallback: check description for legacy manual uploads
     const desc = record?.description || '';
     return desc.includes('Manual upload') || desc.includes('Early announcement');
   };
@@ -293,21 +296,21 @@ async function upsertDividends(
   for (const d of dividends) {
     const exDate = d.date.split('T')[0];
     const existing = existingDividendsMap.get(exDate);
-    
+
     if (existing && isManualUpload(existing)) {
       const tiingoDivCash = d.dividend;
       const tiingoAdjAmount = d.adjDividend > 0 ? d.adjDividend : null;
       const manualDivCash = parseFloat(existing.div_cash);
       const manualAdjAmount = existing.adj_amount ? parseFloat(existing.adj_amount) : null;
       const tolerance = 0.001;
-      
+
       let isAligned = false;
       if (tiingoAdjAmount && manualAdjAmount !== null) {
         isAligned = Math.abs(manualAdjAmount - tiingoAdjAmount) < tolerance;
       } else {
         isAligned = Math.abs(manualDivCash - tiingoDivCash) < tolerance;
       }
-      
+
       if (isAligned) {
         alignedCount++;
         tiingoRecordsToUpsert.push({
@@ -404,7 +407,11 @@ async function upsertDividends(
     return recordsToUpsert.length;
   }
 
-  const allRecordsToUpsert = [...recordsToUpsert, ...manualUploadsToPreserve];
+  // Ensure preserved manual uploads have is_manual flag set
+  const allRecordsToUpsert = [...recordsToUpsert, ...manualUploadsToPreserve.map(r => ({
+    ...r,
+    is_manual: true  // Mark as manual to prevent future overwrites
+  }))];
 
   let { error } = await supabase
     .from('dividends_detail')

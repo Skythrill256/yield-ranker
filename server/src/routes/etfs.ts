@@ -293,7 +293,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           const dividends = await fetchDividendHistory(ticker, dividendStartDate);
           if (dividends.length > 0) {
             const exDatesToUpdate = dividends.map(d => d.date.split('T')[0]);
-            
+
             const { data: allManualUploads } = await supabase
               .from('dividends_detail')
               .select('ex_date, description, div_cash, adj_amount, pay_date, record_date, declare_date, scaled_amount, split_factor')
@@ -307,8 +307,8 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
               const adjAmount = d.adj_amount ? parseFloat(d.adj_amount) : null;
               const scaledAmount = d.scaled_amount ? parseFloat(d.scaled_amount) : null;
               const splitFactor = d.split_factor ? parseFloat(d.split_factor) : 1;
-              manualUploadsMap.set(exDate, { 
-                divCash, 
+              manualUploadsMap.set(exDate, {
+                divCash,
                 adjAmount,
                 payDate: d.pay_date,
                 recordDate: d.record_date,
@@ -345,21 +345,21 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
             for (const d of dividends) {
               const exDate = d.date.split('T')[0];
               const existing = existingDividendsMap.get(exDate);
-              
+
               if (existing && isManualUpload(existing)) {
                 const tiingoDivCash = d.dividend;
                 const tiingoAdjAmount = d.adjDividend > 0 ? d.adjDividend : null;
                 const manualDivCash = parseFloat(existing.div_cash);
                 const manualAdjAmount = existing.adj_amount ? parseFloat(existing.adj_amount) : null;
                 const tolerance = 0.001;
-                
+
                 let isAligned = false;
                 if (tiingoAdjAmount && manualAdjAmount !== null) {
                   isAligned = Math.abs(manualAdjAmount - tiingoAdjAmount) < tolerance;
                 } else {
                   isAligned = Math.abs(manualDivCash - tiingoDivCash) < tolerance;
                 }
-                
+
                 if (isAligned) {
                   alignedCount++;
                   tiingoRecordsToUpsert.push({
@@ -826,6 +826,7 @@ router.post('/upload-dividends', upload.single('file'), async (req: Request, res
         div_type: 'Cash',
         frequency: null,
         description: 'Manual upload - Early announcement',
+        is_manual: true,  // Flag to prevent API overwrites
         currency: 'USD',
         _rawDivValue: divAmountStr || String(finalDivAmount),
       });
@@ -1088,7 +1089,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     let lastUpdatedTimestamp: string | null = null;
     const syncLogTime = syncLogs?.updated_at ? new Date(syncLogs.updated_at).getTime() : 0;
     const etfUpdateTime = mostRecentETFUpdate ? new Date(mostRecentETFUpdate).getTime() : 0;
-    
+
     if (syncLogs?.updated_at && syncLogTime > etfUpdateTime) {
       lastUpdatedTimestamp = syncLogs.updated_at;
     } else if (mostRecentETFUpdate) {

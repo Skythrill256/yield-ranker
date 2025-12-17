@@ -2,14 +2,9 @@ name: Daily ETF Data Update
 
 on:
   schedule:
-    # Dual schedules to handle both EST (Nov-Mar) and EDT (Mar-Nov)
-    # Run daily at 8 PM Eastern Time after market close
-    
-    # EST (Eastern Standard Time, UTC-5): 8 PM EST = 1 AM UTC (next day)
-    - cron: '0 1 * * *'  # Every day 01:00 UTC = 8 PM EST
-    
-    # EDT (Eastern Daylight Time, UTC-4): 8 PM EDT = 0 AM UTC (midnight, next day)
-    - cron: '0 0 * * *'  # Every day 00:00 UTC = 8 PM EDT
+    # Run daily at 01:05 UTC (8pm EST / 9pm EDT)
+    # Using 5 minutes past the hour to avoid peak GitHub Actions load
+    - cron: '5 1 * * *'
   workflow_dispatch:  # Allow manual trigger
     inputs:
       force:
