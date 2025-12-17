@@ -26,6 +26,7 @@ import {
   RotateCcw,
   ArrowLeft,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   Upload,
   ArrowUpDown,
@@ -998,18 +999,27 @@ export default function Dashboard() {
     field: keyof ETF;
     children: React.ReactNode;
     align?: "left" | "right";
-  }) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      className={`h-8 hover:bg-slate-100 hover:text-foreground transition-colors ${align === "left" ? "-ml-3" : "-mr-3"
-        }`}
-      onClick={() => handleSort(field)}
-    >
-      {children}
-      <ArrowUpDown className="ml-2 h-4 w-4" />
-    </Button>
-  );
+  }) => {
+    const isActive = sortField === field;
+    const Icon = isActive
+      ? sortDirection === "asc"
+        ? ChevronUp
+        : ChevronDown
+      : ArrowUpDown;
+
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`h-8 hover:bg-slate-100 hover:text-foreground transition-colors ${align === "left" ? "-ml-3" : "-mr-3"
+          } ${isActive ? "text-primary font-semibold" : ""}`}
+        onClick={() => handleSort(field)}
+      >
+        {children}
+        <Icon className={`ml-2 h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+      </Button>
+    );
+  };
 
   const handleNavigation = (tab: string) => {
     if (tab === "home") {
