@@ -107,32 +107,73 @@ export const ETFTable = ({
   const sortedETFs = useMemo(() => {
     console.log('[ETFTable] Sorting by:', sortField, sortDirection, 'ETFs count:', etfs.length);
 
-    return [...etfs].sort((a, b) => {
-      if (!sortField) return 0;
+    // If no sort field is selected, return the ranked order (default by weightedRank asc)
+    if (!sortField) {
+      console.log('[ETFTable] No sort field, returning unsorted etfs');
+      return etfs;
+    }
 
+    // Create a stable sorted array - use symbol as secondary sort to ensure stability
+    const sorted = [...etfs].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
-      // Handle null/undefined values - push them to the end
       if (aValue === undefined || aValue === null) {
-        if (bValue === undefined || bValue === null) return 0;
+        if (bValue === undefined || bValue === null) {
+          // Both null - sort by symbol for stability
+          return a.symbol.localeCompare(b.symbol);
+        }
         return 1;
       }
       if (bValue === undefined || bValue === null) return -1;
 
-      // Handle different data types properly
-      let comparison: number;
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        comparison = aValue.localeCompare(bValue);
-      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-        comparison = aValue - bValue;
+      // Aggressive numeric parsing helper
+      const parseNumeric = (val: any): number | null => {
+        if (typeof val === 'number') {
+          return isNaN(val) ? null : val;
+        }
+        if (typeof val === 'string') {
+          // Remove currency symbols, commas, percentages, and whitespace
+          const clean = val.replace(/[$,%\s]/g, '');
+          if (clean === '') return null;
+          const num = Number(clean);
+          return isNaN(num) ? null : num;
+        }
+        return null;
+      };
+
+      const aNum = parseNumeric(aValue);
+      const bNum = parseNumeric(bValue);
+
+      const bothNumeric = aNum !== null && bNum !== null;
+
+      // If the sort field is explicitly a text field, prefer string sort
+      // unless parsing was requested. Ideally, we distinguish by column type.
+      // But here, let's assume if it PARSES as a number, we treat it as a number 
+      // UNLESS the field is 'symbol', 'issuer', 'description'.
+      const textFields: (keyof ETF)[] = ['symbol', 'issuer', 'description', 'payDay', 'dataSource'];
+      const forceString = textFields.includes(sortField);
+
+      let comparison: number = 0;
+
+      if (bothNumeric && !forceString) {
+        comparison = aNum - bNum;
       } else {
-        // Convert to string for mixed types or fallback
-        comparison = String(aValue).localeCompare(String(bValue));
+        // Fallback to string comparison
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        comparison = aStr.localeCompare(bStr);
       }
 
-      return sortDirection === "asc" ? comparison : -comparison;
+      if (comparison !== 0) {
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+      // If values are equal, sort by symbol for stability
+      return a.symbol.localeCompare(b.symbol);
     });
+
+    console.log('[ETFTable] Sorted ETFs - first 3:', sorted.slice(0, 3).map(e => ({ symbol: e.symbol, [sortField]: e[sortField] })));
+    return sorted;
   }, [etfs, sortField, sortDirection]);
 
   const INITIAL_DISPLAY_COUNT = sortedETFs.length;
