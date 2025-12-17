@@ -132,7 +132,7 @@ const Index = () => {
     return () => {
       window.removeEventListener('etfDataUpdated', handleETFDataUpdated);
     };
-  }, []);
+  }, [cleanupFavorites]);
 
   // Function to load weights from profile
   const loadWeightsFromProfile = useCallback(() => {
@@ -409,16 +409,28 @@ const Index = () => {
   };
 
   const rankedETFs = useMemo(() => {
-    return rankETFs(etfData, weights);
+    if (!etfData || etfData.length === 0) return [];
+    try {
+      return rankETFs(etfData, weights);
+    } catch (error) {
+      console.error("[Index] Error ranking ETFs:", error);
+      return etfData;
+    }
   }, [etfData, weights]);
 
-  const sortedETFs = isGuest
-    ? [...rankedETFs].sort((a, b) => a.symbol.localeCompare(b.symbol))
-    : rankedETFs;
+  const sortedETFs = useMemo(() => {
+    if (!rankedETFs || rankedETFs.length === 0) return [];
+    return isGuest
+      ? [...rankedETFs].sort((a, b) => a.symbol.localeCompare(b.symbol))
+      : rankedETFs;
+  }, [rankedETFs, isGuest]);
 
-  const filteredETFs = showFavoritesOnly
-    ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
-    : sortedETFs;
+  const filteredETFs = useMemo(() => {
+    if (!sortedETFs || sortedETFs.length === 0) return [];
+    return showFavoritesOnly
+      ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
+      : sortedETFs;
+  }, [sortedETFs, showFavoritesOnly, favorites]);
 
   return (
     <div className="min-h-screen bg-background">
