@@ -188,10 +188,10 @@ const Index = () => {
             }
           }
         } catch (error) {
-          console.error("Failed to reload weights on navigation:", error);
+          console.error("Failed to load weights on navigation:", error);
         }
       };
-      reloadWeights();
+      loadWeightsOnce();
     }
   }, [location.pathname, user?.id]);
 
