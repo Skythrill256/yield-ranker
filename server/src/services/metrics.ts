@@ -667,7 +667,7 @@ function getPeriodStartDate(period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y'): st
  */
 async function calculateReturnsForPeriod(
   ticker: string,
-  period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | '10Y',
+  period: '1W' | '1M' | '3M' | '6M' | '1Y' | '3Y' | '5Y' | '10Y' | '15Y',
   dividends: DividendRecord[]
 ): Promise<FullReturnData> {
   // Get the most recent price to determine actual end date
@@ -709,6 +709,9 @@ async function calculateReturnsForPeriod(
     case '10Y':
       startDateObj.setFullYear(endDateObj.getFullYear() - 10);
       break;
+    case '15Y':
+      startDateObj.setFullYear(endDateObj.getFullYear() - 15);
+      break;
   }
 
   const startDate = formatDate(startDateObj);
@@ -735,6 +738,7 @@ async function calculateReturnsForPeriod(
     '3Y': 1095,
     '5Y': 1825,
     '10Y': 3650,
+    '15Y': 5475,
   };
   const requestedDays = periodDaysMap[period];
 
@@ -862,7 +866,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   }
 
   // Calculate returns for all periods using calendar-based dates
-  const [ret1W, ret1M, ret3M, ret6M, ret1Y, ret3Y, ret5Y, ret10Y] = await Promise.all([
+  const [ret1W, ret1M, ret3M, ret6M, ret1Y, ret3Y, ret5Y, ret10Y, ret15Y] = await Promise.all([
     calculateReturnsForPeriod(upperTicker, '1W', dividends),
     calculateReturnsForPeriod(upperTicker, '1M', dividends),
     calculateReturnsForPeriod(upperTicker, '3M', dividends),
@@ -871,6 +875,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     calculateReturnsForPeriod(upperTicker, '3Y', dividends),
     calculateReturnsForPeriod(upperTicker, '5Y', dividends),
     calculateReturnsForPeriod(upperTicker, '10Y', dividends),
+    calculateReturnsForPeriod(upperTicker, '15Y', dividends),
   ]);
 
   return {
@@ -911,6 +916,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '3Y': ret3Y.priceDrip,
       '5Y': ret5Y.priceDrip,
       '10Y': ret10Y.priceDrip,
+      '15Y': ret15Y.priceDrip,
     },
 
     // Price Return
@@ -923,6 +929,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '3Y': ret3Y.priceReturn,
       '5Y': ret5Y.priceReturn,
       '10Y': ret10Y.priceReturn,
+      '15Y': ret15Y.priceReturn,
     },
 
     // Total Return WITHOUT DRIP
@@ -935,6 +942,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '3Y': ret3Y.priceNoDrip,
       '5Y': ret5Y.priceNoDrip,
       '10Y': ret10Y.priceNoDrip,
+      '15Y': ret15Y.priceNoDrip,
     },
 
     // Legacy combined returns for backward compatibility
@@ -947,6 +955,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       '3Y': { price: ret3Y.priceReturn, total: ret3Y.priceDrip },
       '5Y': { price: ret5Y.priceReturn, total: ret5Y.priceDrip },
       '10Y': { price: ret10Y.priceReturn, total: ret10Y.priceDrip },
+      '15Y': { price: ret15Y.priceReturn, total: ret15Y.priceDrip },
     },
 
     calculatedAt: new Date().toISOString(),

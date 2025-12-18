@@ -235,6 +235,7 @@ export interface ETFMetrics {
     '3Y': number | null;
     '5Y': number | null;
     '10Y': number | null;
+    '15Y': number | null;
   };
 
   // Optional: Total Return WITHOUT DRIP
@@ -247,6 +248,7 @@ export interface ETFMetrics {
     '3Y': number | null;
     '5Y': number | null;
     '10Y': number | null;
+    '15Y': number | null;
   } | null;
 
   // Legacy combined returns for backward compatibility

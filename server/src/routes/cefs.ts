@@ -17,11 +17,171 @@ import {
   CACHE_TTL,
   getRedis,
 } from "../services/redis.js";
-import { logger, parseNumeric } from "../utils/index.js";
-import { getDividendHistory, getPriceHistory, getLatestPrice } from "../services/database.js";
-import type { DividendRecord } from "../types/index.js";
+import { logger, parseNumeric, getDateYearsAgo, formatDate } from "../utils/index.js";
+import {
+  getDividendHistory,
+  getPriceHistory,
+  getLatestPrice,
+} from "../services/database.js";
+import type { DividendRecord, PriceRecord } from "../types/index.js";
 
 const router: Router = Router();
+
+// ============================================================================
+// CEF-Specific Metrics Calculation
+// ============================================================================
+
+/**
+ * Calculate 5-Year Z-Score for Premium/Discount
+ * Uses flexible lookback: 2Y minimum, 5Y maximum
+ * Returns null if less than 2 years of data available
+ */
+async function calculateCEFZScore(
+  ticker: string,
+  navSymbol: string | null
+): Promise<number | null> {
+  if (!navSymbol) return null;
+
+  const DAYS_5Y = 5 * 252; // Max lookback (1260 trading days)
+  const DAYS_2Y = 2 * 252; // Min threshold (504 trading days)
+
+  try {
+    // Fetch 6 years of data to ensure we cover 5Y window fully
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(endDate.getFullYear() - 6);
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+
+    // Get price data for main ticker and NAV symbol
+    const [priceData, navData] = await Promise.all([
+      getPriceHistory(ticker, startDateStr, endDateStr),
+      getPriceHistory(navSymbol.toUpperCase(), startDateStr, endDateStr),
+    ]);
+
+    if (priceData.length === 0 || navData.length === 0) return null;
+
+    // Create maps by date for efficient lookup
+    const priceMap = new Map<string, number>();
+    priceData.forEach((p: PriceRecord) => {
+      if (p.close !== null && p.close > 0) {
+        priceMap.set(p.date, p.close);
+      }
+    });
+
+    const navMap = new Map<string, number>();
+    navData.forEach((p: PriceRecord) => {
+      if (p.close !== null && p.close > 0) {
+        navMap.set(p.date, p.close);
+      }
+    });
+
+    // Calculate daily discount: (Price / NAV) - 1
+    const discounts: number[] = [];
+    const allDates = new Set([...priceMap.keys(), ...navMap.keys()]);
+    const sortedDates = Array.from(allDates).sort();
+
+    for (const date of sortedDates) {
+      const price = priceMap.get(date);
+      const nav = navMap.get(date);
+      if (price && nav && nav > 0) {
+        discounts.push((price / nav) - 1.0);
+      }
+    }
+
+    if (discounts.length < DAYS_2Y) {
+      return null; // Not enough data (less than 2 years)
+    }
+
+    // Use up to 5 years of data (most recent)
+    const lookbackPeriod = Math.min(discounts.length, DAYS_5Y);
+    const history = discounts.slice(-lookbackPeriod);
+
+    if (history.length === 0) return null;
+
+    // Calculate stats
+    const currentDiscount = history[history.length - 1];
+    const avgDiscount = history.reduce((sum, d) => sum + d, 0) / history.length;
+    const variance = history.reduce((sum, d) => sum + Math.pow(d - avgDiscount, 2), 0) / history.length;
+    const stdDev = Math.sqrt(variance);
+
+    if (stdDev === 0) return 0.0;
+
+    // Z-Score Formula: (Current - Mean) / StdDev
+    const zScore = (currentDiscount - avgDiscount) / stdDev;
+
+    return zScore;
+  } catch (error) {
+    logger.warn("CEF Metrics", `Failed to calculate Z-Score for ${ticker}: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Calculate 6-Month NAV Trend (percentage change)
+ */
+async function calculateNAVTrend6M(
+  navSymbol: string | null
+): Promise<number | null> {
+  if (!navSymbol) return null;
+
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(endDate.getMonth() - 6);
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+
+    const navData = await getPriceHistory(navSymbol.toUpperCase(), startDateStr, endDateStr);
+    if (navData.length < 2) return null;
+
+    // Get first and last NAV values
+    const firstNav = navData[0].close;
+    const lastNav = navData[navData.length - 1].close;
+
+    if (!firstNav || !lastNav || firstNav <= 0) return null;
+
+    // Calculate percentage change: (Last - First) / First * 100
+    const trend = ((lastNav - firstNav) / firstNav) * 100;
+    return trend;
+  } catch (error) {
+    logger.warn("CEF Metrics", `Failed to calculate NAV Trend 6M for ${navSymbol}: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Calculate 12-Month NAV Return (percentage change)
+ */
+async function calculateNAVReturn12M(
+  navSymbol: string | null
+): Promise<number | null> {
+  if (!navSymbol) return null;
+
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(endDate.getFullYear() - 1);
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+
+    const navData = await getPriceHistory(navSymbol.toUpperCase(), startDateStr, endDateStr);
+    if (navData.length < 2) return null;
+
+    // Get first and last NAV values
+    const firstNav = navData[0].close;
+    const lastNav = navData[navData.length - 1].close;
+
+    if (!firstNav || !lastNav || firstNav <= 0) return null;
+
+    // Calculate percentage return: (Last - First) / First * 100
+    const return_12M = ((lastNav - firstNav) / firstNav) * 100;
+    return return_12M;
+  } catch (error) {
+    logger.warn("CEF Metrics", `Failed to calculate NAV Return 12M for ${navSymbol}: ${error}`);
+    return null;
+  }
+}
 
 // ============================================================================
 // File Upload Configuration
@@ -907,7 +1067,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             metrics?.dividendVolatilityIndex ??
             cef.dividend_volatility_index ??
             null,
-          return15Yr: cef.tr_drip_15y || null,
+          return15Yr: metrics?.totalReturnDrip?.["15Y"] ?? cef.tr_drip_15y ?? null,
           return10Yr:
             metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_10y ?? null,
           return5Yr: metrics?.totalReturnDrip?.["5Y"] ?? cef.tr_drip_5y ?? null,
@@ -1174,6 +1334,7 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
 
     let premiumDiscount: number | null = cef.premium_discount ?? null;
     // Calculate premium/discount if not in database but we have price and nav
+    // Formula: (Price / NAV - 1) * 100
     if (
       premiumDiscount === null &&
       currentNav &&
@@ -1181,7 +1342,7 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
     ) {
       const price = metrics?.currentPrice ?? cef.price;
       if (price && currentNav) {
-        premiumDiscount = ((price - currentNav) / currentNav) * 100;
+        premiumDiscount = ((price / currentNav) - 1) * 100;
       }
     }
 
@@ -1209,15 +1370,15 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       dividendCV: cef.dividend_cv || null,
       dividendCVPercent: cef.dividend_cv_percent || null,
       dividendVolatilityIndex: cef.dividend_volatility_index || null,
-      return15Yr: metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_15y ?? null, // Using 10Y as closest to 15Y
+      return15Yr: metrics?.totalReturnDrip?.["15Y"] ?? cef.tr_drip_15y ?? null,
       return10Yr: metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_10y ?? null,
       return5Yr: metrics?.totalReturnDrip?.["5Y"] ?? cef.tr_drip_5y ?? null,
       return3Yr: metrics?.totalReturnDrip?.["3Y"] ?? cef.tr_drip_3y ?? null,
       return12Mo: metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
-      return6Mo: cef.tr_drip_6m || null,
-      return3Mo: cef.tr_drip_3m || null,
-      return1Mo: cef.tr_drip_1m || null,
-      return1Wk: cef.tr_drip_1w || null,
+      return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
+      return3Mo: metrics?.totalReturnDrip?.["3M"] ?? cef.tr_drip_3m ?? null,
+      return1Mo: metrics?.totalReturnDrip?.["1M"] ?? cef.tr_drip_1m ?? null,
+      return1Wk: metrics?.totalReturnDrip?.["1W"] ?? cef.tr_drip_1w ?? null,
       weightedRank: cef.weighted_rank || null,
       week52Low: cef.week_52_low || null,
       week52High: cef.week_52_high || null,
