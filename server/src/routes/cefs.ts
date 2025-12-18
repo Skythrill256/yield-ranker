@@ -499,6 +499,8 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     
     logger.info('Routes', `Fetched ${allData.length} total records, ${staticData.length} CEFs (filtered by nav_symbol or nav)`);
 
+    const { calculateMetrics } = await import('../services/metrics.js');
+    
     const cefsWithDividendHistory = await Promise.all(
       staticData.map(async (cef: any) => {
         let dividendHistory = "0+ 0-";
@@ -514,6 +516,14 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
           premiumDiscount = ((cef.price - cef.nav) / cef.nav) * 100;
         }
 
+        // Calculate metrics using the same system as ETFs for accuracy
+        let metrics: any = null;
+        try {
+          metrics = await calculateMetrics(cef.ticker);
+        } catch (error) {
+          logger.warn('Routes', `Failed to calculate metrics for ${cef.ticker}: ${error}`);
+        }
+
         return {
           symbol: cef.ticker,
           name: cef.description || cef.ticker,
@@ -522,33 +532,33 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
           navSymbol: cef.nav_symbol || null,
           openDate: cef.open_date || null,
           ipoPrice: cef.ipo_price || null,
-          marketPrice: cef.price || null,
+          marketPrice: metrics?.currentPrice ?? cef.price ?? null,
           nav: cef.nav || null,
           premiumDiscount: premiumDiscount,
           fiveYearZScore: cef.five_year_z_score || null,
           navTrend6M: cef.nav_trend_6m || null,
           navTrend12M: cef.nav_trend_12m || null,
           valueHealthScore: cef.value_health_score || null,
-          lastDividend: cef.last_dividend || null,
-          numPayments: cef.payments_per_year || 12,
-          yearlyDividend: cef.annual_dividend || null,
-          forwardYield: cef.forward_yield || null,
+          lastDividend: metrics?.lastDividend ?? cef.last_dividend ?? null,
+          numPayments: metrics?.paymentsPerYear ?? cef.payments_per_year ?? 12,
+          yearlyDividend: metrics?.annualizedDividend ?? cef.annual_dividend ?? null,
+          forwardYield: metrics?.forwardYield ?? cef.forward_yield ?? null,
           dividendHistory: dividendHistory,
-          dividendSD: cef.dividend_sd || null,
-          dividendCV: cef.dividend_cv || null,
-          dividendCVPercent: cef.dividend_cv_percent || null,
-          dividendVolatilityIndex: cef.dividend_volatility_index || null,
+          dividendSD: metrics?.dividendSD ?? cef.dividend_sd ?? null,
+          dividendCV: metrics?.dividendCV ?? cef.dividend_cv ?? null,
+          dividendCVPercent: metrics?.dividendCVPercent ?? cef.dividend_cv_percent ?? null,
+          dividendVolatilityIndex: metrics?.dividendVolatilityIndex ?? cef.dividend_volatility_index ?? null,
           return10Yr: cef.tr_drip_3y || null,
           return5Yr: cef.tr_drip_3y || null,
           return3Yr: cef.tr_drip_3y || null,
-          return12Mo: cef.tr_drip_12m || null,
-          return6Mo: cef.tr_drip_6m || null,
-          return3Mo: cef.tr_drip_3m || null,
-          return1Mo: cef.tr_drip_1m || null,
-          return1Wk: cef.tr_drip_1w || null,
+          return12Mo: metrics?.totalReturnDrip?.['1Y'] ?? cef.tr_drip_12m ?? null,
+          return6Mo: metrics?.totalReturnDrip?.['6M'] ?? cef.tr_drip_6m ?? null,
+          return3Mo: metrics?.totalReturnDrip?.['3M'] ?? cef.tr_drip_3m ?? null,
+          return1Mo: metrics?.totalReturnDrip?.['1M'] ?? cef.tr_drip_1m ?? null,
+          return1Wk: metrics?.totalReturnDrip?.['1W'] ?? cef.tr_drip_1w ?? null,
           weightedRank: cef.weighted_rank || null,
-          week52Low: cef.week_52_low || null,
-          week52High: cef.week_52_high || null,
+          week52Low: metrics?.week52Low ?? cef.week_52_low ?? null,
+          week52High: metrics?.week52High ?? cef.week_52_high ?? null,
           lastUpdated: cef.last_updated || cef.updated_at,
           dataSource: 'Tiingo',
         };

@@ -96,12 +96,51 @@ const CEFDetail = () => {
         return;
       }
 
-      // Format data for chart
-      const formattedData = data.data.map(d => ({
+      // Format data for chart - ensure proper date filtering and sorting
+      const endDate = new Date();
+      const startDate = new Date();
+      
+      switch (selectedTimeframe) {
+        case '1M':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case '3M':
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case '6M':
+          startDate.setMonth(endDate.getMonth() - 6);
+          break;
+        case '1Y':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        case '3Y':
+          startDate.setFullYear(endDate.getFullYear() - 3);
+          break;
+        case '5Y':
+          startDate.setFullYear(endDate.getFullYear() - 5);
+          break;
+        case '10Y':
+          startDate.setFullYear(endDate.getFullYear() - 10);
+          break;
+        case '20Y':
+          startDate.setFullYear(endDate.getFullYear() - 20);
+          break;
+        default:
+          startDate.setFullYear(endDate.getFullYear() - 1);
+      }
+
+      const filteredData = data.data
+        .filter(d => {
+          const dataDate = new Date(d.date);
+          return dataDate >= startDate && dataDate <= endDate;
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      const formattedData = filteredData.map(d => ({
         date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         fullDate: d.date,
-        price: d.price,
-        nav: d.nav,
+        price: d.price !== null && d.price !== undefined ? Number(d.price) : null,
+        nav: d.nav !== null && d.nav !== undefined ? Number(d.nav) : null,
       }));
 
       setChartData(formattedData);
@@ -313,9 +352,8 @@ const CEFDetail = () => {
                   <Legend 
                     verticalAlign="top"
                     align="left"
-                    iconType="square"
+                    iconType="line"
                     wrapperStyle={{ paddingBottom: '10px', fontSize: '12px' }}
-                    formatter={(value) => value === 'price' ? 'Price' : 'NAV'}
                   />
                   <Line
                     type="monotone"
@@ -325,6 +363,7 @@ const CEFDetail = () => {
                     dot={false}
                     activeDot={{ r: 4 }}
                     name="Price"
+                    connectNulls={false}
                   />
                   <Line
                     type="monotone"
@@ -334,6 +373,7 @@ const CEFDetail = () => {
                     dot={false}
                     activeDot={{ r: 4 }}
                     name="NAV"
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
