@@ -63,6 +63,31 @@ const ETFDetail = () => {
     }
   };
 
+  const buildChartData = useCallback(async () => {
+    if (!etf) return;
+
+    setIsChartLoading(true);
+    setChartError(null);
+
+    try {
+      const symbols = [etf.symbol, ...comparisonETFs];
+      const comparison = await fetchComparisonData(symbols, selectedTimeframe);
+      const data = generateChartData(comparison, chartType);
+      if (!data.length) {
+        setChartError("Live chart data is not available for this timeframe.");
+        setChartData([]);
+        return;
+      }
+      setChartData(data);
+    } catch (error) {
+      console.error("[ETFDetail] Error building chart data:", error);
+      setChartError("Unable to load live chart data right now.");
+      setChartData([]);
+    } finally {
+      setIsChartLoading(false);
+    }
+  }, [etf, comparisonETFs, chartType, selectedTimeframe]);
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -111,31 +136,6 @@ const ETFDetail = () => {
       window.removeEventListener('etfDataUpdated', handleETFDataUpdated);
     };
   }, [symbol, etf, buildChartData]);
-
-  const buildChartData = useCallback(async () => {
-    if (!etf) return;
-
-    setIsChartLoading(true);
-    setChartError(null);
-
-    try {
-      const symbols = [etf.symbol, ...comparisonETFs];
-      const comparison = await fetchComparisonData(symbols, selectedTimeframe);
-      const data = generateChartData(comparison, chartType);
-      if (!data.length) {
-        setChartError("Live chart data is not available for this timeframe.");
-        setChartData([]);
-        return;
-      }
-      setChartData(data);
-    } catch (error) {
-      console.error("[ETFDetail] Error building chart data:", error);
-      setChartError("Unable to load live chart data right now.");
-      setChartData([]);
-    } finally {
-      setIsChartLoading(false);
-    }
-  }, [etf, comparisonETFs, chartType, selectedTimeframe]);
 
   // Load chart when ETF is loaded
   useEffect(() => {
