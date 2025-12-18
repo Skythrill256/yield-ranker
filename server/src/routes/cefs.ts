@@ -846,16 +846,32 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           );
         }
 
+        // Get current NAV from latest price of nav_symbol if nav_symbol exists
+        let currentNav: number | null = cef.nav ?? null;
+        if (!currentNav && cef.nav_symbol) {
+          try {
+            const navPrices = await getLatestPrice(cef.nav_symbol.toUpperCase(), 1);
+            if (navPrices.length > 0 && navPrices[0].close) {
+              currentNav = navPrices[0].close;
+            }
+          } catch (error) {
+            logger.warn(
+              "Routes",
+              `Failed to fetch NAV price for ${cef.nav_symbol}: ${error}`
+            );
+          }
+        }
+
         let premiumDiscount: number | null = cef.premium_discount ?? null;
         // Calculate premium/discount if not in database but we have price and nav
         if (
           premiumDiscount === null &&
-          cef.nav &&
+          currentNav &&
           (cef.price || metrics?.currentPrice)
         ) {
           const price = metrics?.currentPrice ?? cef.price;
-          if (price && cef.nav) {
-            premiumDiscount = ((price - cef.nav) / cef.nav) * 100;
+          if (price && currentNav) {
+            premiumDiscount = ((price - currentNav) / currentNav) * 100;
           }
         }
 
@@ -868,7 +884,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           openDate: cef.open_date || null,
           ipoPrice: cef.ipo_price || null,
           marketPrice: metrics?.currentPrice ?? cef.price ?? null,
-          nav: cef.nav || null,
+          nav: currentNav,
           premiumDiscount: premiumDiscount,
           fiveYearZScore: cef.five_year_z_score || null,
           navTrend6M: cef.nav_trend_6m || null,
@@ -1061,7 +1077,7 @@ router.get(
         .map((date) => {
           const priceEntry = priceMap.get(date);
           const navEntry = navMap.get(date);
-          
+
           return {
             date,
             price: priceEntry?.close ?? null,
@@ -1137,16 +1153,32 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    // Get current NAV from latest price of nav_symbol if nav_symbol exists
+    let currentNav: number | null = cef.nav ?? null;
+    if (!currentNav && cef.nav_symbol) {
+      try {
+        const navPrices = await getLatestPrice(cef.nav_symbol.toUpperCase(), 1);
+        if (navPrices.length > 0 && navPrices[0].close) {
+          currentNav = navPrices[0].close;
+        }
+      } catch (error) {
+        logger.warn(
+          "Routes",
+          `Failed to fetch NAV price for ${cef.nav_symbol}: ${error}`
+        );
+      }
+    }
+
     let premiumDiscount: number | null = cef.premium_discount ?? null;
     // Calculate premium/discount if not in database but we have price and nav
     if (
       premiumDiscount === null &&
-      cef.nav &&
+      currentNav &&
       (cef.price || metrics?.currentPrice)
     ) {
       const price = metrics?.currentPrice ?? cef.price;
-      if (price && cef.nav) {
-        premiumDiscount = ((price - cef.nav) / cef.nav) * 100;
+      if (price && currentNav) {
+        premiumDiscount = ((price - currentNav) / currentNav) * 100;
       }
     }
 
@@ -1159,7 +1191,7 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       openDate: cef.open_date || null,
       ipoPrice: cef.ipo_price || null,
       marketPrice: cef.price || null,
-      nav: cef.nav || null,
+      nav: currentNav,
       premiumDiscount: premiumDiscount,
       fiveYearZScore: cef.five_year_z_score || null,
       navTrend6M: cef.nav_trend_6m || null,
