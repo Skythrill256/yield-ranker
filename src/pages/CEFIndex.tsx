@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { CEFTable } from "@/components/CEFTable";
 import { fetchCEFDataWithMetadata, clearCEFCache, isCEFDataCached } from "@/services/cefData";
-import { CEF } from "@/types/cef";
+import { CEF, RankingWeights } from "@/types/cef";
 import { Loader2, Clock, Star } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Footer } from "@/components/Footer";
@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
 import { getSiteSettings } from "@/services/admin";
+import { rankCEFs } from "@/utils/cefRanking";
+import { loadRankingWeights, saveRankingWeights } from "@/services/preferences";
 
 const Index = () => {
   const { user, profile } = useAuth();
@@ -24,6 +26,12 @@ const Index = () => {
   const [lastDataUpdate, setLastDataUpdate] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [weights, setWeights] = useState<RankingWeights>({
+    yield: 34,
+    volatility: 33,
+    totalReturn: 33,
+    timeframe: "12mo",
+  });
 
   useEffect(() => {
     const loadData = async (isInitialLoad: boolean = true) => {
@@ -93,12 +101,56 @@ const Index = () => {
     };
   }, [cleanupFavorites]);
 
-  const filteredCEFs = useCallback(() => {
-    if (showFavoritesOnly && isPremium) {
-      return cefData.filter(cef => cefFavorites.has(cef.symbol));
+  // Load ranking weights from profile
+  useEffect(() => {
+    const loadWeights = async () => {
+      if (user?.id && isPremium) {
+        try {
+          const savedWeights = await loadRankingWeights(user.id);
+          if (savedWeights) {
+            setWeights(savedWeights);
+          }
+        } catch (error) {
+          console.error("[CEFIndex] Failed to load ranking weights:", error);
+        }
+      }
+    };
+    loadWeights();
+  }, [user?.id, isPremium, profile]);
+
+  // Save weights when they change (for premium users)
+  useEffect(() => {
+    if (user?.id && isPremium && weights) {
+      const saveWeights = async () => {
+        try {
+          await saveRankingWeights(user.id, weights);
+        } catch (error) {
+          console.error("[CEFIndex] Failed to save ranking weights:", error);
+        }
+      };
+      const timeoutId = setTimeout(saveWeights, 500);
+      return () => clearTimeout(timeoutId);
     }
-    return cefData;
-  }, [cefData, showFavoritesOnly, isPremium, cefFavorites]);
+  }, [weights, user?.id, isPremium]);
+
+  const rankedCEFs = useMemo(() => {
+    if (!cefData || cefData.length === 0) return [];
+    if (isGuest) return cefData;
+    try {
+      return rankCEFs(cefData, weights);
+    } catch (error) {
+      console.error("[CEFIndex] Error ranking CEFs:", error);
+      return cefData;
+    }
+  }, [cefData, weights, isGuest]);
+
+  const filteredCEFs = useCallback(() => {
+    const dataToFilter = isGuest ? cefData : rankedCEFs;
+    if (showFavoritesOnly && isPremium) {
+      return dataToFilter.filter(cef => cefFavorites.has(cef.symbol));
+    }
+    return dataToFilter;
+  }, [isGuest, cefData, rankedCEFs, showFavoritesOnly, isPremium, cefFavorites]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
