@@ -997,6 +997,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     const supabase = getSupabase();
 
     // Fetch all data including pre-computed metrics from etf_static
+    // EXCLUDE CEFs: only return records where nav_symbol IS NULL and nav IS NULL
     const staticResult = await supabase
       .from('etf_static')
       .select('*')
@@ -1009,8 +1010,16 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const staticData = staticResult.data || [];
-    logger.info('Routes', `Fetched ${staticData.length} ETFs from database`);
+    const allData = staticResult.data || [];
+    
+    // Filter out CEFs: exclude records that have nav_symbol or nav set
+    const staticData = allData.filter((item: any) => {
+      const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
+      const hasNav = item.nav !== null && item.nav !== undefined && item.nav !== '';
+      return !hasNavSymbol && !hasNav;
+    });
+    
+    logger.info('Routes', `Fetched ${allData.length} total records, ${staticData.length} ETFs (excluded ${allData.length - staticData.length} CEFs)`);
 
     // Map to frontend format
     const results = staticData.map((etf: any) => ({

@@ -451,9 +451,11 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
     
+    // Only include CEFs: must have nav_symbol OR nav set
     const staticData = allData.filter((item: any) => {
       const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
       const hasNav = item.nav !== null && item.nav !== undefined && item.nav !== '';
+      // Must have at least one CEF identifier
       return hasNavSymbol || hasNav;
     });
     
