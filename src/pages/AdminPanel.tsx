@@ -98,6 +98,8 @@ const AdminPanel = () => {
   const [availableTickers, setAvailableTickers] = useState<string[]>([]);
   const [deleteTickerSearch, setDeleteTickerSearch] = useState("");
   const [loadingTickers, setLoadingTickers] = useState(false);
+  const [selectedTickers, setSelectedTickers] = useState<Set<string>>(new Set());
+  const [deletingMultiple, setDeletingMultiple] = useState(false);
 
   const userMetadata =
     (user?.user_metadata as {
@@ -596,9 +598,13 @@ const AdminPanel = () => {
         description: result.message,
       });
       setDeleteTicker("");
-      await loadAvailableTickers();
-      // Dispatch event with the ticker that was actually deleted
+      
+      // Immediately dispatch events for instant UI update
       window.dispatchEvent(new CustomEvent('etfDeleted', { detail: { ticker: tickerToDelete } }));
+      window.dispatchEvent(new CustomEvent('etfDataUpdated'));
+      
+      // Reload tickers in background
+      loadAvailableTickers();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Delete failed";
       setDeleteETFStatus(`Error: ${message}`);

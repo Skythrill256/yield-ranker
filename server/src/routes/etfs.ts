@@ -1519,6 +1519,7 @@ router.delete('/:ticker', async (req: Request, res: Response): Promise<void> => 
     const upperTicker = ticker.toUpperCase();
     const supabase = getSupabase();
 
+    // Delete related data first
     const { error: deleteDividendsError } = await supabase
       .from('dividends_detail')
       .delete()
