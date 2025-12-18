@@ -138,6 +138,13 @@ export const Header = () => {
                 </DropdownMenuLabel>
                 <DropdownMenuItem 
                   className="cursor-pointer"
+                  onClick={() => go("/covered-call-etfs")}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  <span>Covered Call Option ETFs</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="cursor-pointer"
                   onClick={() => go("/resources")}
                 >
                   <FileText className="w-4 h-4 mr-2" />

@@ -103,7 +103,7 @@ function CoveredCallETFs() {
 
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 mb-2">Annual Dividend</h3>
-                  <p>Dividend  X  #Pmts = Annual Dividend.</p>
+                  <p>Dividend X #Pmts = Annual Dividend.</p>
                 </div>
 
                 <div>
