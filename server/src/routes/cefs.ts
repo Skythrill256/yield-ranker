@@ -644,12 +644,15 @@ router.get('/:symbol/price-nav', async (req: Request, res: Response): Promise<vo
     const priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
 
     let navData: any[] = [];
-    if (navSymbol) {
+    if (navSymbol && navSymbol.trim()) {
       try {
         navData = await getPriceHistory(navSymbol.toUpperCase(), startDateStr, endDateStr);
+        logger.info('Routes', `Fetched ${navData.length} NAV records for ${navSymbol} (${startDateStr} to ${endDateStr})`);
       } catch (error) {
         logger.warn('Routes', `Failed to fetch NAV data for ${navSymbol}: ${error}`);
       }
+    } else {
+      logger.warn('Routes', `No NAV symbol found for ${ticker}, NAV chart data will be empty`);
     }
 
     const priceMap = new Map<string, { close: number | null; date: string }>();
