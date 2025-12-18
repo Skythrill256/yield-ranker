@@ -237,8 +237,8 @@ export const CEFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton field="valueHealthScore" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
-                  <div className="whitespace-normal leading-tight">Value/<br />Health</div>
+                <SortButton field="navTrend12M" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                  <div className="whitespace-normal leading-tight">12M NAV<br />Return</div>
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
@@ -364,8 +364,9 @@ export const CEFTable = ({
                   }`}>
                   {cef.navTrend6M != null ? formatPercentage(cef.navTrend6M) : 'N/A'}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium text-foreground">
-                  {cef.valueHealthScore != null ? cef.valueHealthScore.toFixed(0) : 'N/A'}
+                <td className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.navTrend12M != null && cef.navTrend12M >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                  {cef.navTrend12M != null ? formatPercentage(cef.navTrend12M) : 'N/A'}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
                   {cef.dividendCVPercent != null ? `${cef.dividendCVPercent.toFixed(1)}%` : (cef.dividendCV != null ? `${(cef.dividendCV * 100).toFixed(1)}%` : 'N/A')}

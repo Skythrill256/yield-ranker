@@ -541,12 +541,15 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     
     const cefsWithDividendHistory = await Promise.all(
       staticData.map(async (cef: any) => {
-        let dividendHistory = "0+ 0-";
-        try {
-          const dividends = await getDividendHistory(cef.ticker);
-          dividendHistory = calculateDividendHistory(dividends);
-        } catch (error) {
-          logger.warn('Routes', `Failed to calculate dividend history for ${cef.ticker}: ${error}`);
+        let dividendHistory = cef.dividend_history || null;
+        if (!dividendHistory) {
+          try {
+            const dividends = await getDividendHistory(cef.ticker);
+            dividendHistory = calculateDividendHistory(dividends);
+          } catch (error) {
+            logger.warn('Routes', `Failed to calculate dividend history for ${cef.ticker}: ${error}`);
+            dividendHistory = "0+ 0-";
+          }
         }
 
         let premiumDiscount: number | null = null;
