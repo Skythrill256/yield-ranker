@@ -38,7 +38,7 @@ WHERE nav_symbol IS NOT NULL
 SELECT COUNT(*) as etf_count
 FROM etf_static
 WHERE (nav_symbol IS NULL OR nav_symbol = '')
-  AND (nav IS NULL OR nav = '');
+  AND nav IS NULL;
 
 -- Verify: Check CEF count (should be 0 after clearing, or 12 if you kept them)
 SELECT COUNT(*) as cef_count
