@@ -231,6 +231,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     const navTrend12MCol = findColumn(headerMap, '12m nav return', '12m nav return %', '12 month nav return', 'nav return 12m', 'nav return 12 month', '12mo nav return', '12m nav trend', 'q - 12m nav return');
     const valueHealthScoreCol = findColumn(headerMap, 'value/health score', 'value health score', 'value health', 'health score', 'p - value/health score');
     const dviCol = findColumn(headerMap, 'dvi', 'dividend volatility index');
+    const return15YrCol = findColumn(headerMap, '15 yr annlzd', '15 yr annizd', '15 yr', '15yr', '15 year', '15year');
     const return10YrCol = findColumn(headerMap, '10 yr annlzd', '10 yr annizd', '10 yr', '10yr', '10 year', '10year');
     const return5YrCol = findColumn(headerMap, '5 yr annlzd', '5 yr annizd', '5 yr', '5yr', '5 year', '5year');
     const return3YrCol = findColumn(headerMap, '3 yr annlzd', '3 yr annizd', '3 yr', '3yr', '3 year', '3year');
@@ -589,6 +590,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
           dividendCV: metrics?.dividendCV ?? cef.dividend_cv ?? null,
           dividendCVPercent: metrics?.dividendCVPercent ?? cef.dividend_cv_percent ?? null,
           dividendVolatilityIndex: metrics?.dividendVolatilityIndex ?? cef.dividend_volatility_index ?? null,
+          return15Yr: cef.tr_drip_3y || null,
           return10Yr: cef.tr_drip_3y || null,
           return5Yr: cef.tr_drip_3y || null,
           return3Yr: cef.tr_drip_3y || null,
@@ -822,6 +824,7 @@ router.get('/:symbol', async (req: Request, res: Response): Promise<void> => {
       dividendCV: cef.dividend_cv || null,
       dividendCVPercent: cef.dividend_cv_percent || null,
       dividendVolatilityIndex: cef.dividend_volatility_index || null,
+      return15Yr: cef.tr_drip_3y || null,
       return10Yr: cef.tr_drip_3y || null,
       return5Yr: cef.tr_drip_3y || null,
       return3Yr: cef.tr_drip_3y || null,

@@ -30,6 +30,7 @@ export interface CEF {
   dividendVolatilityIndex: string | null; // DVI
   
   // Returns
+  return15Yr: number | null; // 15 YR Annlzd
   return10Yr: number | null; // 10 YR Annlzd
   return5Yr: number | null; // 5 YR Annlzd
   return3Yr: number | null; // 3 YR Annlzd

@@ -80,6 +80,7 @@ export const CEFTable = ({
   }, []);
 
   const returnColumns = [
+    { key: "return15Yr" as keyof CEF, label: "15 YR" },
     { key: "return10Yr" as keyof CEF, label: "10 YR" },
     { key: "return5Yr" as keyof CEF, label: "5 YR" },
     { key: "return3Yr" as keyof CEF, label: "3 YR" },

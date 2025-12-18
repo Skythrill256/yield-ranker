@@ -406,10 +406,13 @@ const Index = () => {
 
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-32 relative">
           <div className="max-w-4xl mx-auto text-center space-y-6">
+            <p className="text-sm md:text-base text-muted-foreground font-medium uppercase tracking-wide">
+              Dividends &amp; Total Returns
+            </p>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
-              Dividends &amp;{" "}
+              Covered Call{" "}
               <span className="bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text text-transparent">
-                Total Returns
+                Option ETFs
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-medium">
