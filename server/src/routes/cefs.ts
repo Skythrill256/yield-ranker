@@ -416,18 +416,28 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     const staticResult = await supabase
       .from('etf_static')
       .select('*')
-      .not('nav_symbol', 'is', null)
       .order('ticker', { ascending: true })
       .limit(10000);
 
     if (staticResult.error) {
-      logger.error('Routes', `Error fetching CEF data: ${staticResult.error.message}`);
-      res.status(500).json({ error: 'Failed to fetch CEF data' });
+      logger.error('Routes', `Error fetching CEF data: ${JSON.stringify(staticResult.error)}`);
+      res.status(500).json({ 
+        error: 'Failed to fetch CEF data', 
+        details: staticResult.error.message || String(staticResult.error),
+        code: staticResult.error.code
+      });
       return;
     }
 
-    const staticData = staticResult.data || [];
-    logger.info('Routes', `Fetched ${staticData.length} CEFs from database (filtered by nav_symbol)`);
+    const allData = staticResult.data || [];
+    
+    const staticData = allData.filter((item: any) => {
+      const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
+      const hasNav = item.nav !== null && item.nav !== undefined;
+      return hasNavSymbol || hasNav;
+    });
+    
+    logger.info('Routes', `Fetched ${allData.length} total records, ${staticData.length} CEFs (filtered by nav_symbol or nav)`);
 
     const cefsWithDividendHistory = await Promise.all(
       staticData.map(async (cef: any) => {
