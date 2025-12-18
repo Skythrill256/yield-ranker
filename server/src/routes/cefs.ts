@@ -1050,34 +1050,22 @@ router.get(
         }
       });
 
+      // Combine dates from both price and NAV data
+      // Only include dates that have actual data (no forward-filling)
       const allDates = new Set([...priceMap.keys(), ...navMap.keys()]);
       const sortedDates = Array.from(allDates).sort();
 
-      // Forward-fill both Price and NAV data points from previous values
-      // This ensures both lines are continuous and consistent
-      let lastPriceValue: number | null = null;
-      let lastNavValue: number | null = null;
+      // Use only actual daily prices - no forward filling
+      // This ensures the chart shows actual trading day data with natural gaps
       const combinedData = sortedDates
         .map((date) => {
-          const price = priceMap.get(date)?.close || null;
-          const nav = navMap.get(date)?.close || null;
-
-          // Forward-fill Price if missing (use last known price value)
-          const priceToUse = price !== null ? price : lastPriceValue;
-          if (priceToUse !== null) {
-            lastPriceValue = priceToUse;
-          }
-
-          // Forward-fill NAV if missing (use last known NAV value)
-          const navToUse = nav !== null ? nav : lastNavValue;
-          if (navToUse !== null) {
-            lastNavValue = navToUse;
-          }
-
+          const priceEntry = priceMap.get(date);
+          const navEntry = navMap.get(date);
+          
           return {
             date,
-            price: priceToUse,
-            nav: navToUse,
+            price: priceEntry?.close ?? null,
+            nav: navEntry?.close ?? null,
           };
         })
         .filter((d) => d.price !== null || d.nav !== null);

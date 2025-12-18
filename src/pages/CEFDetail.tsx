@@ -477,7 +477,7 @@ const CEFDetail = () => {
                     dot={false}
                     activeDot={{ r: 5 }}
                     name="Price"
-                    connectNulls={true}
+                    connectNulls={false}
                   />
                   <Line
                     type="monotone"
@@ -487,7 +487,7 @@ const CEFDetail = () => {
                     dot={false}
                     activeDot={{ r: 5 }}
                     name="NAV"
-                    connectNulls={true}
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
