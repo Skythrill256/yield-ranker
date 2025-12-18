@@ -54,7 +54,7 @@ const allowedOrigins = new Set([
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:8080',
-
+  "https://yield-ranker-c5dsa07xx-richard-l-hills-projects.vercel.app",
   // Production domains
   'https://dividendsandtotalreturns.com',
   'https://www.dividendsandtotalreturns.com',
