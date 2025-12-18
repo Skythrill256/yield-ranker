@@ -835,6 +835,17 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           }
         }
 
+        // Calculate metrics using the same system as ETFs for accuracy
+        let metrics: any = null;
+        try {
+          metrics = await calculateMetrics(cef.ticker);
+        } catch (error) {
+          logger.warn(
+            "Routes",
+            `Failed to calculate metrics for ${cef.ticker}: ${error}`
+          );
+        }
+
         let premiumDiscount: number | null = cef.premium_discount ?? null;
         // Calculate premium/discount if not in database but we have price and nav
         if (
@@ -846,17 +857,6 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           if (price && cef.nav) {
             premiumDiscount = ((price - cef.nav) / cef.nav) * 100;
           }
-        }
-
-        // Calculate metrics using the same system as ETFs for accuracy
-        let metrics: any = null;
-        try {
-          metrics = await calculateMetrics(cef.ticker);
-        } catch (error) {
-          logger.warn(
-            "Routes",
-            `Failed to calculate metrics for ${cef.ticker}: ${error}`
-          );
         }
 
         return {
