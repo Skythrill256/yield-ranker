@@ -286,6 +286,13 @@ export const Header = () => {
             <Button
               variant="ghost"
               className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
+              onClick={() => go("/covered-call-etfs")}
+            >
+              Covered Call Option ETFs
+            </Button>
+            <Button
+              variant="ghost"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/resources")}
             >
               Resources
