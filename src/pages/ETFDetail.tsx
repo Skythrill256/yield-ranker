@@ -143,7 +143,7 @@ const ETFDetail = () => {
       buildChartData();
       setHasLoadedLiveChart(true);
     }
-  }, [buildChartData, hasLoadedLiveChart, etf]);
+  }, [etf, hasLoadedLiveChart]);
 
   useEffect(() => {
     if (hasLoadedLiveChart) {

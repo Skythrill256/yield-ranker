@@ -22,6 +22,11 @@ import {
   saveRankingPreset, 
   loadRankingPresets, 
   deleteRankingPreset,
+  loadCEFRankingWeights,
+  saveCEFRankingWeights,
+  loadCEFRankingPresets,
+  saveCEFRankingPreset,
+  deleteCEFRankingPreset,
   RankingPreset 
 } from "@/services/preferences";
 

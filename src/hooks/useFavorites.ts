@@ -248,6 +248,17 @@ export function useFavorites(category: FavoriteCategory = 'etf') {
     });
 
     setFavorites(prev => {
+      const newFavorites = new Set<string>();
+      prev.forEach(fav => {
+        const upper = fav.toUpperCase();
+        if (validMap.has(upper)) {
+          newFavorites.add(validMap.get(upper)!);
+        }
+      });
+      return newFavorites;
+    });
+
+    setFavorites(prev => {
       const normalized = new Set<string>();
       let hasChanges = false;
 
