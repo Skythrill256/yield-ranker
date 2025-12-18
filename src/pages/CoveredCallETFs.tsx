@@ -93,7 +93,7 @@ export default function CoveredCallETFs() {
 
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 mb-2">Dividend</h3>
-                  <p>Average dividend per share based on all dividend history.</p>
+                  <p>Last announced or paid dividend per share.</p>
                 </div>
 
                 <div>
