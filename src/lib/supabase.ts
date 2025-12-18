@@ -20,6 +20,11 @@ try {
         detectSessionInUrl: true,
         autoRefreshToken: true,
       },
+      global: {
+        headers: {
+          'x-client-info': 'yield-ranker',
+        },
+      },
     });
   } else {
     supabase = createClient(
@@ -31,22 +36,37 @@ try {
           detectSessionInUrl: false,
           autoRefreshToken: false,
         },
+        global: {
+          headers: {
+            'x-client-info': 'yield-ranker',
+          },
+        },
       }
     );
   }
 } catch (error) {
   console.error('Failed to initialize Supabase client:', error);
-  supabase = createClient(
-    'https://abcdefghijklmnop.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
-    {
-      auth: {
-        persistSession: false,
-        detectSessionInUrl: false,
-        autoRefreshToken: false,
-      },
-    }
-  );
+  try {
+    supabase = createClient(
+      'https://abcdefghijklmnop.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0',
+      {
+        auth: {
+          persistSession: false,
+          detectSessionInUrl: false,
+          autoRefreshToken: false,
+        },
+        global: {
+          headers: {
+            'x-client-info': 'yield-ranker',
+          },
+        },
+      }
+    );
+  } catch (fallbackError) {
+    console.error('Failed to initialize fallback Supabase client:', fallbackError);
+    throw fallbackError;
+  }
 }
 
 export { supabase };
