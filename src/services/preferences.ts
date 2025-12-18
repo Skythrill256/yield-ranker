@@ -11,8 +11,10 @@ export type RankingPreset = {
 
 export type UserPreferences = {
   ranking_weights?: RankingWeights;
+  cef_ranking_weights?: RankingWeights;
   return_view?: "total" | "price";
   ranking_presets?: RankingPreset[];
+  cef_ranking_presets?: RankingPreset[];
   chart_settings?: {
     chartType?: "price" | "totalReturn";
     selectedTimeframe?: string;
