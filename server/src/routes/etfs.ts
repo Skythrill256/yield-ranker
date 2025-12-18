@@ -524,16 +524,16 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       await supabase.from('etfs').upsert(legacyRecords, { onConflict: 'symbol' });
     }
 
-    // If div column was provided, update only the most recent dividend amount for each ticker
-    // This keeps all Tiingo data (dates, split adjustments, etc.) intact
+    // If div column was provided, update or create dividend records
+    // This prioritizes manual updates while keeping them recognizable for Tiingo sync
     let dividendsUpdated = 0;
     const tickersToRecalc = new Set<string>();
 
     if (dividendUpdates.length > 0) {
-      logger.info('Upload', `Updating dividend amounts for ${dividendUpdates.length} ticker(s)`);
+      logger.info('Upload', `Processing dividend updates for ${dividendUpdates.length} ticker(s)`);
 
       for (const { ticker, divAmount } of dividendUpdates) {
-        // Get the most recent dividend for this ticker (from Tiingo)
+        // Get the absolute most recent dividend for this ticker
         const { data: recentDividends } = await supabase
           .from('dividends_detail')
           .select('*')
@@ -541,18 +541,31 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           .order('ex_date', { ascending: false })
           .limit(1);
 
-        if (recentDividends && recentDividends.length > 0) {
-          const latestDiv = recentDividends[0];
-          // Update div_cash, adj_amount, and mark as manual to preserve during Tiingo sync
+        const latestDiv = recentDividends?.[0];
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
+        // Deciding whether to update the latest record or create a new one:
+        // If the latest dividend's ex_date is "old" (> 25 days ago), we assume this is a new announcement
+        // for the next period and create a new record.
+        let shouldCreateNew = !latestDiv;
+        if (latestDiv) {
+          const exDate = new Date(latestDiv.ex_date);
+          const diffDays = (now.getTime() - exDate.getTime()) / (1000 * 3600 * 24);
+          if (diffDays > 25) {
+            shouldCreateNew = true;
+          }
+        }
+
+        if (!shouldCreateNew && latestDiv) {
+          // Update the "current" or "upcoming" dividend record
           const { error: updateError } = await supabase
             .from('dividends_detail')
             .update({
               div_cash: divAmount,
-              adj_amount: divAmount, // Use same amount as adj_amount for manual updates
+              adj_amount: divAmount,
               is_manual: true,
-              description: latestDiv.description?.includes('Manual upload')
-                ? latestDiv.description
-                : 'Manual upload - DTR spreadsheet update',
+              description: 'Manual upload - DTR spreadsheet update',
             })
             .eq('ticker', ticker)
             .eq('ex_date', latestDiv.ex_date);
@@ -560,15 +573,13 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           if (!updateError) {
             dividendsUpdated++;
             tickersToRecalc.add(ticker);
-            logger.info('Upload', `Updated dividend amount for ${ticker}: $${divAmount} (marked as manual)`);
+            logger.info('Upload', `Updated recent dividend for ${ticker} to $${divAmount} (ex-date: ${latestDiv.ex_date.split('T')[0]})`);
           }
         } else {
-          // No existing dividend found - create a new manual dividend record
-          // Use today's date as declaration, estimate ex-date based on payment frequency
-          const now = new Date();
-          const declareDate = now.toISOString().split('T')[0];
+          // Create a new manual dividend record for the upcoming period
+          const declareDate = todayStr;
 
-          // Get payment frequency to estimate ex-date
+          // Get payment frequency to estimate upcoming ex-date
           const { data: staticData } = await supabase
             .from('etf_static')
             .select('payments_per_year')
@@ -576,11 +587,20 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
             .single();
 
           const paymentsPerYear = staticData?.payments_per_year ?? 12;
-          const daysUntilExDate = Math.ceil(365 / paymentsPerYear);
 
-          const exDateObj = new Date(now);
-          exDateObj.setDate(exDateObj.getDate() + daysUntilExDate);
-          const exDate = exDateObj.toISOString().split('T')[0];
+          let estimatedExDateObj = new Date(now);
+          if (latestDiv) {
+            // Base new ex_date on previous one + interval
+            estimatedExDateObj = new Date(latestDiv.ex_date);
+            const monthsPerPmt = Math.max(1, Math.round(12 / paymentsPerYear));
+            estimatedExDateObj.setMonth(estimatedExDateObj.getMonth() + monthsPerPmt);
+          } else {
+            // Heuristic if no history: roughly one period from now
+            const daysPerPmt = Math.ceil(365 / paymentsPerYear);
+            estimatedExDateObj.setDate(estimatedExDateObj.getDate() + daysPerPmt);
+          }
+
+          const exDate = estimatedExDateObj.toISOString().split('T')[0];
 
           const { error: insertError } = await supabase
             .from('dividends_detail')
@@ -591,7 +611,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
               div_cash: divAmount,
               adj_amount: divAmount,
               split_factor: 1,
-              description: 'Manual upload - DTR spreadsheet',
+              description: 'Manual upload - DTR spreadsheet update',
               is_manual: true,
               currency: 'USD',
             }, {
@@ -602,7 +622,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
           if (!insertError) {
             dividendsUpdated++;
             tickersToRecalc.add(ticker);
-            logger.info('Upload', `Created new manual dividend for ${ticker}: $${divAmount} (ex-date: ${exDate})`);
+            logger.info('Upload', `Created new manual dividend for ${ticker}: $${divAmount} (est. ex-date: ${exDate})`);
           } else {
             logger.warn('Upload', `Failed to create dividend for ${ticker}: ${insertError.message}`);
           }

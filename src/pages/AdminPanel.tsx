@@ -476,8 +476,8 @@ const AdminPanel = () => {
       }
 
       const statusMsg = result.dividendsUpdated > 0
-        ? `Success! Processed ${result.count} ETFs (${result.added} added, ${result.updated} updated) and updated ${result.dividendsUpdated} dividend amount(s)`
-        : `Success! Processed ${result.count} ETFs (${result.added} added, ${result.updated} updated)`;
+        ? `Success! Processed ${result.count} tickers (${result.added} added, ${result.updated} updated) and updated/created ${result.dividendsUpdated} manual dividend override(s).`
+        : `Success! Processed ${result.count} tickers (${result.added} added, ${result.updated} updated).`;
       setUploadStatus(statusMsg);
       toast({
         title: "Upload successful",
@@ -488,11 +488,11 @@ const AdminPanel = () => {
         "dtr-file-input"
       ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
-      
+
       // Clear cache and reload data
       clearETFCache();
       await loadAvailableTickers();
-      
+
       // Dispatch event to refresh data on other pages
       window.dispatchEvent(new CustomEvent('etfDataUpdated'));
     } catch (error) {
@@ -553,7 +553,7 @@ const AdminPanel = () => {
         "cef-file-input"
       ) as HTMLInputElement;
       if (fileInput) fileInput.value = "";
-      
+
       clearCEFCache();
       window.dispatchEvent(new CustomEvent('cefDataUpdated'));
     } catch (error) {
@@ -598,11 +598,11 @@ const AdminPanel = () => {
         description: result.message,
       });
       setDeleteTicker("");
-      
+
       // Immediately dispatch events for instant UI update
       window.dispatchEvent(new CustomEvent('etfDeleted', { detail: { ticker: tickerToDelete } }));
       window.dispatchEvent(new CustomEvent('etfDataUpdated'));
-      
+
       // Reload tickers in background
       loadAvailableTickers();
     } catch (error) {
@@ -1130,7 +1130,12 @@ const AdminPanel = () => {
                     <p className="text-sm text-muted-foreground">
                       Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
                       update all ETF data in the system. The file should have a
-                      Sheet1 with the standard DTR format. Optional: Include a "Div" column to update latest dividend amounts (keeps all Tiingo dates and data intact).
+                      Sheet1 with the standard DTR format.
+                      <br /><br />
+                      <strong>Dividend Synchronization:</strong> Include a "Div" column to update current dividend amounts.
+                      This will prioritize your value on the dashboard immediately.
+                      Tiingo sync will later "fill in" official dates and split factors while preserving your manual amount.
+                      If the most recent dividend in the system is older than 25 days, a new future dividend record will be created for the next period.
                     </p>
                   </div>
 
@@ -1280,7 +1285,7 @@ const AdminPanel = () => {
                     <p className="text-sm text-muted-foreground mb-4">
                       Select one or more ETFs to delete. Scroll to see all available tickers.
                     </p>
-                    
+
                     {/* Search filter */}
                     <div className="mb-3">
                       <Input
@@ -1302,8 +1307,8 @@ const AdminPanel = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              const filtered = availableTickers.filter(t => 
-                                !deleteTickerSearch || 
+                              const filtered = availableTickers.filter(t =>
+                                !deleteTickerSearch ||
                                 t.toLowerCase().includes(deleteTickerSearch.toLowerCase())
                               );
                               if (selectedTickers.size === filtered.length) {
@@ -1318,8 +1323,8 @@ const AdminPanel = () => {
                             disabled={deletingETF || deletingMultiple}
                           >
                             {(() => {
-                              const filtered = availableTickers.filter(t => 
-                                !deleteTickerSearch || 
+                              const filtered = availableTickers.filter(t =>
+                                !deleteTickerSearch ||
                                 t.toLowerCase().includes(deleteTickerSearch.toLowerCase())
                               );
                               const allSelected = filtered.every(t => selectedTickers.has(t));
@@ -1339,8 +1344,8 @@ const AdminPanel = () => {
                       </div>
                       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
                         {availableTickers
-                          .filter(ticker => 
-                            !deleteTickerSearch || 
+                          .filter(ticker =>
+                            !deleteTickerSearch ||
                             ticker.toLowerCase().includes(deleteTickerSearch.toLowerCase())
                           )
                           .map((ticker) => (
@@ -1366,14 +1371,14 @@ const AdminPanel = () => {
                               <span className="text-xs font-mono font-medium">{ticker}</span>
                             </label>
                           ))}
-                        {availableTickers.filter(ticker => 
-                          !deleteTickerSearch || 
+                        {availableTickers.filter(ticker =>
+                          !deleteTickerSearch ||
                           ticker.toLowerCase().includes(deleteTickerSearch.toLowerCase())
                         ).length === 0 && (
-                          <div className="col-span-full text-center py-4 text-sm text-muted-foreground">
-                            No tickers found matching "{deleteTickerSearch}"
-                          </div>
-                        )}
+                            <div className="col-span-full text-center py-4 text-sm text-muted-foreground">
+                              No tickers found matching "{deleteTickerSearch}"
+                            </div>
+                          )}
                       </div>
                     </div>
 

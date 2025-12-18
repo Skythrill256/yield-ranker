@@ -176,26 +176,38 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
     const manualUpload = manualUploadsMap.get(exDate) || (existing && isManualUpload(existing) ? existing : null);
 
     if (manualUpload) {
-      // ALWAYS preserve manual dividends - never update with Tiingo data
-      // Manual dividends take absolute priority
+      // Merge: take manual amount, but Tiingo dates and split factors
+      const tiingoDivCash = d.dividend;
+      const tiingoAdjAmount = d.adjDividend > 0 ? d.adjDividend : null;
+      const manualDivCash = parseFloat(manualUpload.div_cash);
+      const manualAdjAmount = manualUpload.adj_amount ? parseFloat(manualUpload.adj_amount) : null;
+      const tolerance = 0.001;
+
+      let isAligned = false;
+      if (tiingoAdjAmount && manualAdjAmount !== null) {
+        isAligned = Math.abs(manualAdjAmount - tiingoAdjAmount) < tolerance;
+      } else {
+        isAligned = Math.abs(manualDivCash - tiingoDivCash) < tolerance;
+      }
+
       preservedCount++;
-      manualUploadsToPreserve.push({
+      tiingoRecordsToUpsert.push({
         ticker: ticker.toUpperCase(),
-        ex_date: manualUpload.ex_date,
-        pay_date: manualUpload.pay_date,
-        record_date: manualUpload.record_date,
-        declare_date: manualUpload.declare_date,
-        div_cash: manualUpload.div_cash,
-        adj_amount: manualUpload.adj_amount,
-        scaled_amount: manualUpload.scaled_amount,
-        split_factor: manualUpload.split_factor,
+        ex_date: exDate,
+        pay_date: d.paymentDate?.split('T')[0] || manualUpload.pay_date,
+        record_date: d.recordDate?.split('T')[0] || manualUpload.record_date,
+        declare_date: d.declarationDate?.split('T')[0] || manualUpload.declare_date,
+        // If it aligns, use Tiingo's official amount. If not, preserve manual override.
+        div_cash: isAligned ? d.dividend : manualUpload.div_cash,
+        adj_amount: isAligned ? (d.adjDividend > 0 ? d.adjDividend : null) : manualUpload.adj_amount,
+        scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : manualUpload.scaled_amount,
+        split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : (manualUpload.split_factor || 1),
         description: manualUpload.description,
         div_type: manualUpload.div_type,
         frequency: manualUpload.frequency,
         currency: manualUpload.currency || 'USD',
+        is_manual: true, // Keep marked as manual
       });
-      // Skip this Tiingo dividend - manual takes priority
-      continue;
     } else {
       tiingoRecordsToUpsert.push({
         ticker: ticker.toUpperCase(),

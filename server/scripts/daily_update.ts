@@ -311,41 +311,26 @@ async function upsertDividends(
         isAligned = Math.abs(manualDivCash - tiingoDivCash) < tolerance;
       }
 
-      if (isAligned) {
-        alignedCount++;
-        tiingoRecordsToUpsert.push({
-          ticker,
-          ex_date: exDate,
-          pay_date: d.paymentDate?.split('T')[0] || existing.pay_date,
-          record_date: d.recordDate?.split('T')[0] || existing.record_date,
-          declare_date: d.declarationDate?.split('T')[0] || existing.declare_date,
-          div_cash: d.dividend,
-          adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
-          scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
-          split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
-          description: existing.description,  // Preserve manual upload marker
-          div_type: existing.div_type,
-          frequency: existing.frequency,
-          currency: existing.currency || 'USD',
-        });
-      } else {
-        preservedCount++;
-        manualUploadsToPreserve.push({
-          ticker,
-          ex_date: existing.ex_date,
-          pay_date: existing.pay_date,
-          record_date: existing.record_date,
-          declare_date: existing.declare_date,
-          div_cash: existing.div_cash,
-          adj_amount: existing.adj_amount,
-          scaled_amount: existing.scaled_amount,
-          split_factor: existing.split_factor,
-          description: existing.description,
-          div_type: existing.div_type,
-          frequency: existing.frequency,
-          currency: existing.currency || 'USD',
-        });
-      }
+      // Even if not aligned, we merge Tiingo's official dates and split factors
+      // while preserving the user's manual dividend amount if it was an override.
+      alignedCount++;
+      tiingoRecordsToUpsert.push({
+        ticker,
+        ex_date: exDate,
+        pay_date: d.paymentDate?.split('T')[0] || existing.pay_date,
+        record_date: d.recordDate?.split('T')[0] || existing.record_date,
+        declare_date: d.declarationDate?.split('T')[0] || existing.declare_date,
+        // If it aligns, use Tiingo's official amount. If not, preserve manual override.
+        div_cash: isAligned ? d.dividend : existing.div_cash,
+        adj_amount: isAligned ? (d.adjDividend > 0 ? d.adjDividend : null) : existing.adj_amount,
+        scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : existing.scaled_amount,
+        split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : (existing.split_factor || 1),
+        description: existing.description, // Preserve manual upload marker
+        div_type: existing.div_type,
+        frequency: existing.frequency,
+        currency: existing.currency || 'USD',
+        is_manual: true, // Keep marked as manual
+      });
     } else {
       tiingoRecordsToUpsert.push({
         ticker,
