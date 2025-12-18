@@ -204,6 +204,10 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     const yrlyDivCol = findColumn(headerMap, 'yrly div', 'yearly dividend', 'annual dividend', 'annual_div', 'yrlydiv');
     const fYieldCol = findColumn(headerMap, 'f yield', 'forward yield', 'fyield', 'forward_yield');
     const premDiscCol = findColumn(headerMap, 'prem /disc', 'prem/disc', 'premium/discount', 'premium discount', 'premdisc');
+    const zScoreCol = findColumn(headerMap, '5 yr z-score', '5yr z-score', '5 year z-score', 'z-score', 'z score', '5y z-score', '5y z score');
+    const navTrend6MCol = findColumn(headerMap, '6m nav trend', '6m nav trend %', '6 month nav trend', 'nav trend 6m', 'nav trend 6 month', '6mo nav trend');
+    const navTrend12MCol = findColumn(headerMap, '12m nav return', '12m nav return %', '12 month nav return', 'nav return 12m', 'nav return 12 month', '12mo nav return', '12m nav trend', 'q - 12m nav return');
+    const valueHealthScoreCol = findColumn(headerMap, 'value/health score', 'value health score', 'value health', 'health score', 'p - value/health score');
     const dviCol = findColumn(headerMap, 'dvi', 'dividend volatility index');
     const return10YrCol = findColumn(headerMap, '10 yr annlzd', '10 yr annizd', '10 yr', '10yr', '10 year', '10year');
     const return5YrCol = findColumn(headerMap, '5 yr annlzd', '5 yr annizd', '5 yr', '5yr', '5 year', '5year');
@@ -298,6 +302,22 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       if (fYieldCol && row[fYieldCol]) {
         const fYield = parseNumeric(row[fYieldCol]);
         if (fYield !== null) updateData.forward_yield = fYield;
+      }
+      if (zScoreCol && row[zScoreCol]) {
+        const zScore = parseNumeric(row[zScoreCol]);
+        if (zScore !== null) updateData.five_year_z_score = zScore;
+      }
+      if (navTrend6MCol && row[navTrend6MCol]) {
+        const navTrend6M = parseNumeric(row[navTrend6MCol]);
+        if (navTrend6M !== null) updateData.nav_trend_6m = navTrend6M;
+      }
+      if (navTrend12MCol && row[navTrend12MCol]) {
+        const navTrend12M = parseNumeric(row[navTrend12MCol]);
+        if (navTrend12M !== null) updateData.nav_trend_12m = navTrend12M;
+      }
+      if (valueHealthScoreCol && row[valueHealthScoreCol]) {
+        const valueHealthScore = parseNumeric(row[valueHealthScoreCol]);
+        if (valueHealthScore !== null) updateData.value_health_score = valueHealthScore;
       }
       if (dviCol && row[dviCol]) {
         const dvi = parseNumeric(row[dviCol]);
