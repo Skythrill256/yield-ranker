@@ -159,7 +159,7 @@ router.get('/latest/:ticker', async (req: Request, res: Response): Promise<void>
 router.get('/dividends/:ticker', async (req: Request, res: Response) => {
   try {
     const { ticker } = req.params;
-    const years = parseInt(req.query.years as string) || 5;
+    const years = parseInt(req.query.years as string) || 15;
     const startDate = getDateYearsAgo(years);
 
     let dividends = await getDividendHistory(ticker, startDate);
