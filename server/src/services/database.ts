@@ -242,7 +242,23 @@ export async function getPriceHistory(
         throw new Error(error.message);
       }
 
-      return (data ?? []) as PriceRecord[];
+      const records = (data ?? []) as PriceRecord[];
+      
+      if (records.length === 0) {
+        logger.debug('Database', `No price data in database for ${ticker}, attempting Tiingo API fallback`);
+        try {
+          const { getPriceHistoryFromAPI } = await import('./tiingo.js');
+          const apiRecords = await getPriceHistoryFromAPI(ticker, startDate, endDate);
+          if (apiRecords.length > 0) {
+            logger.info('Database', `Fetched ${apiRecords.length} price records from Tiingo API for ${ticker}`);
+            return apiRecords;
+          }
+        } catch (apiError) {
+          logger.warn('Database', `Tiingo API fallback failed for ${ticker}: ${(apiError as Error).message}`);
+        }
+      }
+
+      return records;
     });
   } catch (error) {
     logger.error('Database', `Error fetching prices for ${ticker}: ${(error as Error).message}`);
