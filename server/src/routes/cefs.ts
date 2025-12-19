@@ -144,10 +144,12 @@ async function calculateNAVTrend6M(
   if (!navSymbol) return null;
 
   try {
-    // Get enough history: need at least 126 days + buffer
+    // Get enough history: need at least 126 trading days + buffer
+    // 126 trading days ≈ 6 months, but we need buffer for weekends/holidays
+    // Fetch ~1 year to ensure we have enough trading days
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 200); // Get ~200 days to ensure we have 126 trading days
+    startDate.setFullYear(endDate.getFullYear() - 1); // Get 1 year of data
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
@@ -158,7 +160,10 @@ async function calculateNAVTrend6M(
     );
     
     // Need at least 127 records (126 days back + current day)
-    if (navData.length < 127) return null;
+    if (navData.length < 127) {
+      logger.debug("CEF Metrics", `Insufficient NAV data for 6M trend: ${navData.length} records for ${navSymbol}`);
+      return null;
+    }
 
     // Sort by date ascending (oldest first)
     navData.sort((a, b) => a.date.localeCompare(b.date));
@@ -204,10 +209,12 @@ async function calculateNAVReturn12M(
   if (!navSymbol) return null;
 
   try {
-    // Get enough history: need at least 252 days + buffer
+    // Get enough history: need at least 252 trading days + buffer
+    // 252 trading days ≈ 1 year, but we need buffer for weekends/holidays
+    // Fetch ~2 years to ensure we have enough trading days
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 400); // Get ~400 days to ensure we have 252 trading days
+    startDate.setFullYear(endDate.getFullYear() - 2); // Get 2 years of data
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
@@ -218,7 +225,10 @@ async function calculateNAVReturn12M(
     );
     
     // Need at least 253 records (252 days back + current day)
-    if (navData.length < 253) return null;
+    if (navData.length < 253) {
+      logger.debug("CEF Metrics", `Insufficient NAV data for 12M trend: ${navData.length} records for ${navSymbol}`);
+      return null;
+    }
 
     // Sort by date ascending (oldest first)
     navData.sort((a, b) => a.date.localeCompare(b.date));
