@@ -134,7 +134,8 @@ export const CEFTable = ({
 
   const formatPercentage = (value: number | null | undefined): string => {
     if (value === null || value === undefined) return "N/A";
-    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+    // Value is already a decimal (e.g., 0.1115), multiply by 100 to get percentage
+    return `${value >= 0 ? "+" : ""}${(value * 100).toFixed(2)}%`;
   };
 
   const formatCurrency = (value: number | null | undefined, decimals: number = 2): string => {

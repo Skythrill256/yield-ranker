@@ -695,8 +695,8 @@ router.post(
         if (premDiscCol && row[premDiscCol]) {
           premiumDiscount = parseNumeric(row[premDiscCol]);
         } else if (mp !== null && nav !== null && nav !== 0) {
-          // Formula: ((MP / NAV) - 1) * 100
-          premiumDiscount = (mp / nav - 1) * 100;
+          // Formula: (MP / NAV - 1) as decimal (frontend will format as %)
+          premiumDiscount = (mp / nav - 1);
         }
 
         const updateData: any = {
@@ -1093,11 +1093,11 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         }
 
         // ALWAYS calculate premium/discount from current MP and NAV
-        // Formula: (MP / NAV - 1) * 100
-        // Example: GAB (6.18/5.56)-1 = 11.15%
+        // Formula: (MP / NAV - 1) as decimal (frontend will format as %)
+        // Example: GAB (6.18/5.56)-1 = 0.1115 (displays as 0.11%)
         let premiumDiscount: number | null = null;
         if (currentNav && currentNav !== 0 && marketPrice) {
-          premiumDiscount = (marketPrice / currentNav - 1) * 100;
+          premiumDiscount = (marketPrice / currentNav - 1);
         } else {
           // Fallback to database value only if we can't calculate
           premiumDiscount = cef.premium_discount ?? null;
@@ -1415,7 +1415,7 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
 
     // Get the market price (MP) - use latest from metrics or fetch from price history (has Tiingo fallback)
     let marketPrice = metrics?.currentPrice ?? cef.price ?? null;
-    
+
     // If we don't have a current price, try to get it from price history (has Tiingo fallback)
     if (!marketPrice) {
       try {
@@ -1424,31 +1424,28 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
         startDate.setDate(endDate.getDate() - 30);
         const startDateStr = formatDate(startDate);
         const endDateStr = formatDate(endDate);
-        
+
         const priceHistory = await getPriceHistory(
           ticker,
           startDateStr,
           endDateStr
         );
-        
+
         if (priceHistory.length > 0) {
           const latestPrice = priceHistory[priceHistory.length - 1];
           marketPrice = latestPrice.close ?? latestPrice.adj_close ?? null;
         }
       } catch (error) {
-        logger.warn(
-          "Routes",
-          `Failed to fetch price for ${ticker}: ${error}`
-        );
+        logger.warn("Routes", `Failed to fetch price for ${ticker}: ${error}`);
       }
     }
 
     // ALWAYS calculate premium/discount from current MP and NAV
-    // Formula: (MP / NAV - 1) * 100
-    // Example: GAB (6.18/5.56)-1 = 11.15%
+    // Formula: (MP / NAV - 1) as decimal (frontend will format as %)
+    // Example: GAB (6.18/5.56)-1 = 0.1115 (displays as 0.11%)
     let premiumDiscount: number | null = null;
     if (currentNav && currentNav !== 0 && marketPrice) {
-      premiumDiscount = (marketPrice / currentNav - 1) * 100;
+      premiumDiscount = (marketPrice / currentNav - 1);
     } else {
       // Fallback to database value only if we can't calculate
       premiumDiscount = cef.premium_discount ?? null;
