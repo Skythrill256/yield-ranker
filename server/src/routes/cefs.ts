@@ -1041,13 +1041,13 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             startDate.setDate(endDate.getDate() - 30);
             const startDateStr = formatDate(startDate);
             const endDateStr = formatDate(endDate);
-            
+
             const navHistory = await getPriceHistory(
               cef.nav_symbol.toUpperCase(),
               startDateStr,
               endDateStr
             );
-            
+
             // Get the most recent NAV price (last record)
             if (navHistory.length > 0) {
               const latestNav = navHistory[navHistory.length - 1];
@@ -1061,16 +1061,20 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           }
         }
 
+        // Get the market price that will be displayed in the table
+        const marketPrice = metrics?.currentPrice ?? cef.price ?? null;
+
         let premiumDiscount: number | null = cef.premium_discount ?? null;
         // Calculate premium/discount if not in database but we have price and nav
+        // Formula: (Price / NAV - 1) * 100
+        // Use the same marketPrice that's displayed in the table for consistency
         if (
           premiumDiscount === null &&
           currentNav &&
-          (cef.price || metrics?.currentPrice)
+          marketPrice
         ) {
-          const price = metrics?.currentPrice ?? cef.price;
-          if (price && currentNav) {
-            premiumDiscount = (price / currentNav - 1) * 100;
+          if (marketPrice && currentNav) {
+            premiumDiscount = (marketPrice / currentNav - 1) * 100;
           }
         }
 
@@ -1082,7 +1086,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           navSymbol: cef.nav_symbol || null,
           openDate: cef.open_date || null,
           ipoPrice: cef.ipo_price || null,
-          marketPrice: metrics?.currentPrice ?? cef.price ?? null,
+          marketPrice: marketPrice,
           nav: currentNav,
           premiumDiscount: premiumDiscount,
           fiveYearZScore: cef.five_year_z_score || null,
@@ -1364,13 +1368,13 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
         startDate.setDate(endDate.getDate() - 30);
         const startDateStr = formatDate(startDate);
         const endDateStr = formatDate(endDate);
-        
+
         const navHistory = await getPriceHistory(
           cef.nav_symbol.toUpperCase(),
           startDateStr,
           endDateStr
         );
-        
+
         // Get the most recent NAV price (last record)
         if (navHistory.length > 0) {
           const latestNav = navHistory[navHistory.length - 1];
@@ -1384,17 +1388,20 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    // Get the market price that will be displayed
+    const marketPrice = metrics?.currentPrice ?? cef.price ?? null;
+
     let premiumDiscount: number | null = cef.premium_discount ?? null;
     // Calculate premium/discount if not in database but we have price and nav
     // Formula: (Price / NAV - 1) * 100
+    // Use the same marketPrice for consistency
     if (
       premiumDiscount === null &&
       currentNav &&
-      (cef.price || metrics?.currentPrice)
+      marketPrice
     ) {
-      const price = metrics?.currentPrice ?? cef.price;
-      if (price && currentNav) {
-        premiumDiscount = (price / currentNav - 1) * 100;
+      if (marketPrice && currentNav) {
+        premiumDiscount = (marketPrice / currentNav - 1) * 100;
       }
     }
 
@@ -1406,7 +1413,7 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       navSymbol: cef.nav_symbol || null,
       openDate: cef.open_date || null,
       ipoPrice: cef.ipo_price || null,
-      marketPrice: cef.price || null,
+      marketPrice: marketPrice,
       nav: currentNav,
       premiumDiscount: premiumDiscount,
       fiveYearZScore: cef.five_year_z_score || null,
