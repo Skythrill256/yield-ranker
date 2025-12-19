@@ -694,8 +694,8 @@ router.post(
         let premiumDiscount: number | null = null;
         if (premDiscCol && row[premDiscCol]) {
           premiumDiscount = parseNumeric(row[premDiscCol]);
-        } else if (mp !== null && nav !== null) {
-          premiumDiscount = (mp / nav - 1) * 100;
+        } else if (mp !== null && nav !== null && nav !== 0) {
+          premiumDiscount = ((mp / nav) - 1) * 100;
         }
 
         const updateData: any = {
@@ -1068,11 +1068,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         // Calculate premium/discount if not in database but we have price and nav
         // Formula: (Price / NAV - 1) * 100
         // Use the same marketPrice that's displayed in the table for consistency
-        if (
-          premiumDiscount === null &&
-          currentNav &&
-          marketPrice
-        ) {
+        if (premiumDiscount === null && currentNav && marketPrice) {
           if (marketPrice && currentNav) {
             premiumDiscount = (marketPrice / currentNav - 1) * 100;
           }
@@ -1395,11 +1391,7 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
     // Calculate premium/discount if not in database but we have price and nav
     // Formula: (Price / NAV - 1) * 100
     // Use the same marketPrice for consistency
-    if (
-      premiumDiscount === null &&
-      currentNav &&
-      marketPrice
-    ) {
+    if (premiumDiscount === null && currentNav && marketPrice) {
       if (marketPrice && currentNav) {
         premiumDiscount = (marketPrice / currentNav - 1) * 100;
       }
