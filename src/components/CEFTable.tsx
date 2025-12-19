@@ -167,7 +167,7 @@ export const CEFTable = ({
           <thead className="sticky top-0 z-50 bg-slate-50 shadow-sm border-b-2 border-slate-200">
             <tr className="bg-slate-50">
               <th
-                colSpan={19}
+                colSpan={20}
                 className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm border-r-2 border-slate-300"
               >
                 CEF DETAILS
@@ -377,7 +377,7 @@ export const CEFTable = ({
                   onSort={handleSort}
                 >
                   <div className="whitespace-normal leading-tight">
-                    6 Mo
+                    12 Mo
                     <br />
                     NAV Trend
                   </div>
@@ -395,6 +395,16 @@ export const CEFTable = ({
                     <br />
                     Return
                   </div>
+                </SortButton>
+              </th>
+              <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
+                <SortButton
+                  field={null}
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={handleSort}
+                >
+                  Signal
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
@@ -588,6 +598,9 @@ export const CEFTable = ({
                   {cef.navTrend12M != null
                     ? formatPercentage(cef.navTrend12M)
                     : "N/A"}
+                </td>
+                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                  N/A
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
                   {cef.dividendCVPercent != null

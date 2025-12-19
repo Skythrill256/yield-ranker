@@ -454,7 +454,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                       return '';
                     }}
                     width={50}
-                    domain={[0, 'dataMax']}
+                    domain={[0, (dataMin: number, dataMax: number) => Math.max(dataMax * 1.15, dataMax)]}
                     allowDataOverflow={false}
                   />
                   <RechartsTooltip
@@ -543,7 +543,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                       return '';
                     }}
                     width={50}
-                    domain={[0, 'dataMax']}
+                    domain={[0, (dataMin: number, dataMax: number) => Math.max(dataMax * 1.15, dataMax)]}
                     allowDataOverflow={false}
                   />
                   <RechartsTooltip

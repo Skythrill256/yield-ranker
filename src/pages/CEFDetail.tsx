@@ -512,9 +512,10 @@ const CEFDetail = () => {
                     formatter={(value: number | null, name: string) => {
                       if (value === null || value === undefined) return 'N/A';
                       if (typeof value === 'number' && !isNaN(value)) {
-                        return [`$${value.toFixed(2)}`, name === 'price' ? 'Price' : 'NAV'];
+                        // name is "Price" or "NAV" from the Line component's name prop
+                        return [`$${value.toFixed(2)}`, name];
                       }
-                      return ['N/A', name === 'price' ? 'Price' : 'NAV'];
+                      return ['N/A', name];
                     }}
                   />
                   <Legend 
