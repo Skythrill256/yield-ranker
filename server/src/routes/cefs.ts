@@ -67,21 +67,26 @@ async function calculateCEFZScore(
     if (priceData.length === 0 || navData.length === 0) return null;
 
     // Create maps by date for efficient lookup
+    // Use adjusted close for price (like Python example uses adjClose)
     const priceMap = new Map<string, number>();
     priceData.forEach((p: PriceRecord) => {
-      if (p.close !== null && p.close > 0) {
-        priceMap.set(p.date, p.close);
+      const price = p.adj_close ?? p.close;
+      if (price !== null && price > 0) {
+        priceMap.set(p.date, price);
       }
     });
 
+    // Use adjusted close for NAV as well (consistent with price data)
     const navMap = new Map<string, number>();
     navData.forEach((p: PriceRecord) => {
-      if (p.close !== null && p.close > 0) {
-        navMap.set(p.date, p.close);
+      const nav = p.adj_close ?? p.close;
+      if (nav !== null && nav > 0) {
+        navMap.set(p.date, nav);
       }
     });
 
     // Calculate daily discount: (Price / NAV) - 1
+    // Only include dates where both price and NAV exist
     const discounts: number[] = [];
     const allDates = new Set([...priceMap.keys(), ...navMap.keys()]);
     const sortedDates = Array.from(allDates).sort();
