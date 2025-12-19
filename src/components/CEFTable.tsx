@@ -464,6 +464,7 @@ export const CEFTable = ({
             {sortedCEFs.map((cef) => (
               <tr
                 key={cef.symbol}
+                data-cef-symbol={cef.symbol}
                 className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
                 onClick={() => {
                   onSelectionChange?.(cef.symbol);
