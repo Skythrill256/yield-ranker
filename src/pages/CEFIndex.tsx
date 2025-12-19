@@ -3,7 +3,7 @@ import { Header } from "@/components/Header";
 import { CEFTable } from "@/components/CEFTable";
 import { fetchCEFDataWithMetadata, clearCEFCache, isCEFDataCached } from "@/services/cefData";
 import { CEF, RankingWeights } from "@/types/cef";
-import { Loader2, Clock, Star, Sliders, X, Plus, RotateCcw } from "lucide-react";
+import { Loader2, Clock, Star, Sliders, X, Plus, RotateCcw, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,6 +47,7 @@ const Index = () => {
   const [showPresetSaveDialog, setShowPresetSaveDialog] = useState(false);
   const [newPresetName, setNewPresetName] = useState("");
   const [rankingPresets, setRankingPresets] = useState<RankingPreset[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [yieldWeight, setYieldWeight] = useState(34);
   const [volatilityWeight, setVolatilityWeight] = useState(33);
   const [totalReturnWeight, setTotalReturnWeight] = useState(33);
@@ -334,11 +335,43 @@ const Index = () => {
 
   const filteredCEFs = useCallback(() => {
     const dataToFilter = isGuest ? cefData : rankedCEFs;
+    let filtered = dataToFilter;
+    
+    // Apply favorites filter
     if (showFavoritesOnly && isPremium) {
-      return dataToFilter.filter(cef => cefFavorites.has(cef.symbol));
+      filtered = filtered.filter(cef => cefFavorites.has(cef.symbol));
     }
-    return dataToFilter;
-  }, [isGuest, cefData, rankedCEFs, showFavoritesOnly, isPremium, cefFavorites]);
+    
+    // Apply search filter - same logic as ETF search
+    if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((cef) => {
+        const symbolMatch = cef.symbol.toLowerCase().includes(query);
+        const nameMatch = cef.name?.toLowerCase().includes(query);
+        const descriptionMatch = cef.description?.toLowerCase().includes(query);
+        const issuerMatch = cef.issuer?.toLowerCase().includes(query);
+        
+        // Special handling for "covered call" and related searches
+        // Match if query contains covered call terms AND description contains them
+        const queryHasCoveredCallTerms = query.includes("covered call") || 
+                                         query.includes("coveredcall") ||
+                                         query.includes("cc option") ||
+                                         (query.includes("cc") && query.includes("option")) ||
+                                         query.includes("option");
+        
+        const descriptionHasCoveredCallTerms = cef.description?.toLowerCase().includes("covered call") || 
+                                               cef.description?.toLowerCase().includes("coveredcall") ||
+                                               cef.description?.toLowerCase().includes("cc") ||
+                                               cef.description?.toLowerCase().includes("option");
+        
+        const coveredCallMatch = queryHasCoveredCallTerms && descriptionHasCoveredCallTerms;
+        
+        return symbolMatch || nameMatch || descriptionMatch || issuerMatch || coveredCallMatch;
+      });
+    }
+    
+    return filtered;
+  }, [isGuest, cefData, rankedCEFs, showFavoritesOnly, isPremium, cefFavorites, searchQuery]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -404,6 +437,24 @@ const Index = () => {
                 </div>
               </div>
               <div className="flex flex-col gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
+                  <Input
+                    type="text"
+                    placeholder="Search CEFs..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10 h-12 bg-background border-2 border-border focus:border-primary text-base rounded-xl"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
                   <div className="relative">
                     {isPremium && (
