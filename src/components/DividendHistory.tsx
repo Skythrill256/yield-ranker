@@ -243,9 +243,19 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         }
       }
 
+      // Ensure amount is a valid number
+      const validAmount = typeof amount === 'number' && !isNaN(amount) && isFinite(amount) && amount > 0
+        ? Number(amount.toFixed(4))
+        : 0;
+      
+      // Ensure normalizedRate is a valid number or null
+      const validNormalizedRate = normalizedRate !== null && typeof normalizedRate === 'number' && !isNaN(normalizedRate) && isFinite(normalizedRate)
+        ? Number(normalizedRate.toFixed(4))
+        : null;
+
       return {
         exDate: div.exDate,
-        amount: Number(amount.toFixed(4)), // Ensure amount is always a valid number with proper precision
+        amount: validAmount,
         adjAmount: div.adjAmount,
         scaledAmount: div.scaledAmount,
         payDate: div.payDate,
@@ -255,9 +265,16 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         frequency: div.frequency,
         description: div.description,
         currency: div.currency,
-        normalizedRate: normalizedRate !== null && typeof normalizedRate === 'number' && !isNaN(normalizedRate) && isFinite(normalizedRate) ? Number(normalizedRate.toFixed(4)) : null,
+        normalizedRate: validNormalizedRate,
       };
-    }).filter(item => item.amount > 0); // Filter out any items with zero or invalid amounts
+    }).filter(item => {
+      // Filter out items with invalid amounts or NaN values
+      return item.amount > 0 && 
+             typeof item.amount === 'number' && 
+             !isNaN(item.amount) && 
+             isFinite(item.amount) &&
+             (item.normalizedRate === null || (typeof item.normalizedRate === 'number' && !isNaN(item.normalizedRate) && isFinite(item.normalizedRate)));
+    });
 
     return { chartData, frequencyChanged };
   }, [getFilteredDividends]);
@@ -418,7 +435,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         ))}
       </div>
 
-      {individualChartData ? (
+      {individualChartData && individualChartData.chartData && individualChartData.chartData.length > 0 && individualChartData.chartData.some(d => d.amount > 0 && !isNaN(d.amount)) ? (
         <div className="mb-4 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">
             {individualChartData.frequencyChanged
@@ -429,7 +446,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
             <ResponsiveContainer width="100%" height={450} className="sm:h-[450px] landscape:h-[350px] landscape:sm:h-[400px]">
               {individualChartData.frequencyChanged ? (
                 <ComposedChart
-                  data={individualChartData.chartData}
+                  data={individualChartData.chartData.filter(d => d.amount > 0 && !isNaN(d.amount) && isFinite(d.amount))}
                   margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -519,11 +536,12 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                     strokeWidth={2}
                     dot={{ fill: '#ef4444', r: 3 }}
                     name="Equivalent Weekly Rate (Rate Normalized to Weekly Payout)"
+                    connectNulls={false}
                   />
                 </ComposedChart>
               ) : (
                 <BarChart
-                  data={individualChartData.chartData}
+                  data={individualChartData.chartData.filter(d => d.amount > 0 && !isNaN(d.amount) && isFinite(d.amount))}
                   margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
