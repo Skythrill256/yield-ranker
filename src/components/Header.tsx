@@ -76,54 +76,19 @@ export const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-2">
-            {/* Filter/Categories Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md flex items-center gap-1"
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                  <span>Filter</span>
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel className="text-xs text-muted-foreground uppercase font-semibold">
-                  Investment Categories
-                </DropdownMenuLabel>
-                <DropdownMenuItem 
-                  className="cursor-pointer"
-                  onClick={() => go("/")}
-                >
-                  <span className={location.pathname === "/" || location.pathname.startsWith("/etf/") ? "font-semibold text-primary" : ""}>
-                    Covered Call Option ETFs
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="cursor-pointer"
-                  onClick={() => go("/cef")}
-                >
-                  <span className={location.pathname.startsWith("/cef") ? "font-semibold text-primary" : ""}>
-                    Closed-End Funds
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {/* Context-Aware Category Link - Shows opposite category */}
             {location.pathname.startsWith("/cef") ? (
               <Button
-                variant="default"
-                className="px-4 py-2 text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors rounded-md border-2 border-primary shadow-md"
+                variant="ghost"
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
                 onClick={() => go("/")}
               >
                 CC ETFs
               </Button>
             ) : (
               <Button
-                variant="default"
-                className="px-4 py-2 text-sm font-bold text-white bg-accent hover:bg-accent/90 transition-colors rounded-md border-2 border-accent shadow-md"
+                variant="ghost"
+                className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
                 onClick={() => go("/cef")}
               >
                 CEFs
@@ -285,16 +250,16 @@ export const Header = () => {
             {/* Context-Aware Category Link in Mobile - Shows opposite category */}
             {location.pathname.startsWith("/cef") ? (
               <Button
-                variant="default"
-                className="justify-start px-4 py-3 text-base font-bold text-white bg-primary hover:bg-primary/90 rounded-md border-2 border-primary shadow-md"
+                variant="ghost"
+                className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
                 onClick={() => go("/")}
               >
                 CC ETFs
               </Button>
             ) : (
               <Button
-                variant="default"
-                className="justify-start px-4 py-3 text-base font-bold text-white bg-accent hover:bg-accent/90 rounded-md border-2 border-accent shadow-md"
+                variant="ghost"
+                className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
                 onClick={() => go("/cef")}
               >
                 CEFs
