@@ -263,6 +263,83 @@ async function calculateNAVReturn12M(
 }
 
 /**
+ * Calculate NAV-based returns for CEFs (3Y, 5Y, 10Y, 15Y)
+ * Uses the same NAV data fetching method as the chart endpoint
+ * Formula: ((NAV_end / NAV_start) - 1) * 100
+ */
+async function calculateNAVReturns(
+  navSymbol: string | null,
+  period: '3Y' | '5Y' | '10Y' | '15Y'
+): Promise<number | null> {
+  if (!navSymbol) return null;
+
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    // Use same date calculation as chart endpoint
+    switch (period) {
+      case '3Y':
+        startDate.setFullYear(endDate.getFullYear() - 3);
+        break;
+      case '5Y':
+        startDate.setFullYear(endDate.getFullYear() - 5);
+        break;
+      case '10Y':
+        startDate.setFullYear(endDate.getFullYear() - 10);
+        break;
+      case '15Y':
+        startDate.setFullYear(endDate.getFullYear() - 15);
+        break;
+    }
+
+    const startDateStr = formatDate(startDate);
+    const endDateStr = formatDate(endDate);
+
+    // Use same NAV fetching method as chart endpoint
+    const navData = await getPriceHistory(
+      navSymbol.toUpperCase(),
+      startDateStr,
+      endDateStr
+    );
+
+    if (navData.length < 2) {
+      logger.debug("CEF Metrics", `Insufficient NAV data for ${period} return: ${navData.length} records for ${navSymbol}`);
+      return null;
+    }
+
+    // Sort by date ascending (oldest first)
+    navData.sort((a, b) => a.date.localeCompare(b.date));
+
+    // Get first NAV (start) and last NAV (end)
+    const startRecord = navData[0];
+    const endRecord = navData[navData.length - 1];
+
+    if (!startRecord || !endRecord) return null;
+
+    // Use adjusted close for accuracy (handles splits/dividends/distributions)
+    const startNav = startRecord.adj_close ?? startRecord.close;
+    const endNav = endRecord.adj_close ?? endRecord.close;
+
+    if (!startNav || !endNav || startNav <= 0) return null;
+
+    // Calculate percentage return: ((End / Start) - 1) * 100
+    const return_pct = (endNav / startNav - 1) * 100;
+
+    // Sanity check
+    if (!isFinite(return_pct) || return_pct < -99 || return_pct > 10000) return null;
+
+    return return_pct;
+  } catch (error) {
+    logger.warn(
+      "CEF Metrics",
+      `Failed to calculate NAV return ${period} for ${navSymbol}: ${error}`
+    );
+    return null;
+  }
+}
+
+/**
  * Calculate Signal Rating (Column Q)
  * Purpose: The "Brain" - combines Z-Score with NAV trends to give a sortable action rank from -2 to +3
  * Constraint: Returns null (N/A) if fund history is < 2 years (504 trading days)
@@ -1304,6 +1381,26 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           signal = null;
         }
 
+        // Calculate NAV-based returns for CEFs (using NAV data, not price data)
+        // Use same NAV fetching method as chart endpoint
+        let return3Yr: number | null = null;
+        let return5Yr: number | null = null;
+        let return10Yr: number | null = null;
+        let return15Yr: number | null = null;
+        
+        if (cef.nav_symbol) {
+          try {
+            [return3Yr, return5Yr, return10Yr, return15Yr] = await Promise.all([
+              calculateNAVReturns(cef.nav_symbol, '3Y'),
+              calculateNAVReturns(cef.nav_symbol, '5Y'),
+              calculateNAVReturns(cef.nav_symbol, '10Y'),
+              calculateNAVReturns(cef.nav_symbol, '15Y'),
+            ]);
+          } catch (error) {
+            logger.warn("Routes", `Failed to calculate NAV returns for ${cef.ticker}: ${error}`);
+          }
+        }
+
         return {
           symbol: cef.ticker,
           name: cef.description || cef.ticker,
@@ -1334,12 +1431,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             metrics?.dividendVolatilityIndex ??
             cef.dividend_volatility_index ??
             null,
-          return15Yr:
-            metrics?.totalReturnDrip?.["15Y"] ?? cef.tr_drip_15y ?? null,
-          return10Yr:
-            metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_10y ?? null,
-          return5Yr: metrics?.totalReturnDrip?.["5Y"] ?? cef.tr_drip_5y ?? null,
-          return3Yr: metrics?.totalReturnDrip?.["3Y"] ?? cef.tr_drip_3y ?? null,
+          return15Yr: return15Yr ?? cef.tr_drip_15y ?? null,
+          return10Yr: return10Yr ?? cef.tr_drip_10y ?? null,
+          return5Yr: return5Yr ?? cef.tr_drip_5y ?? null,
+          return3Yr: return3Yr ?? cef.tr_drip_3y ?? null,
           return12Mo:
             metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
           return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
@@ -1736,10 +1831,10 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       dividendCV: cef.dividend_cv || null,
       dividendCVPercent: cef.dividend_cv_percent || null,
       dividendVolatilityIndex: cef.dividend_volatility_index || null,
-      return15Yr: metrics?.totalReturnDrip?.["15Y"] ?? cef.tr_drip_15y ?? null,
-      return10Yr: metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_10y ?? null,
-      return5Yr: metrics?.totalReturnDrip?.["5Y"] ?? cef.tr_drip_5y ?? null,
-      return3Yr: metrics?.totalReturnDrip?.["3Y"] ?? cef.tr_drip_3y ?? null,
+      return15Yr: return15Yr ?? cef.tr_drip_15y ?? null,
+      return10Yr: return10Yr ?? cef.tr_drip_10y ?? null,
+      return5Yr: return5Yr ?? cef.tr_drip_5y ?? null,
+      return3Yr: return3Yr ?? cef.tr_drip_3y ?? null,
       return12Mo: metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
       return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
       return3Mo: metrics?.totalReturnDrip?.["3M"] ?? cef.tr_drip_3m ?? null,
