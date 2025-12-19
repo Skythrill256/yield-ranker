@@ -1064,7 +1064,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
         // Get the market price (MP) - use latest from metrics or fetch from price history (has Tiingo fallback)
         let marketPrice = metrics?.currentPrice ?? cef.price ?? null;
-        
+
         // If we don't have a current price, try to get it from price history (has Tiingo fallback)
         if (!marketPrice) {
           try {
@@ -1073,13 +1073,13 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             startDate.setDate(endDate.getDate() - 30);
             const startDateStr = formatDate(startDate);
             const endDateStr = formatDate(endDate);
-            
+
             const priceHistory = await getPriceHistory(
               cef.ticker,
               startDateStr,
               endDateStr
             );
-            
+
             if (priceHistory.length > 0) {
               const latestPrice = priceHistory[priceHistory.length - 1];
               marketPrice = latestPrice.close ?? latestPrice.adj_close ?? null;
@@ -1413,8 +1413,35 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // Get the market price (MP) - use latest from metrics or database
-    const marketPrice = metrics?.currentPrice ?? cef.price ?? null;
+    // Get the market price (MP) - use latest from metrics or fetch from price history (has Tiingo fallback)
+    let marketPrice = metrics?.currentPrice ?? cef.price ?? null;
+    
+    // If we don't have a current price, try to get it from price history (has Tiingo fallback)
+    if (!marketPrice) {
+      try {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 30);
+        const startDateStr = formatDate(startDate);
+        const endDateStr = formatDate(endDate);
+        
+        const priceHistory = await getPriceHistory(
+          ticker,
+          startDateStr,
+          endDateStr
+        );
+        
+        if (priceHistory.length > 0) {
+          const latestPrice = priceHistory[priceHistory.length - 1];
+          marketPrice = latestPrice.close ?? latestPrice.adj_close ?? null;
+        }
+      } catch (error) {
+        logger.warn(
+          "Routes",
+          `Failed to fetch price for ${ticker}: ${error}`
+        );
+      }
+    }
 
     // ALWAYS calculate premium/discount from current MP and NAV
     // Formula: (MP / NAV - 1) * 100
