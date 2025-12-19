@@ -59,7 +59,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
   const [error, setError] = useState<string | null>(null);
   const [showAllRecords, setShowAllRecords] = useState(false);
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
-  const [timeRange, setTimeRange] = useState<TimeRange>('1Y');
+  const [timeRange, setTimeRange] = useState<TimeRange>('5Y');
 
   const getFilteredDividends = useMemo(() => {
     if (!dividendData?.dividends) return [];

@@ -1066,7 +1066,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         try {
           metrics = await calculateMetrics(cef.ticker);
           if (!metrics) {
-            logger.warn("Routes", `calculateMetrics returned null for ${cef.ticker}`);
+            logger.warn(
+              "Routes",
+              `calculateMetrics returned null for ${cef.ticker}`
+            );
           }
         } catch (error) {
           logger.warn(

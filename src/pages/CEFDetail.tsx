@@ -17,22 +17,34 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ReturnsComparisonChart } from "@/components/ReturnsComparisonChart";
+import { fetchCEFData } from "@/services/cefData";
 
 type Timeframe = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "10Y" | "20Y" | "MAX";
+type ChartType = "priceNAV" | "totalReturn" | "priceReturn";
 
 const CEFDetail = () => {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
   const [cef, setCef] = useState<CEF | null>(null);
+  const [allCEFs, setAllCEFs] = useState<CEF[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("6M");
+  const [chartType, setChartType] = useState<ChartType>("priceNAV");
   const [chartData, setChartData] = useState<any[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const buildChartData = useCallback(async () => {
-    if (!symbol) return;
+    if (!symbol || chartType !== "priceNAV") return;
 
     setIsChartLoading(true);
     setChartError(null);
@@ -75,7 +87,8 @@ const CEFDetail = () => {
     } finally {
       setIsChartLoading(false);
     }
-  }, [symbol, selectedTimeframe]);
+  }, [symbol, selectedTimeframe, chartType]);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -83,14 +96,17 @@ const CEFDetail = () => {
       
       setIsLoading(true);
       try {
-        const [singleData, metadata] = await Promise.all([
+        const [singleData, metadata, allCEFsData] = await Promise.all([
           fetchSingleCEF(symbol),
-          fetchCEFDataWithMetadata()
+          fetchCEFDataWithMetadata(),
+          fetchCEFData()
         ]);
         
         if (singleData) {
           setCef(singleData);
         }
+        
+        setAllCEFs(allCEFsData);
         
         if (metadata.lastUpdatedTimestamp) {
           const date = new Date(metadata.lastUpdatedTimestamp);
@@ -117,10 +133,10 @@ const CEFDetail = () => {
   }, [symbol]);
 
   useEffect(() => {
-    if (cef) {
+    if (cef && chartType === "priceNAV") {
       buildChartData();
     }
-  }, [cef, buildChartData]);
+  }, [cef, buildChartData, chartType]);
 
   if (!symbol) {
     return (
@@ -205,7 +221,7 @@ const CEFDetail = () => {
         <div className="mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-400 delay-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl sm:text-2xl font-bold">
-              PRICE/NAV CHART
+              {chartType === "priceNAV" ? "PRICE/NAV CHART" : chartType === "totalReturn" ? "TOTAL RETURN CHART" : "PRICE RETURN CHART"}
             </h2>
             <Button
               variant="default"
@@ -355,27 +371,63 @@ const CEFDetail = () => {
         </div>
 
         {/* Chart Section */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200 relative z-0">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 delay-200 relative z-0" data-chart-section>
           <Card className="p-6 mb-8 relative z-0">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg sm:text-xl font-bold">
-                PRICE/NAV CHART
+                {chartType === "priceNAV" ? "PRICE/NAV CHART" : chartType === "totalReturn" ? "TOTAL RETURN CHART" : "PRICE RETURN CHART"}
               </h2>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
-              <div className="flex gap-1 flex-wrap">
-                {timeframes.map((tf) => (
-                  <Button
-                    key={tf}
-                    variant={selectedTimeframe === tf ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedTimeframe(tf)}
-                    className="h-9 px-3 text-xs"
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
+                    Metric:
+                  </label>
+                  <Select
+                    value={chartType}
+                    onValueChange={(value: ChartType) => setChartType(value)}
                   >
-                    {tf}
-                  </Button>
-                ))}
+                    <SelectTrigger className="w-[160px] h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="priceNAV">
+                        <span className="font-bold">Price/NAV</span>
+                      </SelectItem>
+                      <SelectItem value="totalReturn">
+                        <span className="font-bold">Total Return (DRIP)</span>
+                      </SelectItem>
+                      <SelectItem value="priceReturn">
+                        <span className="font-bold">Price Return</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {timeframes.map((tf) => (
+                    <Button
+                      key={tf}
+                      variant={selectedTimeframe === tf ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedTimeframe(tf)}
+                      className="h-9 px-3 text-xs"
+                    >
+                      {tf}
+                    </Button>
+                  ))}
+                </div>
               </div>
+              {chartType === "priceNAV" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/cef/${cef.symbol}/dividends`)}
+                  className="h-9 px-3 text-xs"
+                >
+                  Dividend History
+                </Button>
+              )}
             </div>
 
             {chartError && (
@@ -395,15 +447,17 @@ const CEFDetail = () => {
               </div>
             )}
 
-            {isChartLoading ? (
-              <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : chartError ? (
-              <div className="flex items-center justify-center h-96 text-muted-foreground">
-                <p>{chartError}</p>
-              </div>
-            ) : chartData.length > 0 ? (
+            {chartType === "priceNAV" ? (
+              <>
+                {isChartLoading ? (
+                  <div className="flex items-center justify-center h-96">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : chartError ? (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    <p>{chartError}</p>
+                  </div>
+                ) : chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -491,10 +545,17 @@ const CEFDetail = () => {
                   />
                 </LineChart>
               </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
+                    <p>No chart data available</p>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="flex items-center justify-center h-96 text-muted-foreground">
-                <p>No chart data available</p>
-              </div>
+              <ReturnsComparisonChart
+                ticker={symbol || ""}
+                allTickers={allCEFs.map(c => c.symbol)}
+              />
             )}
           </Card>
         </div>
