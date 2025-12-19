@@ -263,9 +263,11 @@ async function calculateNAVReturn12M(
 }
 
 /**
- * Calculate NAV-based returns for CEFs (3Y, 5Y, 10Y, 15Y)
+ * Calculate NAV-based TOTAL RETURNS for CEFs (3Y, 5Y, 10Y, 15Y)
  * Uses the same NAV data fetching method as the chart endpoint
- * Formula: ((NAV_end / NAV_start) - 1) * 100
+ * Uses adjusted close which accounts for distributions (gives total return with DRIP)
+ * Formula: ((NAV_adj_end / NAV_adj_start) - 1) * 100
+ * Same logic as calculateTotalReturnDrip but using NAV data instead of price data
  */
 async function calculateNAVReturns(
   navSymbol: string | null,
@@ -274,33 +276,48 @@ async function calculateNAVReturns(
   if (!navSymbol) return null;
 
   try {
-    const endDate = new Date();
-    const startDate = new Date();
-    
-    // Use same date calculation as chart endpoint
+    // Get the most recent NAV to determine actual end date
+    const latestNav = await getLatestPrice(navSymbol.toUpperCase(), 1);
+    if (latestNav.length === 0) {
+      logger.debug("CEF Metrics", `No NAV data found for ${navSymbol}`);
+      return null;
+    }
+
+    // Use the actual latest trading day as end date (not today if it's a weekend)
+    const endDate = latestNav[latestNav.length - 1].date;
+    const endDateObj = new Date(endDate);
+    let startDateObj = new Date(endDate);
+
+    // Calculate start date based on the end date (not today)
+    // This ensures we're measuring exactly 3/5/10/15 years from the last trading day
     switch (period) {
       case '3Y':
-        startDate.setFullYear(endDate.getFullYear() - 3);
+        startDateObj.setFullYear(endDateObj.getFullYear() - 3);
         break;
       case '5Y':
-        startDate.setFullYear(endDate.getFullYear() - 5);
+        startDateObj.setFullYear(endDateObj.getFullYear() - 5);
         break;
       case '10Y':
-        startDate.setFullYear(endDate.getFullYear() - 10);
+        startDateObj.setFullYear(endDateObj.getFullYear() - 10);
         break;
       case '15Y':
-        startDate.setFullYear(endDate.getFullYear() - 15);
+        startDateObj.setFullYear(endDateObj.getFullYear() - 15);
         break;
     }
 
-    const startDateStr = formatDate(startDate);
-    const endDateStr = formatDate(endDate);
+    const startDate = formatDate(startDateObj);
+
+    // Fetch NAV data with a buffer to ensure we find the nearest trading day
+    // Buffer: 14 days before the target start date
+    const bufferDate = new Date(startDateObj);
+    bufferDate.setDate(bufferDate.getDate() - 14);
+    const fetchStartDate = formatDate(bufferDate);
 
     // Use same NAV fetching method as chart endpoint
     const navData = await getPriceHistory(
       navSymbol.toUpperCase(),
-      startDateStr,
-      endDateStr
+      fetchStartDate,
+      endDate
     );
 
     if (navData.length < 2) {
@@ -308,28 +325,57 @@ async function calculateNAVReturns(
       return null;
     }
 
-    // Sort by date ascending (oldest first)
-    navData.sort((a, b) => a.date.localeCompare(b.date));
+    // Convert period to approximate days for validation
+    const periodDaysMap: Record<string, number> = {
+      '3Y': 1095,
+      '5Y': 1825,
+      '10Y': 3650,
+      '15Y': 5475,
+    };
+    const requestedDays = periodDaysMap[period];
 
-    // Get first NAV (start) and last NAV (end)
-    const startRecord = navData[0];
-    const endRecord = navData[navData.length - 1];
+    // Find start and end prices using same logic as calculateTotalReturnDrip
+    // Find first NAV on/after start date
+    const startRecord = navData.find(p => p.date >= startDate);
+    if (!startRecord) {
+      logger.debug("CEF Metrics", `No NAV data found on/after start date ${startDate} for ${navSymbol}`);
+      return null;
+    }
 
-    if (!startRecord || !endRecord) return null;
+    // Find last NAV on/before end date
+    const validEndNav = navData.filter(p => p.date <= endDate);
+    const endRecord = validEndNav.length > 0 ? validEndNav[validEndNav.length - 1] : null;
+    if (!endRecord) {
+      logger.debug("CEF Metrics", `No NAV data found on/before end date ${endDate} for ${navSymbol}`);
+      return null;
+    }
 
-    // Use adjusted close for accuracy (handles splits/dividends/distributions)
+    // Use adjusted close for total return (accounts for distributions)
     const startNav = startRecord.adj_close ?? startRecord.close;
     const endNav = endRecord.adj_close ?? endRecord.close;
 
-    if (!startNav || !endNav || startNav <= 0) return null;
+    if (!startNav || !endNav || startNav <= 0 || endNav <= 0) {
+      logger.debug("CEF Metrics", `Invalid NAV prices for ${navSymbol}: start=${startNav}, end=${endNav}`);
+      return null;
+    }
 
-    // Calculate percentage return: ((End / Start) - 1) * 100
-    const return_pct = (endNav / startNav - 1) * 100;
+    // Ensure dates are valid
+    if (startRecord.date > endRecord.date) {
+      logger.debug("CEF Metrics", `Invalid date range for ${navSymbol}: ${startRecord.date} > ${endRecord.date}`);
+      return null;
+    }
 
-    // Sanity check
-    if (!isFinite(return_pct) || return_pct < -99 || return_pct > 10000) return null;
+    // Calculate total return: ((End / Start) - 1) * 100
+    const returnValue = ((endNav / startNav) - 1) * 100;
 
-    return return_pct;
+    // Sanity check: returns should be reasonable (between -99% and 10000%)
+    if (returnValue < -99 || returnValue > 10000 || !isFinite(returnValue)) {
+      logger.warn("CEF Metrics", `Unreasonable NAV return calculated for ${navSymbol} ${period}: ${returnValue}% (start: ${startNav}, end: ${endNav}, dates: ${startRecord.date} to ${endRecord.date})`);
+      return null;
+    }
+
+    logger.debug("CEF Metrics", `Calculated NAV return ${period} for ${navSymbol}: ${returnValue.toFixed(2)}% (${navData.length} records, ${startRecord.date} to ${endRecord.date})`);
+    return returnValue;
   } catch (error) {
     logger.warn(
       "CEF Metrics",
