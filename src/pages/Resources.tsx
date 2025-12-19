@@ -8,7 +8,6 @@ import { Footer } from "@/components/Footer";
 import {
   Search,
   ExternalLink,
-  Sparkles,
   FileText,
   Play,
   Wrench,
@@ -26,7 +25,6 @@ interface Resource {
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<string>("all");
 
   const resources: Resource[] = [
     {
@@ -85,9 +83,7 @@ const Resources = () => {
     const matchesSearch =
       resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       resource.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      selectedFilter === "all" || resource.type === selectedFilter;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
 
   const featuredResources = filteredResources.filter((r) => r.featured);
@@ -140,29 +136,6 @@ const Resources = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-12 h-12 text-base rounded-xl border-2"
               />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { value: "all", label: "All", icon: Sparkles },
-                { value: "article", label: "Articles", icon: FileText },
-                { value: "video", label: "Videos", icon: Play },
-                { value: "tool", label: "Tools", icon: Wrench },
-              ].map((filter) => {
-                const Icon = filter.icon;
-                return (
-                  <Button
-                    key={filter.value}
-                    variant={
-                      selectedFilter === filter.value ? "default" : "outline"
-                    }
-                    onClick={() => setSelectedFilter(filter.value)}
-                    className="rounded-full"
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    {filter.label}
-                  </Button>
-                );
-              })}
             </div>
           </motion.div>
 

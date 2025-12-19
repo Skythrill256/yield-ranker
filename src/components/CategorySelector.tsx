@@ -24,11 +24,11 @@ export const CategorySelector = () => {
   const currentCategory = getCurrentCategory();
 
   const categories = [
-    { id: "covered-call-etfs" as Category, label: "Covered Call Option ETFs", path: "/" },
-    { id: "cef" as Category, label: "Closed-End Funds", path: "/cef" },
+    { id: "covered-call-etfs" as Category, label: "CC ETFs", path: "/" },
+    { id: "cef" as Category, label: "CEFs", path: "/cef" },
   ];
 
-  const currentCategoryLabel = categories.find(c => c.id === currentCategory)?.label || "Covered Call Option ETFs";
+  const currentCategoryLabel = categories.find(c => c.id === currentCategory)?.label || "CC ETFs";
 
   const handleCategoryChange = (category: Category) => {
     const categoryConfig = categories.find(c => c.id === category);

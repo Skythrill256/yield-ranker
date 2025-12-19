@@ -15,6 +15,7 @@ import CEFDividendHistoryPage from "./pages/CEFDividendHistoryPage";
 import OurFocus from "./pages/OurFocus";
 import Focus from "./pages/Focus";
 import CoveredCallETFs from "./pages/CoveredCallETFs";
+import ClosedEndFunds from "./pages/ClosedEndFunds";
 import Plans from "./pages/Plans";
 import Resources from "./pages/Resources";
 import Contact from "./pages/Contact";
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/our-focus" element={<OurFocus />} />
             <Route path="/focus" element={<Focus />} />
             <Route path="/covered-call-etfs" element={<CoveredCallETFs />} />
+            <Route path="/closed-end-funds" element={<ClosedEndFunds />} />
             <Route path="/plans" element={<Plans />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/contact" element={<Contact />} />
