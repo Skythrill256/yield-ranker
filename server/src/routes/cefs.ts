@@ -407,15 +407,17 @@ async function calculateSignal(
 ): Promise<number | null> {
   // If we don't have required inputs, return null
   if (!navSymbol || zScore === null || navTrend6M === null || navTrend12M === null) {
+    logger.debug("CEF Metrics", `Signal calculation skipped for ${ticker}: missing inputs (zScore=${zScore}, navTrend6M=${navTrend6M}, navTrend12M=${navTrend12M})`);
     return null;
   }
 
   try {
     // Check if we have enough history (504 trading days = 2 years)
-    // We need this to ensure Z-Score is reliable
+    // This ensures Z-Score and Trends are reliable
+    // Rule: Minimum 2 years (504 days) of history required for reliability
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 600); // Get ~600 days to ensure we have 504 trading days
+    startDate.setFullYear(endDate.getFullYear() - 3); // Get 3 years to ensure we have 504 trading days
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
@@ -425,40 +427,45 @@ async function calculateSignal(
       endDateStr
     );
 
-    // Need at least 504 trading days of history for reliable Z-Score
-    // But if we already have Z-Score calculated, we can use it even if history check fails
-    // (Z-Score calculation already validates 2-year minimum)
-    if (navData.length < 504 && zScore === null) {
-      return null; // N/A - insufficient history and no Z-Score
+    // Need at least 504 trading days of history (matches Python: if len(df) < 504: return "N/A")
+    if (navData.length < 504) {
+      logger.debug("CEF Metrics", `Signal N/A for ${ticker}: insufficient history (${navData.length} < 504 trading days)`);
+      return null; // N/A - insufficient history
     }
 
     const z = zScore;
     const t6 = navTrend6M;
     const t12 = navTrend12M;
 
-    // Logic Gate Scoring
+    // Logic Gate Scoring (matches Python exactly)
     // +3: Optimal (Cheap + 6mo Health + 12mo Health)
     if (z < -1.5 && t6 > 0 && t12 > 0) {
+      logger.debug("CEF Metrics", `Signal +3 (Optimal) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%, t12=${t12.toFixed(2)}%`);
       return 3;
     }
     // +2: Good Value (Cheap + 6mo Health)
     else if (z < -1.5 && t6 > 0) {
+      logger.debug("CEF Metrics", `Signal +2 (Good Value) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return 2;
     }
     // +1: Healthy (Not cheap, but growing assets)
     else if (z > -1.5 && t6 > 0) {
+      logger.debug("CEF Metrics", `Signal +1 (Healthy) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return 1;
     }
     // -1: Value Trap (Looks cheap, but assets are shrinking)
     else if (z < -1.5 && t6 < 0) {
+      logger.debug("CEF Metrics", `Signal -1 (Value Trap) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return -1;
     }
     // -2: Overvalued (Statistically expensive)
     else if (z > 1.5) {
+      logger.debug("CEF Metrics", `Signal -2 (Overvalued) for ${ticker}: z=${z.toFixed(2)}`);
       return -2;
     }
     // 0: Neutral
     else {
+      logger.debug("CEF Metrics", `Signal 0 (Neutral) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return 0;
     }
   } catch (error) {
@@ -1850,6 +1857,26 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
         `Failed to calculate Signal for ${ticker}: ${error}`
       );
       signal = null;
+    }
+
+    // Calculate NAV-based returns for CEFs (using NAV data, not price data)
+    // Use same NAV fetching method as chart endpoint
+    let return3Yr: number | null = null;
+    let return5Yr: number | null = null;
+    let return10Yr: number | null = null;
+    let return15Yr: number | null = null;
+    
+    if (cef.nav_symbol) {
+      try {
+        [return3Yr, return5Yr, return10Yr, return15Yr] = await Promise.all([
+          calculateNAVReturns(cef.nav_symbol, '3Y'),
+          calculateNAVReturns(cef.nav_symbol, '5Y'),
+          calculateNAVReturns(cef.nav_symbol, '10Y'),
+          calculateNAVReturns(cef.nav_symbol, '15Y'),
+        ]);
+      } catch (error) {
+        logger.warn("Routes", `Failed to calculate NAV returns for ${ticker}: ${error}`);
+      }
     }
 
     const response = {
