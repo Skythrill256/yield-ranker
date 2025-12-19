@@ -128,7 +128,9 @@ async function calculateCEFZScore(
 }
 
 /**
- * Calculate 6-Month NAV Trend (percentage change)
+ * Calculate 6-Month NAV Trend (percentage change using adjusted close)
+ * Formula: ((NAV_end / NAV_start) - 1) * 100
+ * Uses the first available price on/after startDate and last available price on/before endDate
  */
 async function calculateNAVTrend6M(
   navSymbol: string | null
@@ -149,14 +151,29 @@ async function calculateNAVTrend6M(
     );
     if (navData.length < 2) return null;
 
-    // Get first and last NAV values
-    const firstNav = navData[0].close;
-    const lastNav = navData[navData.length - 1].close;
+    // Find first available price on/after start date and last on/before end date
+    const startRecord = navData.find((p) => p.date >= startDateStr);
+    const validEndPrices = navData.filter((p) => p.date <= endDateStr);
+    const endRecord =
+      validEndPrices.length > 0
+        ? validEndPrices[validEndPrices.length - 1]
+        : null;
 
-    if (!firstNav || !lastNav || firstNav <= 0) return null;
+    if (!startRecord || !endRecord) return null;
 
-    // Calculate percentage change: (Last - First) / First * 100
-    const trend = ((lastNav - firstNav) / firstNav) * 100;
+    // Use adjusted close for accuracy (handles splits/dividends)
+    const startNav = startRecord.adj_close ?? startRecord.close;
+    const endNav = endRecord.adj_close ?? endRecord.close;
+
+    if (!startNav || !endNav || startNav <= 0) return null;
+    if (startRecord.date > endRecord.date) return null;
+
+    // Calculate percentage change: ((End / Start) - 1) * 100
+    const trend = (endNav / startNav - 1) * 100;
+
+    // Sanity check
+    if (!isFinite(trend) || trend < -99 || trend > 10000) return null;
+
     return trend;
   } catch (error) {
     logger.warn(
@@ -168,7 +185,9 @@ async function calculateNAVTrend6M(
 }
 
 /**
- * Calculate 12-Month NAV Return (percentage change)
+ * Calculate 12-Month NAV Return (percentage change using adjusted close)
+ * Formula: ((NAV_end / NAV_start) - 1) * 100
+ * Uses the first available price on/after startDate and last available price on/before endDate
  */
 async function calculateNAVReturn12M(
   navSymbol: string | null
@@ -189,14 +208,30 @@ async function calculateNAVReturn12M(
     );
     if (navData.length < 2) return null;
 
-    // Get first and last NAV values
-    const firstNav = navData[0].close;
-    const lastNav = navData[navData.length - 1].close;
+    // Find first available price on/after start date and last on/before end date
+    const startRecord = navData.find((p) => p.date >= startDateStr);
+    const validEndPrices = navData.filter((p) => p.date <= endDateStr);
+    const endRecord =
+      validEndPrices.length > 0
+        ? validEndPrices[validEndPrices.length - 1]
+        : null;
 
-    if (!firstNav || !lastNav || firstNav <= 0) return null;
+    if (!startRecord || !endRecord) return null;
 
-    // Calculate percentage return: (Last - First) / First * 100
-    const return_12M = ((lastNav - firstNav) / firstNav) * 100;
+    // Use adjusted close for accuracy (handles splits/dividends)
+    const startNav = startRecord.adj_close ?? startRecord.close;
+    const endNav = endRecord.adj_close ?? endRecord.close;
+
+    if (!startNav || !endNav || startNav <= 0) return null;
+    if (startRecord.date > endRecord.date) return null;
+
+    // Calculate percentage return: ((End / Start) - 1) * 100
+    const return_12M = (endNav / startNav - 1) * 100;
+
+    // Sanity check
+    if (!isFinite(return_12M) || return_12M < -99 || return_12M > 10000)
+      return null;
+
     return return_12M;
   } catch (error) {
     logger.warn(
@@ -696,7 +731,7 @@ router.post(
           premiumDiscount = parseNumeric(row[premDiscCol]);
         } else if (mp !== null && nav !== null && nav !== 0) {
           // Formula: (MP / NAV - 1) as decimal (frontend will format as %)
-          premiumDiscount = (mp / nav - 1);
+          premiumDiscount = mp / nav - 1;
         }
 
         const updateData: any = {
@@ -1097,10 +1132,46 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         // Example: GAB (6.18/5.56)-1 = 0.1115 (displays as 0.11%)
         let premiumDiscount: number | null = null;
         if (currentNav && currentNav !== 0 && marketPrice) {
-          premiumDiscount = (marketPrice / currentNav - 1);
+          premiumDiscount = marketPrice / currentNav - 1;
         } else {
           // Fallback to database value only if we can't calculate
           premiumDiscount = cef.premium_discount ?? null;
+        }
+
+        // Calculate Z-Score (2 year minimum, 5 year maximum lookback)
+        let fiveYearZScore: number | null = null;
+        try {
+          fiveYearZScore = await calculateCEFZScore(cef.ticker, cef.nav_symbol);
+        } catch (error) {
+          logger.warn(
+            "Routes",
+            `Failed to calculate Z-Score for ${cef.ticker}: ${error}`
+          );
+          fiveYearZScore = cef.five_year_z_score ?? null;
+        }
+
+        // Calculate NAV Trend 6M
+        let navTrend6M: number | null = null;
+        try {
+          navTrend6M = await calculateNAVTrend6M(cef.nav_symbol);
+        } catch (error) {
+          logger.warn(
+            "Routes",
+            `Failed to calculate NAV Trend 6M for ${cef.ticker}: ${error}`
+          );
+          navTrend6M = cef.nav_trend_6m ?? null;
+        }
+
+        // Calculate NAV Return 12M
+        let navTrend12M: number | null = null;
+        try {
+          navTrend12M = await calculateNAVReturn12M(cef.nav_symbol);
+        } catch (error) {
+          logger.warn(
+            "Routes",
+            `Failed to calculate NAV Return 12M for ${cef.ticker}: ${error}`
+          );
+          navTrend12M = cef.nav_trend_12m ?? null;
         }
 
         return {
@@ -1114,9 +1185,9 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           marketPrice: marketPrice,
           nav: currentNav,
           premiumDiscount: premiumDiscount,
-          fiveYearZScore: cef.five_year_z_score || null,
-          navTrend6M: cef.nav_trend_6m || null,
-          navTrend12M: cef.nav_trend_12m || null,
+          fiveYearZScore: fiveYearZScore,
+          navTrend6M: navTrend6M,
+          navTrend12M: navTrend12M,
           valueHealthScore: cef.value_health_score || null,
           lastDividend: metrics?.lastDividend ?? cef.last_dividend ?? null,
           numPayments: metrics?.paymentsPerYear ?? cef.payments_per_year ?? 12,
@@ -1445,10 +1516,46 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
     // Example: GAB (6.18/5.56)-1 = 0.1115 (displays as 0.11%)
     let premiumDiscount: number | null = null;
     if (currentNav && currentNav !== 0 && marketPrice) {
-      premiumDiscount = (marketPrice / currentNav - 1);
+      premiumDiscount = marketPrice / currentNav - 1;
     } else {
       // Fallback to database value only if we can't calculate
       premiumDiscount = cef.premium_discount ?? null;
+    }
+
+    // Calculate Z-Score (2 year minimum, 5 year maximum lookback)
+    let fiveYearZScore: number | null = null;
+    try {
+      fiveYearZScore = await calculateCEFZScore(ticker, cef.nav_symbol);
+    } catch (error) {
+      logger.warn(
+        "Routes",
+        `Failed to calculate Z-Score for ${ticker}: ${error}`
+      );
+      fiveYearZScore = cef.five_year_z_score ?? null;
+    }
+
+    // Calculate NAV Trend 6M
+    let navTrend6M: number | null = null;
+    try {
+      navTrend6M = await calculateNAVTrend6M(cef.nav_symbol);
+    } catch (error) {
+      logger.warn(
+        "Routes",
+        `Failed to calculate NAV Trend 6M for ${ticker}: ${error}`
+      );
+      navTrend6M = cef.nav_trend_6m ?? null;
+    }
+
+    // Calculate NAV Return 12M
+    let navTrend12M: number | null = null;
+    try {
+      navTrend12M = await calculateNAVReturn12M(cef.nav_symbol);
+    } catch (error) {
+      logger.warn(
+        "Routes",
+        `Failed to calculate NAV Return 12M for ${ticker}: ${error}`
+      );
+      navTrend12M = cef.nav_trend_12m ?? null;
     }
 
     const response = {
@@ -1462,9 +1569,9 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       marketPrice: marketPrice,
       nav: currentNav,
       premiumDiscount: premiumDiscount,
-      fiveYearZScore: cef.five_year_z_score || null,
-      navTrend6M: cef.nav_trend_6m || null,
-      navTrend12M: cef.nav_trend_12m || null,
+      fiveYearZScore: fiveYearZScore,
+      navTrend6M: navTrend6M,
+      navTrend12M: navTrend12M,
       valueHealthScore: cef.value_health_score || null,
       lastDividend: cef.last_dividend || null,
       numPayments: cef.payments_per_year || 12,
