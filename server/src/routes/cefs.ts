@@ -695,6 +695,7 @@ router.post(
         if (premDiscCol && row[premDiscCol]) {
           premiumDiscount = parseNumeric(row[premDiscCol]);
         } else if (mp !== null && nav !== null && nav !== 0) {
+          // Formula: ((MP / NAV) - 1) * 100
           premiumDiscount = ((mp / nav) - 1) * 100;
         }
 
@@ -1061,20 +1062,20 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           }
         }
 
-        // Get the market price that will be displayed in the table
-        const marketPrice = metrics?.currentPrice ?? cef.price ?? null;
+        // Get the market price (MP) - prioritize database value over calculated
+        const marketPrice = cef.price ?? metrics?.currentPrice ?? null;
 
         let premiumDiscount: number | null = cef.premium_discount ?? null;
-        // Calculate premium/discount if not in database but we have price and nav
-        // Formula: (Price / NAV - 1) * 100
-        // Use the same marketPrice that's displayed in the table for consistency
+        // Calculate premium/discount if not in database but we have MP and NAV
+        // Formula: ((MP / NAV) - 1) * 100
+        // Example: GAB (6.18/5.56)-1 = 11.15%
         if (
           premiumDiscount === null &&
           currentNav &&
           currentNav !== 0 &&
           marketPrice
         ) {
-          premiumDiscount = (marketPrice / currentNav - 1) * 100;
+          premiumDiscount = ((marketPrice / currentNav) - 1) * 100;
         }
 
         return {
@@ -1387,20 +1388,20 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
-    // Get the market price that will be displayed
-    const marketPrice = metrics?.currentPrice ?? cef.price ?? null;
+    // Get the market price (MP) - prioritize database value over calculated
+    const marketPrice = cef.price ?? metrics?.currentPrice ?? null;
 
     let premiumDiscount: number | null = cef.premium_discount ?? null;
-    // Calculate premium/discount if not in database but we have price and nav
-    // Formula: (Price / NAV - 1) * 100
-    // Use the same marketPrice for consistency
+    // Calculate premium/discount if not in database but we have MP and NAV
+    // Formula: ((MP / NAV) - 1) * 100
+    // Example: GAB (6.18/5.56)-1 = 11.15%
     if (
       premiumDiscount === null &&
       currentNav &&
       currentNav !== 0 &&
       marketPrice
     ) {
-      premiumDiscount = (marketPrice / currentNav - 1) * 100;
+      premiumDiscount = ((marketPrice / currentNav) - 1) * 100;
     }
 
     const response = {
