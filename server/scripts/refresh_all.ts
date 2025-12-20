@@ -663,6 +663,21 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
 async function main() {
   const options = parseArgs();
 
+  // CRITICAL: Verify LOOKBACK_DAYS is correct BEFORE doing anything
+  // This must be 5475 (15 years) for CEF metrics to work correctly
+  if (typeof LOOKBACK_DAYS === 'undefined') {
+    console.error('❌ CRITICAL ERROR: LOOKBACK_DAYS is undefined!');
+    process.exit(1);
+  }
+  
+  if (LOOKBACK_DAYS !== 5475) {
+    console.error('❌ CRITICAL ERROR: LOOKBACK_DAYS is NOT 5475!');
+    console.error(`❌ Current value: ${LOOKBACK_DAYS}`);
+    console.error(`❌ Expected: 5475 (15 years)`);
+    console.error(`❌ This script will NOT fetch 15 years of data. Fix immediately!`);
+    process.exit(1);
+  }
+
   // VERIFY LOOKBACK_DAYS BEFORE STARTING
   console.log('='.repeat(60));
   console.log('COMPLETE DATA REFRESH');
@@ -675,8 +690,12 @@ async function main() {
   }
   const calculatedYears = Math.round(LOOKBACK_DAYS / 365);
   console.log(`Lookback: ${LOOKBACK_DAYS} days (${calculatedYears} years)`);
+  
+  // Double-check the calculation
   if (LOOKBACK_DAYS !== 5475 || calculatedYears !== 15) {
-    console.error(`❌ ERROR: LOOKBACK_DAYS is ${LOOKBACK_DAYS} (${calculatedYears} years), expected 5475 (15 years)!`);
+    console.error(`❌ ERROR: LOOKBACK_DAYS verification failed!`);
+    console.error(`❌ LOOKBACK_DAYS = ${LOOKBACK_DAYS}, calculated years = ${calculatedYears}`);
+    console.error(`❌ Expected: 5475 days = 15 years`);
     console.error(`❌ This script will NOT fetch 15 years of data. Fix the constant!`);
     process.exit(1);
   }
