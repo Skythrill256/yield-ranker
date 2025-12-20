@@ -1555,17 +1555,15 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             }
           }
           
-          // Only calculate missing returns - skip if any are present (to save time)
-          // If refresh_all.ts is running, these should all be populated
-          const hasAnyReturn = return3Yr !== null || return5Yr !== null || return10Yr !== null || return15Yr !== null;
-          if (!hasAnyReturn) {
-            // Only calculate if ALL are missing (likely means refresh_all hasn't run yet)
+          // Calculate missing returns individually - don't skip if some exist
+          // Only calculate the ones that are actually missing
+          if (return3Yr === null || return5Yr === null || return10Yr === null || return15Yr === null) {
             try {
               const calculated = await Promise.all([
-                calculateNAVReturns(cef.nav_symbol, '3Y'),
-                calculateNAVReturns(cef.nav_symbol, '5Y'),
-                calculateNAVReturns(cef.nav_symbol, '10Y'),
-                calculateNAVReturns(cef.nav_symbol, '15Y'),
+                return3Yr === null ? calculateNAVReturns(cef.nav_symbol, '3Y') : Promise.resolve(return3Yr),
+                return5Yr === null ? calculateNAVReturns(cef.nav_symbol, '5Y') : Promise.resolve(return5Yr),
+                return10Yr === null ? calculateNAVReturns(cef.nav_symbol, '10Y') : Promise.resolve(return10Yr),
+                return15Yr === null ? calculateNAVReturns(cef.nav_symbol, '15Y') : Promise.resolve(return15Yr),
               ]);
               return3Yr = calculated[0];
               return5Yr = calculated[1];
