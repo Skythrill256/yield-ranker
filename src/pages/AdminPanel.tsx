@@ -47,6 +47,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Star,
   Trash2,
   Upload,
   Users,
