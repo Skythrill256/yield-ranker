@@ -52,23 +52,20 @@ export const Header = () => {
     setMobileMenuOpen(false);
   };
 
-  const getCurrentCategory = (): string => {
-    if (location.pathname.startsWith("/cef")) {
-      return "Closed-End Funds";
-    }
-    return "Covered Call Option ETFs";
-  };
-
-  // Determine if we're on Closed End Funds pages
+  // Determine current category based on Filter selection (documentation pages)
+  // If on CEF docs or CEF table pages → CEF mode
+  // Otherwise → CC ETF mode
   const isOnClosedEndFundsPage = 
-    location.pathname.startsWith("/cef") ||
     location.pathname === "/closed-end-funds" ||
-    location.pathname.startsWith("/closed-end-funds");
+    location.pathname.startsWith("/closed-end-funds") ||
+    location.pathname.startsWith("/cef");
 
-  // Button switches based on current page
+  // Button shows the OPPOSITE category and links to its TABLE page
+  // If Filter is set to "Closed End Funds" (docs) → Button shows "Covered Call Option ETFs" → links to / (CC table)
+  // If Filter is set to "Covered Call Option ETFs" (docs) → Button shows "Closed End Funds" → links to /cef (CEF table)
   const switchButton = isOnClosedEndFundsPage
-    ? { label: "Covered Call Option ETFs", path: "/" }
-    : { label: "Closed End Funds", path: "/cef" };
+    ? { label: "Covered Call Option ETFs", path: "/" }  // On CEF docs → show CC button → go to CC table
+    : { label: "Closed End Funds", path: "/cef" };      // On CC docs → show CEF button → go to CEF table
 
   return (
     <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur-md shadow-sm">

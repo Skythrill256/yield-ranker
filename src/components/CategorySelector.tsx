@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ChevronDown, LayoutGrid } from "lucide-react";
 import {
@@ -10,11 +10,34 @@ import {
 
 export const CategorySelector = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Filter always shows both options linking to documentation pages
+  // Determine current category based on route
+  const getCurrentCategory = (): "cef" | "cc" => {
+    if (
+      location.pathname === "/closed-end-funds" ||
+      location.pathname.startsWith("/closed-end-funds") ||
+      location.pathname.startsWith("/cef")
+    ) {
+      return "cef";
+    }
+    return "cc";
+  };
+
+  const currentCategory = getCurrentCategory();
+
+  // Filter options - navigate to documentation pages
   const options = [
-    { label: "Covered Call Option ETFs", path: "/covered-call-etfs" },
-    { label: "Closed End Funds", path: "/closed-end-funds" },
+    { 
+      label: "Covered Call Option ETFs", 
+      path: "/covered-call-etfs",
+      category: "cc" as const
+    },
+    { 
+      label: "Closed End Funds", 
+      path: "/closed-end-funds",
+      category: "cef" as const
+    },
   ];
 
   return (
@@ -34,7 +57,7 @@ export const CategorySelector = () => {
           <DropdownMenuItem
             key={option.path}
             onClick={() => navigate(option.path)}
-            className="cursor-pointer"
+            className={`cursor-pointer ${currentCategory === option.category ? 'bg-slate-100 font-semibold' : ''}`}
           >
             {option.label}
           </DropdownMenuItem>
