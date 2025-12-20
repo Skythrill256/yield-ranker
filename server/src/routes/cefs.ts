@@ -1379,7 +1379,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
 
-    // Only include CEFs: must have nav_symbol OR nav set
+    // Only include CEFs: must have nav_symbol OR nav set OR premium_discount set
+    // This ensures we don't filter out CEFs that might have data but missing nav_symbol
     const staticData = allData.filter((item: any) => {
       const hasNavSymbol =
         item.nav_symbol !== null &&
@@ -1387,8 +1388,11 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         item.nav_symbol !== "";
       const hasNav =
         item.nav !== null && item.nav !== undefined && item.nav !== "";
+      const hasPremDisc =
+        item.premium_discount !== null &&
+        item.premium_discount !== undefined;
       // Must have at least one CEF identifier
-      return hasNavSymbol || hasNav;
+      return hasNavSymbol || hasNav || hasPremDisc;
     });
 
     if (staticData.length === 0 && allData.length > 0) {
@@ -1478,11 +1482,15 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         // Formula: ((MP / NAV - 1) * 100) as percentage
         // Example: GAB (6.18/5.56)-1 * 100 = 11.15% (displays as +11.15%)
         let premiumDiscount: number | null = null;
-        if (currentNav && currentNav !== 0 && marketPrice) {
+        if (currentNav && currentNav !== 0 && marketPrice && marketPrice > 0) {
+          // Calculate from current values
           premiumDiscount = (marketPrice / currentNav - 1) * 100;
+        } else if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
+          // Use database value if calculation not possible
+          premiumDiscount = cef.premium_discount;
         } else {
-          // Fallback to database value only if we can't calculate
-          premiumDiscount = cef.premium_discount ?? null;
+          // Last resort: try to calculate from any available price/NAV data
+          premiumDiscount = null;
         }
 
         // USE DATABASE VALUES ONLY - DO NOT CALCULATE IN REAL-TIME
