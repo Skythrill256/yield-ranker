@@ -603,6 +603,7 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
 
           // Calculate TOTAL RETURNS using NAV data (3Y, 5Y, 10Y, 15Y)
           // For CEFs, Total Returns are calculated from NAV (not market price) because NAV represents underlying asset value
+          console.log(`    Calculating NAV returns for ${ticker} (NAV symbol: ${navSymbol})...`);
           const return3Yr = await calculateNAVReturns(navSymbol, '3Y');
           const return5Yr = await calculateNAVReturns(navSymbol, '5Y');
           const return10Yr = await calculateNAVReturns(navSymbol, '10Y');
@@ -625,10 +626,15 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
           // Store Total Returns (NAV-based) in database - these are annualized returns
           // Always save values (even if null) to ensure database is updated
           // If calculation returns null, it means insufficient data, which is valid
+          console.log(`    Setting updateData.return_3yr = ${return3Yr}`);
+          console.log(`    Setting updateData.return_5yr = ${return5Yr}`);
+          console.log(`    Setting updateData.return_10yr = ${return10Yr}`);
+          console.log(`    Setting updateData.return_15yr = ${return15Yr}`);
           updateData.return_3yr = return3Yr;
           updateData.return_5yr = return5Yr;
           updateData.return_10yr = return10Yr;
           updateData.return_15yr = return15Yr;
+          console.log(`    ✅ updateData now has: return_3yr=${updateData.return_3yr}, return_5yr=${updateData.return_5yr}, return_10yr=${updateData.return_10yr}, return_15yr=${updateData.return_15yr}`);
           
           // Log if any values are null to help debug data issues
           if (return3Yr === null) console.log(`    ⚠ 3Y return is null (insufficient NAV data)`);
@@ -636,7 +642,10 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
           if (return10Yr === null) console.log(`    ⚠ 10Y return is null (insufficient NAV data)`);
           if (return15Yr === null) console.log(`    ⚠ 15Y return is null (insufficient NAV data)`);
         } catch (error) {
-          console.warn(`  ⚠ Failed to calculate CEF metrics: ${(error as Error).message}`);
+          console.error(`  ❌ Failed to calculate CEF metrics for ${ticker}: ${(error as Error).message}`);
+          console.error(`  ❌ Error stack: ${(error as Error).stack}`);
+          // Even if calculation fails, try to save what we have
+          // Don't throw - continue with other tickers
         }
       }
 
