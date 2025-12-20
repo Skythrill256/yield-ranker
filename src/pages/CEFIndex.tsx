@@ -60,72 +60,72 @@ const Index = () => {
   });
   const { toast } = useToast();
 
-  useEffect(() => {
-    const loadData = async (isInitialLoad: boolean = true) => {
-      try {
-        setError(null);
-        if (isInitialLoad && !isCEFDataCached()) {
-          setIsLoading(true);
+  const loadData = useCallback(async (isInitialLoad: boolean = true) => {
+    try {
+      setError(null);
+      if (isInitialLoad && !isCEFDataCached()) {
+        setIsLoading(true);
+      }
+      
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Request timeout: CEF data fetch took too long")), 30000); // 30 second timeout
+      });
+      
+      const fetchPromise = fetchCEFDataWithMetadata();
+      const result = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<ReturnType<typeof fetchCEFDataWithMetadata>>;
+      
+      const seen = new Set<string>();
+      const deduplicated = (result.cefs || []).filter((cef) => {
+        if (seen.has(cef.symbol)) {
+          return false;
         }
-        
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error("Request timeout: CEF data fetch took too long")), 30000); // 30 second timeout
-        });
-        
-        const fetchPromise = fetchCEFDataWithMetadata();
-        const result = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<ReturnType<typeof fetchCEFDataWithMetadata>>;
-        
-        const seen = new Set<string>();
-        const deduplicated = (result.cefs || []).filter((cef) => {
-          if (seen.has(cef.symbol)) {
-            return false;
-          }
-          seen.add(cef.symbol);
-          return true;
-        });
-        setCefData(deduplicated);
-        
-        cleanupFavorites(deduplicated.map(cef => cef.symbol));
+        seen.add(cef.symbol);
+        return true;
+      });
+      setCefData(deduplicated);
+      
+      cleanupFavorites(deduplicated.map(cef => cef.symbol));
 
-        // Format the last updated timestamp to match ETF format
-        if (result.lastUpdatedTimestamp) {
-          try {
-            const date = new Date(result.lastUpdatedTimestamp);
-            // Check if date is valid
-            if (!isNaN(date.getTime())) {
-              const formatted = date.toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              });
-              setLastDataUpdate(formatted);
-            } else {
-              // Invalid date, try using lastUpdated string
-              setLastDataUpdate(result.lastUpdated || null);
-            }
-          } catch (error) {
-            console.warn("[CEFIndex] Error formatting lastUpdatedTimestamp:", error);
+      // Format the last updated timestamp to match ETF format
+      if (result.lastUpdatedTimestamp) {
+        try {
+          const date = new Date(result.lastUpdatedTimestamp);
+          // Check if date is valid
+          if (!isNaN(date.getTime())) {
+            const formatted = date.toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: true,
+            });
+            setLastDataUpdate(formatted);
+          } else {
+            // Invalid date, try using lastUpdated string
             setLastDataUpdate(result.lastUpdated || null);
           }
-        } else if (result.lastUpdated) {
-          setLastDataUpdate(result.lastUpdated);
-        } else {
-          setLastDataUpdate(null);
+        } catch (error) {
+          console.warn("[CEFIndex] Error formatting lastUpdatedTimestamp:", error);
+          setLastDataUpdate(result.lastUpdated || null);
         }
-      } catch (error) {
-        console.error("[CEFIndex] Error fetching CEF data:", error);
-        const errorMessage = error instanceof Error ? error.message : "Failed to load CEF data. Please try again.";
-        setError(errorMessage);
-        setCefData([]); // Set empty array so page doesn't stay broken
-      } finally {
-        setIsLoading(false);
+      } else if (result.lastUpdated) {
+        setLastDataUpdate(result.lastUpdated);
+      } else {
+        setLastDataUpdate(null);
       }
-    };
+    } catch (error) {
+      console.error("[CEFIndex] Error fetching CEF data:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to load CEF data. Please try again.";
+      setError(errorMessage);
+      setCefData([]); // Set empty array so page doesn't stay broken
+    } finally {
+      setIsLoading(false);
+    }
+  }, [cleanupFavorites]);
 
+  useEffect(() => {
     const loadSiteSettings = async () => {
       try {
         const settings = await getSiteSettings();
@@ -139,12 +139,8 @@ const Index = () => {
         setPremiumMessage("");
       }
     };
-
-    const loadDataWrapper = () => {
-      loadData(true);
-    };
     
-    loadDataWrapper();
+    loadData(true);
     loadSiteSettings();
 
     const handleCEFDataUpdated = () => {
