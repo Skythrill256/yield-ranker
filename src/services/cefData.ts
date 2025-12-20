@@ -65,11 +65,20 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
       }
     }
 
-    const response = await fetch(`${API_URL}/api/cefs`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch CEF data: ${response.statusText}`);
-    }
-    const json = await response.json();
+    // Add timeout to fetch request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+    
+    try {
+      const response = await fetch(`${API_URL}/api/cefs`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch CEF data: ${response.statusText}`);
+      }
+      const json = await response.json();
     
     // Handle both array response and wrapped response (same as ETF data)
     const cefs: CEF[] = Array.isArray(json) ? json : (json.cefs || []);
@@ -90,7 +99,14 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
       console.warn("Failed to cache CEF data:", cacheError);
     }
     
-    return data;
+      return data;
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        throw new Error("Request timeout: CEF data fetch took too long");
+      }
+      throw fetchError;
+    }
   } catch (error) {
     console.error("Error fetching CEF data with metadata:", error);
     throw error;

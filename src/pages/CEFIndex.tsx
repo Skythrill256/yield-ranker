@@ -38,6 +38,7 @@ const Index = () => {
 
   const [cefData, setCefData] = useState<CEF[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [guestMessage, setGuestMessage] = useState("");
   const [premiumMessage, setPremiumMessage] = useState("");
   const [lastDataUpdate, setLastDataUpdate] = useState<string | null>(null);
@@ -62,10 +63,19 @@ const Index = () => {
   useEffect(() => {
     const loadData = async (isInitialLoad: boolean = true) => {
       try {
+        setError(null);
         if (isInitialLoad && !isCEFDataCached()) {
           setIsLoading(true);
         }
-        const result = await fetchCEFDataWithMetadata();
+        
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error("Request timeout: CEF data fetch took too long")), 30000); // 30 second timeout
+        });
+        
+        const fetchPromise = fetchCEFDataWithMetadata();
+        const result = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<ReturnType<typeof fetchCEFDataWithMetadata>>;
+        
         const seen = new Set<string>();
         const deduplicated = (result.cefs || []).filter((cef) => {
           if (seen.has(cef.symbol)) {
@@ -108,6 +118,9 @@ const Index = () => {
         }
       } catch (error) {
         console.error("[CEFIndex] Error fetching CEF data:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to load CEF data. Please try again.";
+        setError(errorMessage);
+        setCefData([]); // Set empty array so page doesn't stay broken
       } finally {
         setIsLoading(false);
       }
@@ -127,7 +140,11 @@ const Index = () => {
       }
     };
 
-    loadData();
+    const loadDataWrapper = () => {
+      loadData(true);
+    };
+    
+    loadDataWrapper();
     loadSiteSettings();
 
     const handleCEFDataUpdated = () => {
