@@ -1514,10 +1514,11 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             null,
           // Long-term returns: Use database values first (NAV-based from refresh_all.ts), 
           // then fall back to metrics (price-based) - EXACTLY like short-term returns
-          return15Yr: return15Yr ?? metrics?.totalReturnDrip?.["15Y"] ?? cef.tr_drip_15y ?? null,
-          return10Yr: return10Yr ?? metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_10y ?? null,
-          return5Yr: return5Yr ?? metrics?.totalReturnDrip?.["5Y"] ?? cef.tr_drip_5y ?? null,
-          return3Yr: return3Yr ?? metrics?.totalReturnDrip?.["3Y"] ?? cef.tr_drip_3y ?? null,
+          // Use database value if it exists (even if null), otherwise fall back to metrics
+          return15Yr: return15Yr !== null && return15Yr !== undefined ? return15Yr : (metrics?.totalReturnDrip?.["15Y"] ?? null),
+          return10Yr: return10Yr !== null && return10Yr !== undefined ? return10Yr : (metrics?.totalReturnDrip?.["10Y"] ?? null),
+          return5Yr: return5Yr !== null && return5Yr !== undefined ? return5Yr : (metrics?.totalReturnDrip?.["5Y"] ?? null),
+          return3Yr: return3Yr !== null && return3Yr !== undefined ? return3Yr : (metrics?.totalReturnDrip?.["3Y"] ?? null),
           // Short-term returns: Use metrics first, then database - already working correctly
           return12Mo: metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
           return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
