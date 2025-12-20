@@ -9,9 +9,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Load environment variables
+// Note: If .env was already loaded by a script, this won't override existing values
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+// Try multiple paths, but don't override if already loaded
+if (!process.env.SUPABASE_URL) {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+  dotenv.config({ path: path.resolve(__dirname, '../../../yield-ranker/server/.env') });
+  dotenv.config(); // Try default location
+}
 
 // ============================================================================
 // Configuration Interface

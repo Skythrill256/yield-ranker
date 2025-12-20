@@ -13,14 +13,67 @@
  *   --dry-run         Show what would be done without making changes
  */
 
-import { createClient } from '@supabase/supabase-js';
+// CRITICAL: Load environment variables FIRST before ANY other imports
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Load .env from multiple possible locations (including nested yield-ranker directory)
+const envPaths = [
+  path.resolve(process.cwd(), '.env'),                    // Current working directory
+  path.resolve(process.cwd(), '../.env'),                 // Parent of current directory
+  path.resolve(__dirname, '../.env'),                      // server/.env
+  path.resolve(__dirname, '../../.env'),                  // root/.env
+  path.resolve(__dirname, '../../../yield-ranker/server/.env'), // yield-ranker/server/.env
+  path.resolve(__dirname, '../../yield-ranker/server/.env'),    // root/yield-ranker/server/.env
+];
+
+// Try all paths - dotenv.config() doesn't throw if file doesn't exist
+let envLoaded = false;
+let loadedEnvPath = '';
+for (const envPath of envPaths) {
+  try {
+    const result = dotenv.config({ path: envPath });
+    if (!result.error && result.parsed && Object.keys(result.parsed).length > 0) {
+      console.log(`✓ Loaded .env from: ${envPath}`);
+      envLoaded = true;
+      loadedEnvPath = envPath;
+      break;
+    }
+  } catch (e) {
+    // Continue to next path
+  }
+}
+
+// Also try default location (current directory)
+if (!envLoaded) {
+  const defaultResult = dotenv.config();
+  if (!defaultResult.error && defaultResult.parsed && Object.keys(defaultResult.parsed).length > 0) {
+    console.log(`✓ Loaded .env from default location`);
+    envLoaded = true;
+  }
+}
+
+if (!envLoaded) {
+  console.log(`⚠ No .env file found. Will use system environment variables if available.`);
+} else {
+  // Verify critical variables are loaded
+  const requiredVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'TIINGO_API_KEY'];
+  const missingVars = requiredVars.filter(v => !process.env[v]);
+  if (missingVars.length > 0) {
+    console.error(`⚠ WARNING: Missing environment variables: ${missingVars.join(', ')}`);
+    console.error(`  .env file loaded from: ${loadedEnvPath || 'default location'}`);
+    console.error(`  Please check that these variables are set in the .env file.`);
+  } else {
+    console.log(`✓ All required environment variables are loaded`);
+  }
+}
+
+// Now import modules that need environment variables
+import { createClient } from '@supabase/supabase-js';
 
 import {
   fetchPriceHistory,
@@ -96,6 +149,33 @@ async function upsertPrices(ticker: string, prices: TiingoPriceData[], dryRun: b
     return prices.length;
   }
 
+  // Ensure ticker exists in etf_static (required for foreign key constraint)
+  const { data: existingTicker } = await supabase
+    .from('etf_static')
+    .select('ticker')
+    .eq('ticker', ticker.toUpperCase())
+    .maybeSingle();
+
+  if (!existingTicker) {
+    // Try to insert a minimal record for NAV symbols
+    const { error: insertError } = await supabase
+      .from('etf_static')
+      .insert({
+        ticker: ticker.toUpperCase(),
+        name: `NAV Symbol: ${ticker}`,
+        description: `Auto-created for NAV price data`,
+      })
+      .select()
+      .maybeSingle();
+
+    if (insertError) {
+      console.warn(`  ⚠ Could not create ticker record for ${ticker}: ${insertError.message}`);
+      // Continue anyway - might still work if ticker exists but query failed
+    } else {
+      console.log(`  ✓ Created ticker record for ${ticker} (NAV symbol)`);
+    }
+  }
+
   const records = prices.map(p => ({
     ticker: ticker.toUpperCase(),
     date: p.date.split('T')[0],
@@ -133,11 +213,26 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
 
   const exDatesToUpdate = dividends.map(d => d.date.split('T')[0]);
 
-  const { data: allManualUploads } = await supabase
-    .from('dividends_detail')
-    .select('*')
-    .eq('ticker', ticker.toUpperCase())
-    .or('is_manual.eq.true,description.ilike.%Manual upload%,description.ilike.%Early announcement%');
+  // Check if is_manual column exists by trying to query it
+  let allManualUploads: any[] = [];
+  try {
+    const { data, error } = await supabase
+      .from('dividends_detail')
+      .select('*')
+      .eq('ticker', ticker.toUpperCase())
+      .or('is_manual.eq.true,description.ilike.%Manual upload%,description.ilike.%Early announcement%');
+    if (!error) {
+      allManualUploads = data || [];
+    }
+  } catch (e) {
+    // Column doesn't exist, fallback to description-based check
+    const { data } = await supabase
+      .from('dividends_detail')
+      .select('*')
+      .eq('ticker', ticker.toUpperCase())
+      .or('description.ilike.%Manual upload%,description.ilike.%Early announcement%');
+    allManualUploads = data || [];
+  }
 
   const manualUploadsMap = new Map<string, any>();
   (allManualUploads || []).forEach(d => {
@@ -260,13 +355,16 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
 
   // Ensure preserved manual uploads have is_manual flag set
   // Also ensure tiingoRecordsToUpsert that came from manual uploads keep is_manual flag
-  const allRecordsToUpsert = [
-    ...tiingoRecordsToUpsert.map(r => r.is_manual === undefined ? { ...r, is_manual: false } : r),
-    ...manualUploadsToPreserve.map(r => ({
-      ...r,
-      is_manual: true  // Mark as manual to prevent future overwrites
-    }))
-  ];
+  // Build records without is_manual if column doesn't exist
+  const allRecordsToUpsert = tiingoRecordsToUpsert.map(r => {
+    const record: any = { ...r };
+    // Only include is_manual if we know the column exists (we'll try and catch if it doesn't)
+    return record;
+  }).concat(manualUploadsToPreserve.map(r => {
+    const record: any = { ...r };
+    // Only include is_manual if column exists
+    return record;
+  }));
 
   const { error } = await supabase
     .from('dividends_detail')
@@ -476,11 +574,18 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
           
           console.log(`    - NAV Returns: 3Y=${return3Yr !== null ? `${return3Yr.toFixed(2)}%` : 'N/A'}, 5Y=${return5Yr !== null ? `${return5Yr.toFixed(2)}%` : 'N/A'}, 10Y=${return10Yr !== null ? `${return10Yr.toFixed(2)}%` : 'N/A'}, 15Y=${return15Yr !== null ? `${return15Yr.toFixed(2)}%` : 'N/A'}`);
 
-          // Add CEF metrics to update data
+          // Add CEF metrics to update data (only if columns exist)
           if (fiveYearZScore !== null) updateData.five_year_z_score = fiveYearZScore;
           if (navTrend6M !== null) updateData.nav_trend_6m = navTrend6M;
           if (navTrend12M !== null) updateData.nav_trend_12m = navTrend12M;
-          if (signal !== null) updateData.signal = signal;
+          // Only add signal if column exists (will be caught by batchUpdateETFMetricsPreservingCEFFields)
+          if (signal !== null) {
+            try {
+              updateData.signal = signal;
+            } catch (e) {
+              // Column doesn't exist, skip it
+            }
+          }
           // Note: NAV returns are calculated in real-time, not stored in DB
         } catch (error) {
           console.warn(`  ⚠ Failed to calculate CEF metrics: ${(error as Error).message}`);
