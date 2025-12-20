@@ -87,8 +87,16 @@ import type { TiingoPriceData } from '../src/types/index.js';
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 // CRITICAL: Must be 15 years (5475 days) for CEF metrics (15Y returns, 5Y Z-Score, Signal)
+// DO NOT CHANGE THIS - CEF metrics require 15 years of historical data
 const LOOKBACK_DAYS = 5475; // 15 years = 15 * 365 = 5475 days - needed for 15Y return calculations
 const DIVIDEND_LOOKBACK_DAYS = 5475; // 15 years = 15 * 365 = 5475 days
+
+// VERIFY CONSTANT IS CORRECT - This will error if somehow changed
+if (LOOKBACK_DAYS !== 5475) {
+  console.error('❌ CRITICAL ERROR: LOOKBACK_DAYS is NOT 5475! It is:', LOOKBACK_DAYS);
+  console.error('❌ This will cause incorrect data fetching. Fix immediately!');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -402,13 +410,20 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
 
 async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
   console.log(`\n[Refresh] ${ticker}`);
-  // Verify LOOKBACK_DAYS is correct (should be 5475 for 15 years)
+  // CRITICAL VERIFICATION: Ensure we're using 15 years
   const expectedDays = 5475;
+  const expectedYears = 15;
   if (LOOKBACK_DAYS !== expectedDays) {
-    console.error(`  ⚠️  ERROR: LOOKBACK_DAYS is ${LOOKBACK_DAYS}, expected ${expectedDays} (15 years)!`);
+    console.error(`  ❌ CRITICAL ERROR: LOOKBACK_DAYS is ${LOOKBACK_DAYS}, expected ${expectedDays} (15 years)!`);
+    console.error(`  ❌ This ticker will NOT get 15 years of data!`);
+    throw new Error(`LOOKBACK_DAYS is incorrect: ${LOOKBACK_DAYS} (expected ${expectedDays})`);
   }
   const years = Math.round(LOOKBACK_DAYS / 365);
-  console.log(`  Fetching data from last ${LOOKBACK_DAYS} days (${years} years for CEF metrics - 15Y returns, 5Y Z-Score, Signal)...`);
+  if (years !== expectedYears) {
+    console.error(`  ❌ CRITICAL ERROR: Calculated years is ${years}, expected ${expectedYears}!`);
+    throw new Error(`Calculated years is incorrect: ${years} (expected ${expectedYears})`);
+  }
+  console.log(`  ✅ VERIFIED: Fetching data from last ${LOOKBACK_DAYS} days (${years} years for CEF metrics - 15Y returns, 5Y Z-Score, Signal)...`);
 
   try {
     const priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
@@ -642,6 +657,7 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
 async function main() {
   const options = parseArgs();
 
+  // VERIFY LOOKBACK_DAYS BEFORE STARTING
   console.log('='.repeat(60));
   console.log('COMPLETE DATA REFRESH');
   console.log('='.repeat(60));
@@ -651,7 +667,14 @@ async function main() {
   } else {
     console.log('Scope: All ETFs');
   }
-  console.log(`Lookback: ${LOOKBACK_DAYS} days (${Math.round(LOOKBACK_DAYS / 365)} years)`);
+  const calculatedYears = Math.round(LOOKBACK_DAYS / 365);
+  console.log(`Lookback: ${LOOKBACK_DAYS} days (${calculatedYears} years)`);
+  if (LOOKBACK_DAYS !== 5475 || calculatedYears !== 15) {
+    console.error(`❌ ERROR: LOOKBACK_DAYS is ${LOOKBACK_DAYS} (${calculatedYears} years), expected 5475 (15 years)!`);
+    console.error(`❌ This script will NOT fetch 15 years of data. Fix the constant!`);
+    process.exit(1);
+  }
+  console.log(`✅ Verified: Fetching ${LOOKBACK_DAYS} days = ${calculatedYears} years of data`);
   console.log('='.repeat(60));
 
   // Health check
