@@ -233,7 +233,7 @@ async function warmUpCache() {
 // ============================================================================
 // Start Server (Railway required)
 // ============================================================================
-const PORT = Number(process.env.PORT) || 8080;
+const PORT = Number(process.env.PORT) || config.port || 4000;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info('Server', `🚀 Server running on 0.0.0.0:${PORT}`);
