@@ -33,8 +33,17 @@ import type { TiingoPriceData } from '../src/types/index.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const LOOKBACK_DAYS = 365; // Extended lookback for reverse splits and historical data
-const DIVIDEND_LOOKBACK_DAYS = 365; // Extended dividend history for split adjustments
+// CRITICAL: Must be 15 years (5475 days) for CEF metrics (15Y returns, 5Y Z-Score, Signal)
+// DO NOT CHANGE THIS - CEF metrics require 15 years of historical data
+const LOOKBACK_DAYS = 5475; // 15 years = 15 * 365 = 5475 days - needed for 15Y return calculations
+const DIVIDEND_LOOKBACK_DAYS = 5475; // 15 years = 15 * 365 = 5475 days
+
+// VERIFY CONSTANT IS CORRECT - This will error if somehow changed
+if (LOOKBACK_DAYS !== 5475) {
+  console.error('❌ CRITICAL ERROR: LOOKBACK_DAYS is NOT 5475! It is:', LOOKBACK_DAYS);
+  console.error('❌ This will cause incorrect data fetching. Fix immediately!');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
