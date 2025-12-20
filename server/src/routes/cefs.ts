@@ -1422,7 +1422,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     
     for (let i = 0; i < staticData.length; i += BATCH_SIZE) {
       const batch = staticData.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(
+      // Use Promise.allSettled so one failure doesn't break the whole batch
+      const batchResults = await Promise.allSettled(
         batch.map(async (cef: any) => {
         // Use cached dividend history from database if available
         let dividendHistory = cef.dividend_history || null;
