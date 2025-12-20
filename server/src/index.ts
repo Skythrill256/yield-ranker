@@ -22,17 +22,11 @@ import config, { validateConfig } from './config/index.js';
 import { logger } from './utils/index.js';
 import { getRedis, closeRedis } from './services/redis.js';
 
-<<<<<<< HEAD
-import tiingoRoutes from './routes/tiingo.js';
-import etfRoutes from './routes/etfs.js';
-import cefRoutes from './routes/cefs.js';
-import userRoutes from './routes/user.js';
-=======
 import tiingoRoutes from "./routes/tiingo.js";
 import etfRoutes from "./routes/etfs.js";
+import cefRoutes from "./routes/cefs.js";
 import userRoutes from "./routes/user.js";
 import newsletterRoutes from "./routes/newsletter.js";
->>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
 
 // ============================================================================
 // Config Validation (non-fatal)
@@ -142,19 +136,12 @@ app.get('/api/health', (_req: Request, res: Response) => {
 // ============================================================================
 // API Routes
 // ============================================================================
-<<<<<<< HEAD
-app.use('/api/tiingo', tiingoRoutes);
-app.use('/api/etfs', etfRoutes);
-app.use('/api/cefs', cefRoutes);
-app.use('/api/admin', etfRoutes); // legacy
-app.use('/api/user', userRoutes);
-=======
 app.use("/api/tiingo", tiingoRoutes);
 app.use("/api/etfs", etfRoutes);
+app.use("/api/cefs", cefRoutes);
 app.use("/api/admin", etfRoutes); // Legacy
 app.use("/api/user", userRoutes);
 app.use("/api/newsletter", newsletterRoutes);
->>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
 
 // ============================================================================
 // 404 Handler

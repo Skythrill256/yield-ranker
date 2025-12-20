@@ -559,19 +559,8 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
         
         // Still update NAV and premium_discount if we have the data
         // But skip the expensive CEF metric calculations
-        if (false) { // Disabled - use refresh_cefs.ts instead
-          try {
-            const { 
-              calculateCEFZScore, 
-              calculateNAVTrend6M, 
-              calculateNAVReturn12M, 
-              calculateSignal,
-              calculateNAVReturns
-            } = await import('../src/routes/cefs.js');
-
-          // CEF calculations disabled - use refresh_cefs.ts instead
-          // This prevents conflicts and ensures CEF metrics are calculated separately
-        }
+        // CEF calculations disabled - use refresh_cefs.ts instead
+        // This prevents conflicts and ensures CEF metrics are calculated separately
       } else {
         // Not a CEF, continue normally
       }
