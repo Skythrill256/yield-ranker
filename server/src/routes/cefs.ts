@@ -1508,10 +1508,13 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             metrics?.dividendVolatilityIndex ??
             cef.dividend_volatility_index ??
             null,
-          return15Yr: return15Yr ?? null,
-          return10Yr: return10Yr ?? null,
-          return5Yr: return5Yr ?? null,
-          return3Yr: return3Yr ?? null,
+          // Long-term returns: Use database values first (NAV-based from refresh_all.ts), 
+          // then fall back to metrics (price-based) - EXACTLY like short-term returns
+          return15Yr: return15Yr ?? metrics?.totalReturnDrip?.["15Y"] ?? cef.tr_drip_15y ?? null,
+          return10Yr: return10Yr ?? metrics?.totalReturnDrip?.["10Y"] ?? cef.tr_drip_10y ?? null,
+          return5Yr: return5Yr ?? metrics?.totalReturnDrip?.["5Y"] ?? cef.tr_drip_5y ?? null,
+          return3Yr: return3Yr ?? metrics?.totalReturnDrip?.["3Y"] ?? cef.tr_drip_3y ?? null,
+          // Short-term returns: Use metrics first, then database - already working correctly
           return12Mo: metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
           return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
           return3Mo: metrics?.totalReturnDrip?.["3M"] ?? cef.tr_drip_3m ?? null,
