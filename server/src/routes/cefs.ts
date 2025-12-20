@@ -277,13 +277,23 @@ export async function calculateNAVReturns(
 
   try {
     // Get the most recent NAV to determine actual end date
-    const latestNav = await getLatestPrice(navSymbol.toUpperCase(), 1);
+    // Use getPriceHistory with Tiingo fallback instead of getLatestPrice (which doesn't have fallback)
+    const endDateForLatest = new Date();
+    const startDateForLatest = new Date();
+    startDateForLatest.setDate(endDateForLatest.getDate() - 30); // Get last 30 days to find latest
+    const latestNav = await getPriceHistory(
+      navSymbol.toUpperCase(),
+      formatDate(startDateForLatest),
+      formatDate(endDateForLatest)
+    );
+    
     if (latestNav.length === 0) {
-      logger.debug("CEF Metrics", `No NAV data found for ${navSymbol}`);
+      logger.info("CEF Metrics", `No NAV data found for ${navSymbol} (checked database and Tiingo)`);
       return null;
     }
 
-    // Use the actual latest trading day as end date (not today if it's a weekend)
+    // Sort by date and get the most recent
+    latestNav.sort((a, b) => a.date.localeCompare(b.date));
     const endDate = latestNav[latestNav.length - 1].date;
     const endDateObj = new Date(endDate);
     let startDateObj = new Date(endDate);
