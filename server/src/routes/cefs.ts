@@ -1702,7 +1702,11 @@ router.get(
         case "10Y":
           startDate.setFullYear(endDate.getFullYear() - 10);
           break;
-        case "20Y":
+        case "15Y":
+          startDate.setFullYear(endDate.getFullYear() - 15);
+          break;
+        case "MAX":
+          // Fetch maximum available data (20 years should be enough)
           startDate.setFullYear(endDate.getFullYear() - 20);
           break;
         default:
