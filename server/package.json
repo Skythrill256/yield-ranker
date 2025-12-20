@@ -38,6 +38,7 @@
     "tiingo:test": "tsx -e \"import { healthCheck } from './src/services/tiingo.js'; healthCheck().then(console.log)\""
   },
   "dependencies": {
+    "@mailerlite/mailerlite-nodejs": "^1.5.0",
     "@prisma/client": "^7.0.1",
     "@supabase/supabase-js": "^2.39.0",
     "cors": "^2.8.5",

@@ -50,8 +50,15 @@ if (!envLoaded) {
 }
 
 import { createClient } from '@supabase/supabase-js';
+<<<<<<< HEAD
 import { batchUpdateETFMetricsPreservingCEFFields, getPriceHistory } from '../src/services/database.js';
 import { formatDate } from '../src/utils/index.js';
+=======
+import { batchUpdateETFMetrics, getPriceHistory } from '../src/services/database.js';
+import { formatDate, getDateYearsAgo } from '../src/utils/index.js';
+import { fetchPriceHistory } from '../src/services/tiingo.js';
+import type { TiingoPriceData } from '../src/types/index.js';
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -61,7 +68,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 function parseArgs() {
   const args = process.argv.slice(2);
   const options: { ticker?: string; dryRun: boolean } = { dryRun: false };
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--ticker' && i + 1 < args.length) {
       options.ticker = args[i + 1].toUpperCase();
@@ -70,7 +81,11 @@ function parseArgs() {
       options.dryRun = true;
     }
   }
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
   return options;
 }
 
@@ -112,6 +127,7 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
       return;
     }
 
+<<<<<<< HEAD
     // Import CEF calculation functions
     const {
       calculateCEFZScore,
@@ -120,6 +136,109 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
       calculateSignal,
       calculateNAVReturns,
     } = await import('../src/routes/cefs.js');
+=======
+    // CRITICAL: Fetch NAV prices first if they don't exist (15 years needed for metrics)
+    const LOOKBACK_DAYS = 5475; // 15 years
+    const priceStartDate = new Date();
+    priceStartDate.setDate(priceStartDate.getDate() - LOOKBACK_DAYS);
+    const priceStartDateStr = formatDate(priceStartDate);
+
+    // Check if we have NAV price data
+    const { data: existingNavPrices } = await supabase
+      .from('prices_daily')
+      .select('date')
+      .eq('ticker', navSymbolForCalc.toUpperCase())
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingNavPrices || !existingNavPrices.date) {
+      console.log(`  📥 Fetching NAV prices for ${navSymbolForCalc} (15 years)...`);
+      try {
+        const { fetchPriceHistory } = await import('../src/services/tiingo.js');
+        const navPrices = await fetchPriceHistory(navSymbolForCalc.toUpperCase(), priceStartDateStr);
+
+        if (navPrices.length > 0) {
+          // Upsert NAV prices
+          const records = navPrices.map(p => ({
+            ticker: navSymbolForCalc.toUpperCase(),
+            date: p.date.split('T')[0],
+            open: p.open,
+            high: p.high,
+            low: p.low,
+            close: p.close,
+            adj_close: p.adjClose,
+            volume: p.volume,
+            div_cash: p.divCash || 0,
+            split_factor: p.splitFactor || 1,
+          }));
+
+          // Ensure ticker exists in etf_static (required for foreign key) - MUST DO THIS FIRST
+          const { data: existingTicker, error: checkError } = await supabase
+            .from('etf_static')
+            .select('ticker')
+            .eq('ticker', navSymbolForCalc.toUpperCase())
+            .maybeSingle();
+
+          if (!existingTicker && !checkError) {
+            const { error: insertError } = await supabase
+              .from('etf_static')
+              .insert({
+                ticker: navSymbolForCalc.toUpperCase(),
+                description: `Auto-created for NAV price data`,
+              });
+
+            if (insertError) {
+              console.warn(`  ⚠ Could not create ticker record: ${insertError.message}`);
+              console.warn(`  ⚠ Skipping NAV price save due to foreign key constraint`);
+            } else {
+              console.log(`  ✓ Created ticker record for ${navSymbolForCalc}`);
+            }
+          } else if (checkError) {
+            console.warn(`  ⚠ Error checking ticker: ${checkError.message}`);
+          }
+
+          // Only try to upsert if we have the ticker record (or it already existed)
+          const { data: verifyTicker } = await supabase
+            .from('etf_static')
+            .select('ticker')
+            .eq('ticker', navSymbolForCalc.toUpperCase())
+            .maybeSingle();
+
+          if (verifyTicker) {
+            const { error: upsertError } = await supabase
+              .from('prices_daily')
+              .upsert(records, {
+                onConflict: 'ticker,date',
+                ignoreDuplicates: false,
+              });
+
+            if (upsertError) {
+              console.warn(`  ⚠ Failed to save NAV prices: ${upsertError.message}`);
+            } else {
+              console.log(`  ✓ Fetched and saved ${records.length} NAV price records`);
+            }
+          } else {
+            console.warn(`  ⚠ Cannot save NAV prices: ticker record does not exist`);
+          }
+        } else {
+          console.warn(`  ⚠ No NAV prices found for ${navSymbolForCalc} from Tiingo`);
+        }
+      } catch (navError) {
+        console.warn(`  ⚠ Failed to fetch NAV prices: ${(navError as Error).message}`);
+      }
+    } else {
+      console.log(`  ✓ NAV prices already exist in database`);
+    }
+
+    // CEF calculation functions - stub implementations
+    // TODO: Implement these functions in a proper module
+    const calculateCEFZScore = async (_ticker: string, _navSymbol: string): Promise<number | null> => null;
+    const calculateNAVTrend6M = async (_navSymbol: string): Promise<number | null> => null;
+    const calculateNAVReturn12M = async (_navSymbol: string): Promise<number | null> => null;
+    const calculateSignal = async (_ticker: string, _navSymbol: string, _zScore: number | null, _trend6m: number | null, _trend12m: number | null): Promise<number | null> => null;
+    const calculateNAVReturns = async (_navSymbol: string, _period: string): Promise<number | null> => null;
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
 
     const updateData: any = {};
 
@@ -269,14 +388,22 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
     } else if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
       // Keep existing value if we can't calculate
       premiumDiscount = cef.premium_discount;
+<<<<<<< HEAD
       console.log(`    ⚠ Premium/Discount: Using existing value ${premiumDiscount.toFixed(2)}%`);
+=======
+      console.log(`    ⚠ Premium/Discount: Using existing value ${premiumDiscount?.toFixed(2) ?? 'N/A'}%`);
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
     } else {
       console.log(`    ⚠ Premium/Discount: N/A (missing NAV or market price)`);
     }
 
     // Save to database
     console.log(`  💾 Saving to database...`);
+<<<<<<< HEAD
     await batchUpdateETFMetricsPreservingCEFFields([{
+=======
+    await batchUpdateETFMetrics([{
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
       ticker,
       metrics: updateData,
     }]);
@@ -340,7 +467,11 @@ async function main() {
       const cef = cefs[i];
       console.log(`\n[${i + 1}/${cefs.length}]`);
       await refreshCEF(cef.ticker, options.dryRun);
+<<<<<<< HEAD
       
+=======
+
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
       // Small delay to avoid overwhelming the API
       if (i < cefs.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 1000));

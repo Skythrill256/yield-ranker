@@ -13,3 +13,6 @@ COMMENT ON COLUMN public.dividends_detail.scaled_amount IS 'Scaled dividend: div
 
 
 
+
+
+

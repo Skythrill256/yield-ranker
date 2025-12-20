@@ -14,7 +14,7 @@ import {
   fetchPriceHistoryBatch,
   fetchDividendHistoryBatch,
 } from '../../src/services/tiingo.js';
-import { mockTiingoResponses } from '../setup.js';
+// Setup is already imported via vitest.setup
 
 // Mock the config to use test values
 vi.mock('../../src/config/index.js', () => ({
@@ -74,13 +74,13 @@ describe('Tiingo API Service Integration Tests', () => {
 
       await fetchTickerMeta('SPY');
 
+      // Tiingo uses token as query parameter, not Authorization header
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('https://api.tiingo.com/tiingo/tiingo/daily/SPY'),
+        expect.stringContaining('token='),
         expect.objectContaining({
           method: 'GET',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            'Authorization': 'Token test-api-key',
           }),
         })
       );
@@ -239,8 +239,8 @@ describe('Tiingo API Service Integration Tests', () => {
     });
 
     it('should handle timeout scenarios', async () => {
-      const mockFetch = vi.fn().mockImplementation(() => 
-        new Promise((_, reject) => 
+      const mockFetch = vi.fn().mockImplementation(() =>
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Request timeout')), 100)
         )
       );
@@ -298,10 +298,10 @@ describe('Tiingo API Service Integration Tests', () => {
       // Mock rate limit state to simulate hourly limit exceeded
       const mockSleep = vi.fn().mockResolvedValue(undefined);
       vi.doMock('../../src/utils/index.js', () => ({
-        logger: { 
-          debug: vi.fn(), 
-          info: vi.fn(), 
-          warn: vi.fn(), 
+        logger: {
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
           error: vi.fn(),
         },
         sleep: mockSleep,
@@ -379,7 +379,7 @@ describe('Tiingo API Service Integration Tests', () => {
       }));
 
       // This would typically retry, but we'll test the sleep call
-      await fetchTickerMeta('SPY').catch(() => {});
+      await fetchTickerMeta('SPY').catch(() => { });
 
       // Should sleep for the Retry-After duration
       expect(mockSleep).toHaveBeenCalledWith(60000); // 60 seconds

@@ -590,7 +590,11 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
     return dividends.length === 1 ? "1 DIV+" : "0+ 0-";
   }
 
+<<<<<<< HEAD
   const regularDivs = (dividends as any[])
+=======
+  const regularDivs = dividends
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
     .filter((d) => {
       if (!d.div_type) return true;
       const dtype = d.div_type.toLowerCase();
@@ -601,9 +605,15 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
         !dtype.includes("special")
       );
     })
+<<<<<<< HEAD
     .sort((a: any, b: any) => {
       const aManual = a['is_manual'] === true ? 1 : 0;
       const bManual = b['is_manual'] === true ? 1 : 0;
+=======
+    .sort((a, b) => {
+      const aManual = a.is_manual === true ? 1 : 0;
+      const bManual = b.is_manual === true ? 1 : 0;
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
       if (aManual !== bManual) {
         return bManual - aManual;
       }
@@ -1662,6 +1672,7 @@ router.get(
         : endDate.toISOString().split("T")[0];
 
       // Fetch price data (with Tiingo fallback)
+<<<<<<< HEAD
       let priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
       
       // Check if we have sufficient data coverage - if not, fetch from Tiingo
@@ -1699,6 +1710,9 @@ router.get(
         }
       }
       
+=======
+      const priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
       logger.info(
         "Routes",
         `Fetched ${priceData.length} price records for ${ticker} (${startDateStr} to ${endDateStr})`
@@ -1713,6 +1727,7 @@ router.get(
             startDateStr,
             endDateStr
           );
+<<<<<<< HEAD
           
           // Check if we have sufficient NAV data coverage
           if (navData.length > 0) {
@@ -1748,6 +1763,8 @@ router.get(
             }
           }
           
+=======
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
           logger.info(
             "Routes",
             `Fetched ${navData.length} NAV records for ${navSymbol} (${startDateStr} to ${endDateStr})`

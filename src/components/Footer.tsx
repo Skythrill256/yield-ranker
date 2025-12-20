@@ -1,8 +1,24 @@
 import { Link } from "react-router-dom";
+import { NewsletterSubscribe } from "./NewsletterSubscribe";
 
 export const Footer = () => (
   <footer className="w-full bg-white border-t border-slate-200">
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+      {/* Newsletter Subscription Section */}
+      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-primary/5 to-accent/5 px-6 py-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-base font-semibold text-foreground">
+              Stay Updated
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Get the latest ETF insights and market updates delivered to your inbox.
+            </p>
+          </div>
+          <NewsletterSubscribe />
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs sm:text-sm text-muted-foreground">
         <span>© 2025 Dividends And Total Returns LLC All rights reserved.</span>
         <div className="flex items-center gap-4">
@@ -26,7 +42,7 @@ export const Footer = () => (
           investment adviser. All content is for informational purposes only and should not be viewed
           as an offer, recommendation, or personalized advice. Use of this site and its data is at
           your own risk; we assume no liability for any losses or damages. Information, including
-          prices, is provided “as is” without guarantees of accuracy, completeness, or timeliness, and
+          prices, is provided "as is" without guarantees of accuracy, completeness, or timeliness, and
           past performance does not predict future results. Company trademarks remain the property of
           their respective owners and appear for editorial use only.
         </p>
@@ -34,5 +50,3 @@ export const Footer = () => (
     </div>
   </footer>
 );
-
-

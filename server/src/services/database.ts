@@ -495,17 +495,30 @@ export async function getDividendHistory(
         throw new Error(error.message);
       }
 
+<<<<<<< HEAD
       const dividends = (data ?? []) as any[];
 
       // Additional client-side sort to ensure manual always comes first
       return dividends.sort((a: any, b: any) => {
         const aManual = a['is_manual'] === true ? 1 : 0;
         const bManual = b['is_manual'] === true ? 1 : 0;
+=======
+      const dividends = (data ?? []) as DividendRecord[];
+
+      // Additional client-side sort to ensure manual always comes first
+      return dividends.sort((a, b) => {
+        const aManual = a.is_manual === true ? 1 : 0;
+        const bManual = b.is_manual === true ? 1 : 0;
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
         if (aManual !== bManual) {
           return bManual - aManual; // Manual (1) comes before non-manual (0)
         }
         return new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime();
+<<<<<<< HEAD
       }) as DividendRecord[];
+=======
+      });
+>>>>>>> a70d87f304c6727e4fb80a561482c9c739387fe7
     });
   } catch (error) {
     logger.error('Database', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
