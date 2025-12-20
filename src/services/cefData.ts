@@ -54,12 +54,13 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
     // Check cache first
     if (isCEFDataCached()) {
       const cached = localStorage.getItem(CEF_CACHE_KEY);
-      const timestamp = localStorage.getItem(CEF_CACHE_TIMESTAMP_KEY);
       if (cached) {
         const data = JSON.parse(cached);
+        // Use the lastUpdatedTimestamp from the cached data, not the cache timestamp
         return {
           ...data,
-          lastUpdatedTimestamp: timestamp || undefined,
+          lastUpdatedTimestamp: data.lastUpdatedTimestamp || data.last_updated_timestamp || undefined,
+          lastUpdated: data.lastUpdated || data.last_updated || undefined,
         };
       }
     }
@@ -68,7 +69,18 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
     if (!response.ok) {
       throw new Error(`Failed to fetch CEF data: ${response.statusText}`);
     }
-    const data: CEFDataResponse = await response.json();
+    const json = await response.json();
+    
+    // Handle both array response and wrapped response (same as ETF data)
+    const cefs: CEF[] = Array.isArray(json) ? json : (json.cefs || []);
+    const lastUpdated = Array.isArray(json) ? null : (json.last_updated || json.lastUpdated || null);
+    const lastUpdatedTimestamp = Array.isArray(json) ? null : (json.last_updated_timestamp || json.lastUpdatedTimestamp || json.last_updated || null);
+    
+    const data: CEFDataResponse = {
+      cefs,
+      lastUpdated,
+      lastUpdatedTimestamp,
+    };
     
     // Cache the response
     try {

@@ -78,19 +78,33 @@ const Index = () => {
         
         cleanupFavorites(deduplicated.map(cef => cef.symbol));
 
+        // Format the last updated timestamp to match ETF format
         if (result.lastUpdatedTimestamp) {
-          const date = new Date(result.lastUpdatedTimestamp);
-          const formatted = date.toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          });
-          setLastDataUpdate(formatted);
+          try {
+            const date = new Date(result.lastUpdatedTimestamp);
+            // Check if date is valid
+            if (!isNaN(date.getTime())) {
+              const formatted = date.toLocaleString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              });
+              setLastDataUpdate(formatted);
+            } else {
+              // Invalid date, try using lastUpdated string
+              setLastDataUpdate(result.lastUpdated || null);
+            }
+          } catch (error) {
+            console.warn("[CEFIndex] Error formatting lastUpdatedTimestamp:", error);
+            setLastDataUpdate(result.lastUpdated || null);
+          }
         } else if (result.lastUpdated) {
           setLastDataUpdate(result.lastUpdated);
+        } else {
+          setLastDataUpdate(null);
         }
       } catch (error) {
         console.error("[CEFIndex] Error fetching CEF data:", error);
