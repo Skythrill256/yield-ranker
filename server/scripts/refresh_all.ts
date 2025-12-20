@@ -435,11 +435,16 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
     // Check if this is a CEF and fetch NAV symbol
     const { data: staticData } = await supabase
       .from('etf_static')
-      .select('nav_symbol')
+      .select('nav_symbol, description')
       .eq('ticker', ticker.toUpperCase())
       .maybeSingle();
 
     const navSymbol = staticData?.nav_symbol;
+    const isCEF = navSymbol && navSymbol.trim() !== '';
+    
+    if (isCEF) {
+      console.log(`  📊 CEF detected: ${ticker} (NAV Symbol: ${navSymbol})`);
+    }
 
     // Fetch and upsert prices
     console.log(`  Fetching market prices...`);
@@ -539,9 +544,9 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
         }
       }
 
-      // For CEFs, calculate CEF-specific metrics (Signal, Z-Score, NAV returns)
-      if (navSymbol) {
-        console.log(`  Calculating CEF-specific metrics...`);
+      // For CEFs, calculate CEF-specific metrics (Signal, Z-Score, Total Returns 3Y/5Y/10Y/15Y)
+      if (navSymbol && navSymbol.trim() !== '') {
+        console.log(`  📊 Calculating CEF-specific metrics (requires 15 years of NAV data)...`);
         
         try {
           const { 
@@ -676,6 +681,14 @@ async function main() {
     process.exit(1);
   }
   console.log(`✅ Verified: Fetching ${LOOKBACK_DAYS} days = ${calculatedYears} years of data`);
+  console.log(`✅ This will fetch prices, dividends, and calculate all metrics for ALL tickers`);
+  console.log(`✅ For CEFs: Will fetch NAV data (15 years) and calculate:`);
+  console.log(`   - 5Y Z-Score (requires 5 years of price/NAV data)`);
+  console.log(`   - 6M NAV Trend (126 trading days)`);
+  console.log(`   - 12M NAV Trend (252 trading days)`);
+  console.log(`   - Signal rating (-2 to +3, requires 2 years of history)`);
+  console.log(`   - Total Returns: 3Y, 5Y, 10Y, 15Y (NAV-based, requires full period history)`);
+  console.log(`✅ For ETFs: Will calculate standard metrics and Total Returns (price-based)`);
   console.log('='.repeat(60));
 
   // Health check
