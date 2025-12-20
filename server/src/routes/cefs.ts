@@ -590,7 +590,7 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
     return dividends.length === 1 ? "1 DIV+" : "0+ 0-";
   }
 
-  const regularDivs = dividends
+  const regularDivs = (dividends as any[])
     .filter((d) => {
       if (!d.div_type) return true;
       const dtype = d.div_type.toLowerCase();
@@ -601,9 +601,9 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
         !dtype.includes("special")
       );
     })
-    .sort((a, b) => {
-      const aManual = a.is_manual === true ? 1 : 0;
-      const bManual = b.is_manual === true ? 1 : 0;
+    .sort((a: any, b: any) => {
+      const aManual = a['is_manual'] === true ? 1 : 0;
+      const bManual = b['is_manual'] === true ? 1 : 0;
       if (aManual !== bManual) {
         return bManual - aManual;
       }
@@ -1613,46 +1613,92 @@ router.get(
 
       const navSymbol = staticResult.data.nav_symbol;
 
-      const endDate = new Date();
-      const startDate = new Date();
-      switch (period) {
-        case "1M":
-          startDate.setMonth(endDate.getMonth() - 1);
-          break;
-        case "3M":
-          startDate.setMonth(endDate.getMonth() - 3);
-          break;
-        case "6M":
-          startDate.setMonth(endDate.getMonth() - 6);
-          break;
-        case "1Y":
-          startDate.setFullYear(endDate.getFullYear() - 1);
-          break;
-        case "3Y":
-          startDate.setFullYear(endDate.getFullYear() - 3);
-          break;
-        case "5Y":
-          startDate.setFullYear(endDate.getFullYear() - 5);
-          break;
-        case "10Y":
-          startDate.setFullYear(endDate.getFullYear() - 10);
-          break;
-        case "15Y":
-          startDate.setFullYear(endDate.getFullYear() - 15);
-          break;
-        case "MAX":
-          // Fetch maximum available data (20 years should be enough)
-          startDate.setFullYear(endDate.getFullYear() - 20);
-          break;
-        default:
-          startDate.setFullYear(endDate.getFullYear() - 1);
+      // For MAX, fetch all available data (use a very early date)
+      // For other periods, calculate from today
+      let startDate: Date;
+      let endDate: Date = new Date();
+      
+      if (period === "MAX") {
+        // Use a very early date to get all available data
+        startDate = new Date("2000-01-01");
+        // Don't set endDate to today - let it be determined by actual data
+      } else {
+        startDate = new Date();
+        switch (period) {
+          case "1M":
+            startDate.setMonth(endDate.getMonth() - 1);
+            break;
+          case "3M":
+            startDate.setMonth(endDate.getMonth() - 3);
+            break;
+          case "6M":
+            startDate.setMonth(endDate.getMonth() - 6);
+            break;
+          case "1Y":
+            startDate.setFullYear(endDate.getFullYear() - 1);
+            break;
+          case "3Y":
+            startDate.setFullYear(endDate.getFullYear() - 3);
+            break;
+          case "5Y":
+            startDate.setFullYear(endDate.getFullYear() - 5);
+            break;
+          case "10Y":
+            startDate.setFullYear(endDate.getFullYear() - 10);
+            break;
+          case "15Y":
+            startDate.setFullYear(endDate.getFullYear() - 15);
+            break;
+          default:
+            startDate.setFullYear(endDate.getFullYear() - 1);
+        }
       }
 
       const startDateStr = startDate.toISOString().split("T")[0];
-      const endDateStr = endDate.toISOString().split("T")[0];
+      // For MAX, use a future date to ensure we get all data up to today
+      // For other periods, use today
+      const endDateStr = period === "MAX" 
+        ? new Date(Date.now() + 86400000).toISOString().split("T")[0] // Tomorrow to ensure we get today's data
+        : endDate.toISOString().split("T")[0];
 
       // Fetch price data (with Tiingo fallback)
-      const priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
+      let priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
+      
+      // Check if we have sufficient data coverage - if not, fetch from Tiingo
+      if (priceData.length > 0) {
+        const firstDate = new Date(priceData[0].date);
+        const lastDate = new Date(priceData[priceData.length - 1].date);
+        const requestedStart = new Date(startDateStr);
+        const requestedEnd = new Date(endDateStr);
+        
+        // If data doesn't cover the full range, fetch from Tiingo
+        const daysMissingAtStart = (firstDate.getTime() - requestedStart.getTime()) / (1000 * 60 * 60 * 24);
+        const daysMissingAtEnd = (requestedEnd.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (daysMissingAtStart > 30 || daysMissingAtEnd > 30) {
+          logger.info("Routes", `Price data incomplete for ${ticker}, fetching from Tiingo API`);
+          try {
+            const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
+            const tiingoData = await getPriceHistoryFromAPI(ticker, startDateStr, endDateStr);
+            if (tiingoData.length > priceData.length) {
+              logger.info("Routes", `Tiingo provided ${tiingoData.length} records vs ${priceData.length} from DB`);
+              priceData = tiingoData;
+            }
+          } catch (tiingoError) {
+            logger.warn("Routes", `Tiingo fallback failed: ${(tiingoError as Error).message}`);
+          }
+        }
+      } else {
+        // No data in DB, try Tiingo
+        logger.info("Routes", `No price data in DB for ${ticker}, fetching from Tiingo API`);
+        try {
+          const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
+          priceData = await getPriceHistoryFromAPI(ticker, startDateStr, endDateStr);
+        } catch (tiingoError) {
+          logger.warn("Routes", `Tiingo API failed: ${(tiingoError as Error).message}`);
+        }
+      }
+      
       logger.info(
         "Routes",
         `Fetched ${priceData.length} price records for ${ticker} (${startDateStr} to ${endDateStr})`
@@ -1667,6 +1713,41 @@ router.get(
             startDateStr,
             endDateStr
           );
+          
+          // Check if we have sufficient NAV data coverage
+          if (navData.length > 0) {
+            const firstNavDate = new Date(navData[0].date);
+            const lastNavDate = new Date(navData[navData.length - 1].date);
+            const requestedStart = new Date(startDateStr);
+            const requestedEnd = new Date(endDateStr);
+            
+            const daysMissingAtStart = (firstNavDate.getTime() - requestedStart.getTime()) / (1000 * 60 * 60 * 24);
+            const daysMissingAtEnd = (requestedEnd.getTime() - lastNavDate.getTime()) / (1000 * 60 * 60 * 24);
+            
+            if (daysMissingAtStart > 30 || daysMissingAtEnd > 30) {
+              logger.info("Routes", `NAV data incomplete for ${navSymbol}, fetching from Tiingo API`);
+              try {
+                const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
+                const tiingoNavData = await getPriceHistoryFromAPI(navSymbol.toUpperCase(), startDateStr, endDateStr);
+                if (tiingoNavData.length > navData.length) {
+                  logger.info("Routes", `Tiingo provided ${tiingoNavData.length} NAV records vs ${navData.length} from DB`);
+                  navData = tiingoNavData;
+                }
+              } catch (tiingoError) {
+                logger.warn("Routes", `Tiingo NAV fallback failed: ${(tiingoError as Error).message}`);
+              }
+            }
+          } else {
+            // No NAV data in DB, try Tiingo
+            logger.info("Routes", `No NAV data in DB for ${navSymbol}, fetching from Tiingo API`);
+            try {
+              const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
+              navData = await getPriceHistoryFromAPI(navSymbol.toUpperCase(), startDateStr, endDateStr);
+            } catch (tiingoError) {
+              logger.warn("Routes", `Tiingo NAV API failed: ${(tiingoError as Error).message}`);
+            }
+          }
+          
           logger.info(
             "Routes",
             `Fetched ${navData.length} NAV records for ${navSymbol} (${startDateStr} to ${endDateStr})`
@@ -1728,11 +1809,13 @@ router.get(
       // This ensures the chart shows actual trading day data with natural gaps
       const combinedData = sortedDates
         .map((date) => {
+          // Normalize date format to YYYY-MM-DD for consistent alignment
+          const normalizedDate = date.includes('T') ? date.split('T')[0] : date;
           const priceEntry = priceMap.get(date);
           const navEntry = navMap.get(date);
 
           return {
-            date,
+            date: normalizedDate,
             price: priceEntry?.close ?? null,
             nav: navEntry?.close ?? null,
           };

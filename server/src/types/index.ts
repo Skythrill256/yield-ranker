@@ -101,7 +101,7 @@ export interface DividendRecord {
   frequency: string | null;       // Mo, Qtr, Week, etc.
   description: string | null;     // Dividend description
   currency: string | null;
-  is_manual?: boolean | null;     // Flag for manually uploaded dividends
+  is_manual?: boolean | null | undefined;     // Flag for manually uploaded dividends
   created_at?: string;
 }
 

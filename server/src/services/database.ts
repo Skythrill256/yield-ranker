@@ -268,8 +268,8 @@ export async function updateETFMetricsPreservingCEFFields(
     logger.debug('Database', `Updating ${ticker} returns: 3Y=${safeUpdateData.return_3yr ?? 'undefined'}, 5Y=${safeUpdateData.return_5yr ?? 'undefined'}, 10Y=${safeUpdateData.return_10yr ?? 'undefined'}, 15Y=${safeUpdateData.return_15yr ?? 'undefined'}`);
   }
   
-  // List of columns that might not exist yet (only signal, return columns should exist)
-  const optionalColumns = ['signal'];
+  // List of columns that might not exist yet (should be empty now that all columns are added)
+  const optionalColumns: string[] = [];
   
   // Try to update, and if it fails due to missing column, retry without optional columns
   let { error } = await db
@@ -495,17 +495,17 @@ export async function getDividendHistory(
         throw new Error(error.message);
       }
 
-      const dividends = (data ?? []) as DividendRecord[];
+      const dividends = (data ?? []) as any[];
 
       // Additional client-side sort to ensure manual always comes first
-      return dividends.sort((a, b) => {
-        const aManual = a.is_manual === true ? 1 : 0;
-        const bManual = b.is_manual === true ? 1 : 0;
+      return dividends.sort((a: any, b: any) => {
+        const aManual = a['is_manual'] === true ? 1 : 0;
+        const bManual = b['is_manual'] === true ? 1 : 0;
         if (aManual !== bManual) {
           return bManual - aManual; // Manual (1) comes before non-manual (0)
         }
         return new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime();
-      });
+      }) as DividendRecord[];
     });
   } catch (error) {
     logger.error('Database', `Error fetching dividends for ${ticker}: ${(error as Error).message}`);
