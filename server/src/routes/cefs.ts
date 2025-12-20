@@ -1399,8 +1399,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const { calculateMetrics } = await import("../services/metrics.js");
 
+    // Process CEFs with optimized approach: use database values first, calculate only if missing
     const cefsWithDividendHistory = await Promise.all(
       staticData.map(async (cef: any) => {
+        // Use cached dividend history from database if available
         let dividendHistory = cef.dividend_history || null;
         if (!dividendHistory) {
           try {
@@ -1415,16 +1417,37 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           }
         }
 
-        // Calculate metrics using the same system as ETFs for accuracy
-        // This calculates ALL periods including 15Y, 10Y, 5Y, 3Y in real-time
+        // Use pre-computed metrics from database if available, otherwise calculate
+        // This avoids expensive real-time calculations when data is already in DB
         let metrics: any = null;
         try {
-          metrics = await calculateMetrics(cef.ticker);
-          if (!metrics) {
-            logger.warn(
-              "Routes",
-              `calculateMetrics returned null for ${cef.ticker}`
-            );
+          // Only calculate if we don't have pre-computed values
+          // Check if we have recent return data in the database
+          const hasPrecomputedReturns = cef.return_15yr !== null || cef.return_10yr !== null || 
+                                       cef.return_5yr !== null || cef.return_3yr !== null;
+          
+          if (!hasPrecomputedReturns) {
+            // Only calculate if missing - this is expensive
+            metrics = await calculateMetrics(cef.ticker);
+            if (!metrics) {
+              logger.warn(
+                "Routes",
+                `calculateMetrics returned null for ${cef.ticker}`
+              );
+            }
+          } else {
+            // Use database values - much faster
+            metrics = {
+              return15Yr: cef.return_15yr,
+              return10Yr: cef.return_10yr,
+              return5Yr: cef.return_5yr,
+              return3Yr: cef.return_3yr,
+              return12Mo: cef.return_12mo,
+              return6Mo: cef.return_6mo,
+              return3Mo: cef.return_3mo,
+              return1Mo: cef.return_1mo,
+              return1Wk: cef.return_1wk,
+            };
           }
         } catch (error) {
           logger.warn(
