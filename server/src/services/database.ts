@@ -247,12 +247,36 @@ export async function updateETFMetricsPreservingCEFFields(
     }
   }
 
-  const { error } = await db
+  // Remove fields that might not exist in the database schema
+  // This allows the script to work even if columns haven't been added yet
+  const safeUpdateData: any = { ...updateData };
+  
+  // List of columns that might not exist yet
+  const optionalColumns = ['signal'];
+  
+  // Try to update, and if it fails due to missing column, retry without optional columns
+  let { error } = await db
     .from('etf_static')
-    .update(updateData)
+    .update(safeUpdateData)
     .eq('ticker', ticker.toUpperCase());
 
-  if (error) {
+  if (error && error.message.includes('column') && error.message.includes('does not exist')) {
+    // Remove optional columns and try again
+    optionalColumns.forEach(col => {
+      delete safeUpdateData[col];
+    });
+    
+    const { error: retryError } = await db
+      .from('etf_static')
+      .update(safeUpdateData)
+      .eq('ticker', ticker.toUpperCase());
+    
+    if (retryError) {
+      logger.error('Database', `Failed to update metrics for ${ticker}: ${retryError.message}`);
+    } else {
+      logger.debug('Database', `Updated ${ticker} (some optional columns skipped)`);
+    }
+  } else if (error) {
     logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
   }
 }
