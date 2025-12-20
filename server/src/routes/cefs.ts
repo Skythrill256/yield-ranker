@@ -1456,6 +1456,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         const needsMetrics = !hasShortTerm || !hasLongTerm;
         
         // Calculate metrics with timeout and caching to prevent loading issues
+        // CRITICAL: Always try to get metrics if long-term returns are missing
+        // This ensures we show data even if database values are null
         if (needsMetrics) {
           try {
             // Try cache first (5 minute TTL)
@@ -1463,8 +1465,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             const cachedMetrics = await getCached<any>(metricsCacheKey);
             if (cachedMetrics) {
               metrics = cachedMetrics;
+              logger.debug("Routes", `Using cached metrics for ${cef.ticker}`);
             } else {
               // Calculate with 10 second timeout to prevent hanging
+              logger.info("Routes", `Calculating metrics for ${cef.ticker} (missing database values)`);
               const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Metrics calculation timeout')), 10000)
               );
@@ -1476,6 +1480,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
               // Cache the result for 5 minutes
               if (metrics) {
                 await setCached(metricsCacheKey, metrics, 300);
+                logger.info("Routes", `Cached metrics for ${cef.ticker}: 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
               }
             }
           } catch (error) {
@@ -1509,16 +1514,11 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         const navTrend12M: number | null = (cef.nav_trend_12m !== undefined && cef.nav_trend_12m !== null) ? cef.nav_trend_12m : null;
         const signal: number | null = (cef.signal !== undefined && cef.signal !== null) ? cef.signal : null;
         // For returns, check if column exists and has value
+        // If database values are null/undefined, we'll use metrics fallback
         const return3Yr: number | null = (cef.return_3yr !== undefined && cef.return_3yr !== null) ? cef.return_3yr : null;
         const return5Yr: number | null = (cef.return_5yr !== undefined && cef.return_5yr !== null) ? cef.return_5yr : null;
         const return10Yr: number | null = (cef.return_10yr !== undefined && cef.return_10yr !== null) ? cef.return_10yr : null;
         const return15Yr: number | null = (cef.return_15yr !== undefined && cef.return_15yr !== null) ? cef.return_15yr : null;
-        
-        // DEBUG: Log what we're reading from database
-        if (cef.ticker === 'GAB' || cef.ticker === 'BCX') {
-          logger.info("CEF Debug", `${cef.ticker} - DB values: 3Y=${return3Yr}, 5Y=${return5Yr}, 10Y=${return10Yr}, 15Y=${return15Yr}`);
-          logger.info("CEF Debug", `${cef.ticker} - Raw DB: return_3yr=${cef.return_3yr}, return_5yr=${cef.return_5yr}, return_10yr=${cef.return_10yr}, return_15yr=${cef.return_15yr}`);
-        }
 
         return {
           symbol: cef.ticker,
