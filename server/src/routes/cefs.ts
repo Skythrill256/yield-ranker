@@ -1440,9 +1440,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         }
 
         // Calculate metrics if ANY database values are missing (short-term OR long-term returns)
-        // This ensures all returns work the same way - database first, then metrics fallback
-        // IMPORTANT: If database values are null (insufficient data), we still need metrics as fallback
-        // So we check if values are undefined (column missing) OR null (insufficient data)
+        // Use cached metrics first, then calculate with timeout to prevent loading issues
         let metrics: any = null;
         const hasShortTerm = (cef.tr_drip_1w !== null && cef.tr_drip_1w !== undefined) &&
                             (cef.tr_drip_1m !== null && cef.tr_drip_1m !== undefined) &&
@@ -1456,17 +1454,33 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
                            (cef.return_15yr !== null && cef.return_15yr !== undefined);
         const needsMetrics = !hasShortTerm || !hasLongTerm;
         
-        // ALWAYS calculate metrics if long-term returns are missing (null or undefined)
-        // This provides fallback values when NAV data is insufficient
+        // Calculate metrics with timeout and caching to prevent loading issues
         if (needsMetrics) {
           try {
-            metrics = await calculateMetrics(cef.ticker);
-            // DEBUG: Log metrics calculation
-            if (cef.ticker === 'GAB' || cef.ticker === 'BCX') {
-              logger.info("CEF Debug", `${cef.ticker} - Calculated metrics: 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
+            // Try cache first (5 minute TTL)
+            const metricsCacheKey = `cef:metrics:${cef.ticker}`;
+            const cachedMetrics = await getCached<any>(metricsCacheKey);
+            if (cachedMetrics) {
+              metrics = cachedMetrics;
+            } else {
+              // Calculate with 10 second timeout to prevent hanging
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Metrics calculation timeout')), 10000)
+              );
+              metrics = await Promise.race([
+                calculateMetrics(cef.ticker),
+                timeoutPromise
+              ]) as any;
+              
+              // Cache the result for 5 minutes
+              if (metrics) {
+                await setCached(metricsCacheKey, metrics, 300);
+              }
             }
           } catch (error) {
-            logger.warn("Routes", `Failed to calculate metrics for ${cef.ticker}: ${error}`);
+            // Timeout or calculation error - just log and continue
+            logger.warn("Routes", `Failed to calculate metrics for ${cef.ticker}: ${(error as Error).message}`);
+            metrics = null;
           }
         }
 
@@ -1567,9 +1581,22 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           lastUpdated: cef.last_updated || cef.updated_at,
           dataSource: "Tiingo",
         };
-        }));
+        })
+      );
       
-      cefsWithDividendHistory.push(...batchResults);
+      // Extract successful results, log failures
+      const successfulResults = batchResults
+        .map((result, index) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          } else {
+            logger.warn("Routes", `Failed to process CEF ${batch[index]?.ticker}: ${result.reason}`);
+            return null;
+          }
+        })
+        .filter((cef): cef is any => cef !== null);
+      
+      cefsWithDividendHistory.push(...successfulResults);
     }
 
     let lastUpdatedTimestamp: string | null = null;
