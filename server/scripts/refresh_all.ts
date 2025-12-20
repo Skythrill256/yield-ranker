@@ -622,7 +622,11 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
               // Column doesn't exist, skip it
             }
           }
-          // Note: Total Returns (NAV-based) are calculated in real-time, not stored in DB
+          // Store Total Returns (NAV-based) in database - these are annualized returns
+          if (return3Yr !== null) updateData.return_3yr = return3Yr;
+          if (return5Yr !== null) updateData.return_5yr = return5Yr;
+          if (return10Yr !== null) updateData.return_10yr = return10Yr;
+          if (return15Yr !== null) updateData.return_15yr = return15Yr;
         } catch (error) {
           console.warn(`  ⚠ Failed to calculate CEF metrics: ${(error as Error).message}`);
         }

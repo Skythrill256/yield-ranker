@@ -252,7 +252,7 @@ export async function updateETFMetricsPreservingCEFFields(
   const safeUpdateData: any = { ...updateData };
   
   // List of columns that might not exist yet
-  const optionalColumns = ['signal'];
+  const optionalColumns = ['signal', 'return_3yr', 'return_5yr', 'return_10yr', 'return_15yr'];
   
   // Try to update, and if it fails due to missing column, retry without optional columns
   let { error } = await db
