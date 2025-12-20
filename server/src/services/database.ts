@@ -277,39 +277,50 @@ export async function updateETFMetricsPreservingCEFFields(
     .update(safeUpdateData)
     .eq('ticker', ticker.toUpperCase());
 
-  if (error && error.message.includes('column') && error.message.includes('does not exist')) {
-    // Check if error is about return columns - these MUST exist, so log error
-    const isReturnColumnError = error.message.includes('return_3yr') || 
-                                 error.message.includes('return_5yr') || 
-                                 error.message.includes('return_10yr') || 
-                                 error.message.includes('return_15yr');
+  if (error) {
+    // Check if error is about missing columns (Supabase uses different error messages)
+    const isColumnError = error.message.includes('column') && 
+                         (error.message.includes('does not exist') || 
+                          error.message.includes('not found') ||
+                          error.message.includes('Could not find'));
     
-    if (isReturnColumnError) {
-      logger.error('Database', `❌ CRITICAL: Return columns do not exist in database for ${ticker}!`);
-      logger.error('Database', `❌ Missing columns: return_3yr, return_5yr, return_10yr, return_15yr`);
-      logger.error('Database', `❌ Please add these columns to etf_static table: ALTER TABLE etf_static ADD COLUMN return_3yr NUMERIC, ADD COLUMN return_5yr NUMERIC, ADD COLUMN return_10yr NUMERIC, ADD COLUMN return_15yr NUMERIC;`);
-      // Don't retry - we need these columns to exist
-      throw new Error(`Return columns do not exist in database. Please add return_3yr, return_5yr, return_10yr, return_15yr columns.`);
-    }
-    
-    // Remove optional columns (only signal) and try again
-    optionalColumns.forEach(col => {
-      delete safeUpdateData[col];
-    });
-    
-    const { error: retryError } = await db
-      .from('etf_static')
-      .update(safeUpdateData)
-      .eq('ticker', ticker.toUpperCase());
-    
-    if (retryError) {
-      logger.error('Database', `Failed to update metrics for ${ticker}: ${retryError.message}`);
+    if (isColumnError) {
+      // Check if error is about return columns - these MUST exist, so log error
+      const isReturnColumnError = error.message.includes('return_3yr') || 
+                                   error.message.includes('return_5yr') || 
+                                   error.message.includes('return_10yr') || 
+                                   error.message.includes('return_15yr');
+      
+      if (isReturnColumnError) {
+        logger.error('Database', `❌ CRITICAL: Return columns do not exist in database for ${ticker}!`);
+        logger.error('Database', `❌ Missing columns: return_3yr, return_5yr, return_10yr, return_15yr`);
+        logger.error('Database', `❌ Please add these columns to etf_static table: ALTER TABLE etf_static ADD COLUMN return_3yr NUMERIC, ADD COLUMN return_5yr NUMERIC, ADD COLUMN return_10yr NUMERIC, ADD COLUMN return_15yr NUMERIC;`);
+        // Don't retry - we need these columns to exist
+        throw new Error(`Return columns do not exist in database. Please add return_3yr, return_5yr, return_10yr, return_15yr columns.`);
+      }
+      
+      // Remove optional columns (signal) and try again
+      const retryData = { ...safeUpdateData };
+      optionalColumns.forEach(col => {
+        delete retryData[col];
+      });
+      
+      logger.debug('Database', `Retrying update for ${ticker} without optional columns: ${optionalColumns.join(', ')}`);
+      const { error: retryError } = await db
+        .from('etf_static')
+        .update(retryData)
+        .eq('ticker', ticker.toUpperCase());
+      
+      if (retryError) {
+        logger.error('Database', `Failed to update metrics for ${ticker} even after removing optional columns: ${retryError.message}`);
+        // Don't throw - log and continue, as the important data (returns) may have been saved
+      } else {
+        logger.info('Database', `✅ Updated ${ticker} successfully (some optional columns skipped)`);
+      }
     } else {
-      logger.debug('Database', `Updated ${ticker} (some optional columns skipped)`);
+      logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
+      throw error;
     }
-  } else if (error) {
-    logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
-    throw error;
   }
 }
 
