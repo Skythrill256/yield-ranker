@@ -27,7 +27,7 @@ import {
 import { ReturnsComparisonChart } from "@/components/ReturnsComparisonChart";
 import { fetchCEFData } from "@/services/cefData";
 
-type Timeframe = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "10Y" | "20Y" | "MAX";
+type Timeframe = "1M" | "3M" | "6M" | "1Y" | "3Y";
 type ChartType = "priceNAV" | "totalReturn" | "priceReturn";
 
 const CEFDetail = () => {
@@ -188,7 +188,8 @@ const CEFDetail = () => {
     );
   }
 
-  const timeframes: Timeframe[] = ["1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "20Y", "MAX"];
+  // For price/NAV chart, only show up to 3Y (5Y, 10Y, 20Y, MAX have data issues)
+  const timeframes: Timeframe[] = ["1M", "3M", "6M", "1Y", "3Y"];
 
   // Calculate current return for display (using 12 Mo return as default)
   const currentReturn = cef.return12Mo;
