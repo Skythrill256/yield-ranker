@@ -289,7 +289,13 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
 
 async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
   console.log(`\n[Refresh] ${ticker}`);
-  console.log(`  Fetching data from last ${LOOKBACK_DAYS} days (for split adjustments)...`);
+  // Verify LOOKBACK_DAYS is correct (should be 5475 for 15 years)
+  const expectedDays = 5475;
+  if (LOOKBACK_DAYS !== expectedDays) {
+    console.error(`  ⚠️  ERROR: LOOKBACK_DAYS is ${LOOKBACK_DAYS}, expected ${expectedDays} (15 years)!`);
+  }
+  const years = Math.round(LOOKBACK_DAYS / 365);
+  console.log(`  Fetching data from last ${LOOKBACK_DAYS} days (${years} years for CEF metrics - 15Y returns, 5Y Z-Score, Signal)...`);
 
   try {
     const priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
