@@ -59,6 +59,17 @@ export const Header = () => {
     return "Covered Call Option ETFs";
   };
 
+  // Determine if we're on Closed End Funds pages
+  const isOnClosedEndFundsPage = 
+    location.pathname.startsWith("/cef") ||
+    location.pathname === "/closed-end-funds" ||
+    location.pathname.startsWith("/closed-end-funds");
+
+  // Button switches based on current page
+  const switchButton = isOnClosedEndFundsPage
+    ? { label: "Covered Call Option ETFs", path: "/" }
+    : { label: "Closed End Funds", path: "/cef" };
+
   return (
     <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur-md shadow-sm">
       <div className="w-full px-6 sm:px-8 lg:px-12">
@@ -80,13 +91,13 @@ export const Header = () => {
             {/* Filter Dropdown - CEFs and CC ETFs */}
             <CategorySelector />
 
-            {/* Closed End Funds - Links to table page */}
+            {/* Switching button - Changes based on current page */}
             <Button
               variant="ghost"
               className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
-              onClick={() => go("/cef")}
+              onClick={() => go(switchButton.path)}
             >
-              Closed End Funds
+              {switchButton.label}
             </Button>
 
             {/* Resources - Simple link, no dropdown */}
@@ -214,16 +225,9 @@ export const Header = () => {
             <Button
               variant="ghost"
               className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
-              onClick={() => go("/covered-call-etfs")}
+              onClick={() => go(switchButton.path)}
             >
-              Covered Call Option ETFs
-            </Button>
-            <Button
-              variant="ghost"
-              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
-              onClick={() => go("/closed-end-funds")}
-            >
-              Closed End Funds
+              {switchButton.label}
             </Button>
             <Button
               variant="ghost"
