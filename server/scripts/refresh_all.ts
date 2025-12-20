@@ -623,10 +623,18 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
             }
           }
           // Store Total Returns (NAV-based) in database - these are annualized returns
-          if (return3Yr !== null) updateData.return_3yr = return3Yr;
-          if (return5Yr !== null) updateData.return_5yr = return5Yr;
-          if (return10Yr !== null) updateData.return_10yr = return10Yr;
-          if (return15Yr !== null) updateData.return_15yr = return15Yr;
+          // Always save values (even if null) to ensure database is updated
+          // If calculation returns null, it means insufficient data, which is valid
+          updateData.return_3yr = return3Yr;
+          updateData.return_5yr = return5Yr;
+          updateData.return_10yr = return10Yr;
+          updateData.return_15yr = return15Yr;
+          
+          // Log if any values are null to help debug data issues
+          if (return3Yr === null) console.log(`    ⚠ 3Y return is null (insufficient NAV data)`);
+          if (return5Yr === null) console.log(`    ⚠ 5Y return is null (insufficient NAV data)`);
+          if (return10Yr === null) console.log(`    ⚠ 10Y return is null (insufficient NAV data)`);
+          if (return15Yr === null) console.log(`    ⚠ 15Y return is null (insufficient NAV data)`);
         } catch (error) {
           console.warn(`  ⚠ Failed to calculate CEF metrics: ${(error as Error).message}`);
         }

@@ -252,12 +252,11 @@ export async function updateETFMetricsPreservingCEFFields(
     }
   }
 
-  // Remove fields that might not exist in the database schema
-  // This allows the script to work even if columns haven't been added yet
+  // Try to update - return columns should exist, but handle gracefully if they don't
   const safeUpdateData: any = { ...updateData };
   
-  // List of columns that might not exist yet
-  const optionalColumns = ['signal', 'return_3yr', 'return_5yr', 'return_10yr', 'return_15yr'];
+  // List of columns that might not exist yet (only signal, return columns should exist)
+  const optionalColumns = ['signal'];
   
   // Try to update, and if it fails due to missing column, retry without optional columns
   let { error } = await db
@@ -266,6 +265,16 @@ export async function updateETFMetricsPreservingCEFFields(
     .eq('ticker', ticker.toUpperCase());
 
   if (error && error.message.includes('column') && error.message.includes('does not exist')) {
+    // Check if error is about return columns - if so, log warning but don't fail
+    const isReturnColumnError = error.message.includes('return_3yr') || 
+                                 error.message.includes('return_5yr') || 
+                                 error.message.includes('return_10yr') || 
+                                 error.message.includes('return_15yr');
+    
+    if (isReturnColumnError) {
+      logger.warn('Database', `Return columns may not exist in database for ${ticker}. Please add return_3yr, return_5yr, return_10yr, return_15yr columns.`);
+    }
+    
     // Remove optional columns and try again
     optionalColumns.forEach(col => {
       delete safeUpdateData[col];
