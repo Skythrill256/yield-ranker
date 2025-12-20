@@ -1553,6 +1553,21 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         const return10Yr: number | null = (cef.return_10yr !== undefined && cef.return_10yr !== null) ? cef.return_10yr : null;
         const return15Yr: number | null = (cef.return_15yr !== undefined && cef.return_15yr !== null) ? cef.return_15yr : null;
 
+        // Calculate final return values: DB -> NAV -> Metrics
+        const finalReturn15Yr = (return15Yr != null) ? return15Yr : (calculatedNAVReturns['15Y'] ?? metrics?.totalReturnDrip?.["15Y"] ?? null);
+        const finalReturn10Yr = (return10Yr != null) ? return10Yr : (calculatedNAVReturns['10Y'] ?? metrics?.totalReturnDrip?.["10Y"] ?? null);
+        const finalReturn5Yr = (return5Yr != null) ? return5Yr : (calculatedNAVReturns['5Y'] ?? metrics?.totalReturnDrip?.["5Y"] ?? null);
+        const finalReturn3Yr = (return3Yr != null) ? return3Yr : (calculatedNAVReturns['3Y'] ?? metrics?.totalReturnDrip?.["3Y"] ?? null);
+        
+        // LOG EVERY CEF to help debug - show first 5 CEFs
+        if (globalIndex < 5) {
+          console.log(`\n[CEF ${globalIndex+1}] ${cef.ticker}:`);
+          console.log(`  DB values: 3Y=${return3Yr}, 5Y=${return5Yr}, 10Y=${return10Yr}, 15Y=${return15Yr}`);
+          console.log(`  NAV calc: 3Y=${calculatedNAVReturns['3Y']}, 5Y=${calculatedNAVReturns['5Y']}, 10Y=${calculatedNAVReturns['10Y']}, 15Y=${calculatedNAVReturns['15Y']}`);
+          console.log(`  Metrics: 3Y=${metrics?.totalReturnDrip?.["3Y"]}, 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
+          console.log(`  FINAL: 3Y=${finalReturn3Yr}, 5Y=${finalReturn5Yr}, 10Y=${finalReturn10Yr}, 15Y=${finalReturn15Yr}`);
+        }
+
         return {
           symbol: cef.ticker,
           name: cef.description || cef.ticker,
@@ -1585,20 +1600,6 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             null,
           // Long-term returns: Use database values first, then NAV-based calculation, then metrics fallback
           // For CEFs, NAV-based returns are preferred over price-based metrics
-          const finalReturn15Yr = (return15Yr != null) ? return15Yr : (calculatedNAVReturns['15Y'] ?? metrics?.totalReturnDrip?.["15Y"] ?? null);
-          const finalReturn10Yr = (return10Yr != null) ? return10Yr : (calculatedNAVReturns['10Y'] ?? metrics?.totalReturnDrip?.["10Y"] ?? null);
-          const finalReturn5Yr = (return5Yr != null) ? return5Yr : (calculatedNAVReturns['5Y'] ?? metrics?.totalReturnDrip?.["5Y"] ?? null);
-          const finalReturn3Yr = (return3Yr != null) ? return3Yr : (calculatedNAVReturns['3Y'] ?? metrics?.totalReturnDrip?.["3Y"] ?? null);
-          
-          // LOG EVERY CEF to help debug - show first 5 CEFs
-          if (globalIndex < 5) {
-            console.log(`\n[CEF ${globalIndex+1}] ${cef.ticker}:`);
-            console.log(`  DB values: 3Y=${return3Yr}, 5Y=${return5Yr}, 10Y=${return10Yr}, 15Y=${return15Yr}`);
-            console.log(`  NAV calc: 3Y=${calculatedNAVReturns['3Y']}, 5Y=${calculatedNAVReturns['5Y']}, 10Y=${calculatedNAVReturns['10Y']}, 15Y=${calculatedNAVReturns['15Y']}`);
-            console.log(`  Metrics: 3Y=${metrics?.totalReturnDrip?.["3Y"]}, 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
-            console.log(`  FINAL: 3Y=${finalReturn3Yr}, 5Y=${finalReturn5Yr}, 10Y=${finalReturn10Yr}, 15Y=${finalReturn15Yr}`);
-          }
-          
           return15Yr: finalReturn15Yr,
           return10Yr: finalReturn10Yr,
           return5Yr: finalReturn5Yr,

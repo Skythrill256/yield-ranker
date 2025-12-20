@@ -5,6 +5,7 @@
 
 import { getSupabase } from '../src/services/database.js';
 import { calculateMetrics } from '../src/services/metrics.js';
+import { calculateNAVReturns } from '../src/routes/cefs.js';
 
 async function testCEFReturns() {
   console.log('\n=== Testing CEF Return Values ===\n');
@@ -39,11 +40,32 @@ async function testCEFReturns() {
     console.log(`  10Y: ${cef.return_10yr ?? 'NULL'}`);
     console.log(`  15Y: ${cef.return_15yr ?? 'NULL'}`);
 
-    // Calculate metrics
-    console.log(`\nCalculating metrics...`);
+    // Calculate NAV-based returns (for CEFs)
+    const navSymbol = cef.nav_symbol || cef.ticker;
+    console.log(`\nCalculating NAV-based returns for ${navSymbol}...`);
+    let navReturns: { [key: string]: number | null } = {};
+    try {
+      const [nav3Y, nav5Y, nav10Y, nav15Y] = await Promise.all([
+        calculateNAVReturns(navSymbol, '3Y'),
+        calculateNAVReturns(navSymbol, '5Y'),
+        calculateNAVReturns(navSymbol, '10Y'),
+        calculateNAVReturns(navSymbol, '15Y'),
+      ]);
+      navReturns = { '3Y': nav3Y, '5Y': nav5Y, '10Y': nav10Y, '15Y': nav15Y };
+      console.log(`\nNAV-Based Returns (✅ THIS IS WHAT WE NEED):`);
+      console.log(`  3Y: ${navReturns['3Y'] ?? 'NULL'}`);
+      console.log(`  5Y: ${navReturns['5Y'] ?? 'NULL'}`);
+      console.log(`  10Y: ${navReturns['10Y'] ?? 'NULL'}`);
+      console.log(`  15Y: ${navReturns['15Y'] ?? 'NULL'}`);
+    } catch (error) {
+      console.error(`  Error calculating NAV returns: ${(error as Error).message}`);
+    }
+
+    // Calculate metrics (price-based) for comparison
+    console.log(`\nCalculating price-based metrics...`);
     try {
       const metrics = await calculateMetrics(cef.ticker);
-      console.log(`\nCalculated Metrics:`);
+      console.log(`\nPrice-Based Metrics (for comparison):`);
       console.log(`  1W: ${metrics.totalReturnDrip?.['1W'] ?? 'NULL'}`);
       console.log(`  1M: ${metrics.totalReturnDrip?.['1M'] ?? 'NULL'}`);
       console.log(`  3M: ${metrics.totalReturnDrip?.['3M'] ?? 'NULL'}`);
@@ -53,21 +75,21 @@ async function testCEFReturns() {
       console.log(`  5Y: ${metrics.totalReturnDrip?.['5Y'] ?? 'NULL'}`);
       console.log(`  10Y: ${metrics.totalReturnDrip?.['10Y'] ?? 'NULL'}`);
       console.log(`  15Y: ${metrics.totalReturnDrip?.['15Y'] ?? 'NULL'}`);
-
-      // Show what would be returned (API logic)
-      console.log(`\nAPI Would Return (DB first, then metrics):`);
-      console.log(`  1W: ${cef.tr_drip_1w ?? metrics.totalReturnDrip?.['1W'] ?? 'NULL'}`);
-      console.log(`  1M: ${cef.tr_drip_1m ?? metrics.totalReturnDrip?.['1M'] ?? 'NULL'}`);
-      console.log(`  3M: ${cef.tr_drip_3m ?? metrics.totalReturnDrip?.['3M'] ?? 'NULL'}`);
-      console.log(`  6M: ${cef.tr_drip_6m ?? metrics.totalReturnDrip?.['6M'] ?? 'NULL'}`);
-      console.log(`  12M: ${cef.tr_drip_12m ?? metrics.totalReturnDrip?.['1Y'] ?? 'NULL'}`);
-      console.log(`  3Y: ${cef.return_3yr ?? metrics.totalReturnDrip?.['3Y'] ?? 'NULL'}`);
-      console.log(`  5Y: ${cef.return_5yr ?? metrics.totalReturnDrip?.['5Y'] ?? 'NULL'}`);
-      console.log(`  10Y: ${cef.return_10yr ?? metrics.totalReturnDrip?.['10Y'] ?? 'NULL'}`);
-      console.log(`  15Y: ${cef.return_15yr ?? metrics.totalReturnDrip?.['15Y'] ?? 'NULL'}`);
     } catch (error) {
       console.error(`  Error calculating metrics: ${(error as Error).message}`);
     }
+
+    // Show what API would return (NEW LOGIC: DB -> NAV -> Metrics)
+    console.log(`\n✅ API Would Return (DB -> NAV -> Metrics):`);
+    console.log(`  1W: ${cef.tr_drip_1w ?? 'NULL'}`);
+    console.log(`  1M: ${cef.tr_drip_1m ?? 'NULL'}`);
+    console.log(`  3M: ${cef.tr_drip_3m ?? 'NULL'}`);
+    console.log(`  6M: ${cef.tr_drip_6m ?? 'NULL'}`);
+    console.log(`  12M: ${cef.tr_drip_12m ?? 'NULL'}`);
+    console.log(`  3Y: ${cef.return_3yr ?? navReturns['3Y'] ?? 'NULL'}`);
+    console.log(`  5Y: ${cef.return_5yr ?? navReturns['5Y'] ?? 'NULL'} ${navReturns['5Y'] ? '✅' : '❌'}`);
+    console.log(`  10Y: ${cef.return_10yr ?? navReturns['10Y'] ?? 'NULL'} ${navReturns['10Y'] ? '✅' : '❌'}`);
+    console.log(`  15Y: ${cef.return_15yr ?? navReturns['15Y'] ?? 'NULL'} ${navReturns['15Y'] ? '✅' : '❌'}`);
   }
 
   console.log('\n=== Test Complete ===\n');
