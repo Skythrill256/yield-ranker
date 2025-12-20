@@ -98,6 +98,30 @@ const App = () => (
               path="/admin/data"
               element={
                 <RequireAuth>
+                  <Navigate to="/admin/upload" replace />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/upload"
+              element={
+                <RequireAuth>
+                  <AdminPanel />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/delete"
+              element={
+                <RequireAuth>
+                  <AdminPanel />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/admin/favorites"
+              element={
+                <RequireAuth>
                   <AdminPanel />
                 </RequireAuth>
               }

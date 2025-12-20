@@ -1723,8 +1723,14 @@ router.get(
       const startDateStr = startDate.toISOString().split("T")[0];
       const endDateStr = endDate.toISOString().split("T")[0];
 
+      // Fetch price data (with Tiingo fallback)
       const priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
+      logger.info(
+        "Routes",
+        `Fetched ${priceData.length} price records for ${ticker} (${startDateStr} to ${endDateStr})`
+      );
 
+      // Fetch NAV data (with Tiingo fallback)
       let navData: any[] = [];
       if (navSymbol && navSymbol.trim()) {
         try {
@@ -1747,6 +1753,20 @@ router.get(
         logger.warn(
           "Routes",
           `No NAV symbol found for ${ticker}, NAV chart data will be empty`
+        );
+      }
+      
+      // Log data availability for debugging
+      if (priceData.length === 0) {
+        logger.warn(
+          "Routes",
+          `No price data found for ${ticker} in period ${period} (${startDateStr} to ${endDateStr}). Chart may show only NAV data.`
+        );
+      }
+      if (navData.length === 0 && navSymbol) {
+        logger.warn(
+          "Routes",
+          `No NAV data found for ${navSymbol} in period ${period} (${startDateStr} to ${endDateStr}). Chart may show only price data.`
         );
       }
 

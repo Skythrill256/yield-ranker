@@ -74,7 +74,7 @@ const AdminPanel = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "users" | "etf-data" | "site-settings"
+    "users" | "upload" | "delete" | "favorites" | "site-settings"
   >("users");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -150,8 +150,14 @@ const AdminPanel = () => {
     const path = location.pathname;
     if (path.endsWith("/users")) {
       setActiveTab("users");
+    } else if (path.endsWith("/upload")) {
+      setActiveTab("upload");
+    } else if (path.endsWith("/delete")) {
+      setActiveTab("delete");
+    } else if (path.endsWith("/favorites")) {
+      setActiveTab("favorites");
     } else if (path.endsWith("/data")) {
-      setActiveTab("etf-data");
+      setActiveTab("upload"); // Legacy support - redirect data to upload
     } else if (path.endsWith("/settings")) {
       setActiveTab("site-settings");
     } else {
@@ -159,8 +165,14 @@ const AdminPanel = () => {
       const tab = params.get("tab");
       if (tab === "users") {
         setActiveTab("users");
-      } else if (tab === "upload" || tab === "data") {
-        setActiveTab("etf-data");
+      } else if (tab === "upload") {
+        setActiveTab("upload");
+      } else if (tab === "delete") {
+        setActiveTab("delete");
+      } else if (tab === "favorites") {
+        setActiveTab("favorites");
+      } else if (tab === "data") {
+        setActiveTab("upload"); // Legacy support
       } else if (tab === "settings") {
         setActiveTab("site-settings");
       } else {
@@ -741,18 +753,46 @@ const AdminPanel = () => {
             {!sidebarCollapsed && "User Administration"}
           </button>
           <button
-            onClick={() => navigate("/admin/data")}
+            onClick={() => navigate("/admin/upload")}
             className={`w-full flex items-center ${sidebarCollapsed
               ? "justify-center px-0 py-2.5"
               : "gap-3 px-4 py-3"
-              } rounded-lg text-sm font-medium ${activeTab === "etf-data"
+              } rounded-lg text-sm font-medium ${activeTab === "upload"
                 ? "bg-primary text-white"
                 : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
               } transition-colors`}
-            title={sidebarCollapsed ? "ETF Data" : ""}
+            title={sidebarCollapsed ? "Upload" : ""}
           >
-            <Database className="w-5 h-5" />
-            {!sidebarCollapsed && "ETF Data Management"}
+            <Upload className="w-5 h-5" />
+            {!sidebarCollapsed && "Upload Data"}
+          </button>
+          <button
+            onClick={() => navigate("/admin/delete")}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium ${activeTab === "delete"
+                ? "bg-primary text-white"
+                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+              } transition-colors`}
+            title={sidebarCollapsed ? "Delete" : ""}
+          >
+            <Trash2 className="w-5 h-5" />
+            {!sidebarCollapsed && "Delete Data"}
+          </button>
+          <button
+            onClick={() => navigate("/admin/favorites")}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium ${activeTab === "favorites"
+                ? "bg-primary text-white"
+                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+              } transition-colors`}
+            title={sidebarCollapsed ? "Favorites" : ""}
+          >
+            <Star className="w-5 h-5" />
+            {!sidebarCollapsed && "Favorites"}
           </button>
           <button
             onClick={() => navigate("/admin/settings")}
@@ -1120,13 +1160,14 @@ const AdminPanel = () => {
               </>
             )}
 
-            {activeTab === "etf-data" && (
-              <Card className="border-2 border-slate-200">
-                <div className="p-6 space-y-6">
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground mb-2">
-                      Upload DTR Spreadsheet
-                    </h2>
+            {activeTab === "upload" && (
+              <div className="space-y-6">
+                <Card className="border-2 border-slate-200">
+                  <div className="p-6 space-y-6">
+                    <div>
+                      <h2 className="text-lg font-bold text-foreground mb-2">
+                        Upload DTR Spreadsheet
+                      </h2>
                     <p className="text-sm text-muted-foreground">
                       Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
                       update all ETF data in the system. The file should have a
@@ -1278,10 +1319,18 @@ const AdminPanel = () => {
                     </div>
                   </div>
 
-                  <div className="border-t pt-6">
-                    <h3 className="text-sm font-semibold text-foreground mb-3">
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "delete" && (
+              <Card className="border-2 border-slate-200">
+                <div className="p-6 space-y-6">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground mb-2">
                       Delete ETF(s)
-                    </h3>
+                    </h2>
                     <p className="text-sm text-muted-foreground mb-4">
                       Select one or more ETFs to delete. Scroll to see all available tickers.
                     </p>
