@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ChevronDown, LayoutGrid } from "lucide-react";
 import {
@@ -10,24 +10,12 @@ import {
 
 export const CategorySelector = () => {
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // Determine if we're on Closed End Funds pages (table or breakdown)
-  const isOnClosedEndFundsPage = 
-    location.pathname.startsWith("/cef") ||
-    location.pathname === "/closed-end-funds" ||
-    location.pathname.startsWith("/closed-end-funds");
-
-  // Show the opposite option - links to table pages
-  // When on Covered Call pages: show "Closed End Funds" → links to /cef (table)
-  // When on Closed End Funds pages: show "Covered Call Option ETFs" → links to / (table)
-  const oppositeOption = isOnClosedEndFundsPage
-    ? { label: "Covered Call Option ETFs", path: "/" }
-    : { label: "Closed End Funds", path: "/cef" };
-
-  const handleNavigation = () => {
-    navigate(oppositeOption.path);
-  };
+  // Filter always shows both options linking to documentation pages
+  const options = [
+    { label: "Covered Call Option ETFs", path: "/covered-call-etfs" },
+    { label: "Closed End Funds", path: "/closed-end-funds" },
+  ];
 
   return (
     <DropdownMenu>
@@ -42,12 +30,15 @@ export const CategorySelector = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
-        <DropdownMenuItem
-          onClick={handleNavigation}
-          className="cursor-pointer"
-        >
-          {oppositeOption.label}
-        </DropdownMenuItem>
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.path}
+            onClick={() => navigate(option.path)}
+            className="cursor-pointer"
+          >
+            {option.label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

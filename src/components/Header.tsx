@@ -80,11 +80,11 @@ export const Header = () => {
             {/* Filter Dropdown - CEFs and CC ETFs */}
             <CategorySelector />
 
-            {/* Closed End Funds */}
+            {/* Closed End Funds - Links to table page */}
             <Button
               variant="ghost"
               className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
-              onClick={() => go("/closed-end-funds")}
+              onClick={() => go("/cef")}
             >
               Closed End Funds
             </Button>
