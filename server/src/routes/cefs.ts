@@ -1217,6 +1217,96 @@ router.post(
 );
 
 // ============================================================================
+// GET /test-data-range/:symbol - Test endpoint to check data ranges
+// ============================================================================
+
+router.get("/test-data-range/:symbol", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { symbol } = req.params;
+    const ticker = symbol.toUpperCase();
+    const supabase = getSupabase();
+
+    const { data: cef } = await supabase
+      .from("etf_static")
+      .select("ticker, nav_symbol, description")
+      .eq("ticker", ticker)
+      .maybeSingle();
+
+    if (!cef || !cef.nav_symbol) {
+      res.status(404).json({ error: "CEF not found or no NAV symbol" });
+      return;
+    }
+
+    const endDate = new Date();
+    const ranges = [
+      { name: '1Y', years: 1 },
+      { name: '3Y', years: 3 },
+      { name: '5Y', years: 5 },
+      { name: '10Y', years: 10 },
+      { name: '15Y', years: 15 },
+      { name: '20Y', years: 20 },
+    ];
+
+    const results: any[] = [];
+
+    for (const range of ranges) {
+      const startDate = new Date();
+      startDate.setFullYear(endDate.getFullYear() - range.years);
+      const startDateStr = formatDate(startDate);
+      const endDateStr = formatDate(endDate);
+
+      const navData = await getPriceHistory(cef.nav_symbol, startDateStr, endDateStr);
+
+      if (navData.length > 0) {
+        navData.sort((a, b) => a.date.localeCompare(b.date));
+        const first = navData[0];
+        const last = navData[navData.length - 1];
+        const firstDate = new Date(first.date);
+        const lastDate = new Date(last.date);
+        const actualYears = (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
+
+        results.push({
+          period: range.name,
+          requestedYears: range.years,
+          records: navData.length,
+          firstDate: first.date,
+          lastDate: last.date,
+          actualYears: parseFloat(actualYears.toFixed(1)),
+          hasAdjClose: navData.some(d => d.adj_close !== null),
+          samplePrices: {
+            first: {
+              close: first.close,
+              adj_close: first.adj_close,
+            },
+            last: {
+              close: last.close,
+              adj_close: last.adj_close,
+            },
+          },
+        });
+      } else {
+        results.push({
+          period: range.name,
+          requestedYears: range.years,
+          records: 0,
+          error: 'No data found',
+        });
+      }
+    }
+
+    res.json({
+      ticker: cef.ticker,
+      navSymbol: cef.nav_symbol,
+      description: cef.description,
+      dataRanges: results,
+    });
+  } catch (error) {
+    logger.error("Routes", `Error testing data range: ${(error as Error).message}`);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ============================================================================
 // GET / - List all CEFs
 // ============================================================================
 
