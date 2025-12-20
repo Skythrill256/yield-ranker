@@ -682,10 +682,11 @@ async function main() {
   if (options.ticker) {
     tickers = [options.ticker];
   } else {
-    // Fetch all tickers, then filter out CEFs
+    // Fetch only ETFs (exclude CEFs with nav_symbol at query level)
     const { data, error } = await supabase
       .from('etf_static')
-      .select('ticker, nav_symbol, nav')
+      .select('ticker')
+      .is('nav_symbol', null) // Only get records where nav_symbol is NULL
       .order('ticker');
 
     if (error || !data) {
@@ -693,22 +694,11 @@ async function main() {
       process.exit(1);
     }
 
-    // Filter out CEFs: exclude records with nav_symbol (those are uploaded CEFs, handled by refresh_cefs.ts)
-    // Note: We only exclude nav_symbol, not nav, because nav might be set for some ETFs
-    const allTickers = data.map(t => ({
-      ticker: t.ticker,
-      hasNavSymbol: t.nav_symbol !== null && t.nav_symbol !== undefined && t.nav_symbol !== '',
-    }));
-
-    tickers = allTickers
-      .filter(t => !t.hasNavSymbol) // Only ETFs (no nav_symbol = not an uploaded CEF)
-      .map(t => t.ticker);
-
-    const cefCount = allTickers.length - tickers.length;
+    tickers = data.map(t => t.ticker);
+    
     console.log(`\n📊 Filtered tickers:`);
-    console.log(`   - Total records: ${allTickers.length}`);
-    console.log(`   - Uploaded CEFs excluded (have nav_symbol): ${cefCount}`);
     console.log(`   - Covered Call ETFs to process: ${tickers.length}`);
+    console.log(`   - CEFs excluded (have nav_symbol - use refresh:cefs script)`);
   }
 
   console.log(`\nFound ${tickers.length} ticker(s) to refresh\n`);

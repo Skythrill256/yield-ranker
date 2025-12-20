@@ -250,8 +250,8 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
     console.log(`      - 10Y: ${return10Yr !== null ? `${return10Yr.toFixed(2)}%` : 'N/A'}`);
     console.log(`      - 15Y: ${return15Yr !== null ? `${return15Yr.toFixed(2)}%` : 'N/A'}`);
 
-    // 6. Update NAV and Premium/Discount from latest prices
-    console.log(`  📊 Updating NAV and Premium/Discount...`);
+    // 6. Update NAV, Market Price, and Premium/Discount from latest prices
+    console.log(`  📊 Updating NAV, Market Price, and Premium/Discount...`);
     let currentNav: number | null = cef.nav ?? null;
     let marketPrice: number | null = cef.price ?? null;
     let premiumDiscount: number | null = cef.premium_discount ?? null;
