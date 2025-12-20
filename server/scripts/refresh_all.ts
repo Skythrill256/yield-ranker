@@ -439,7 +439,13 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
       .eq('ticker', ticker.toUpperCase())
       .maybeSingle();
 
-    const navSymbol = staticData?.nav_symbol;
+    let navSymbol = staticData?.nav_symbol;
+    // FALLBACK: If nav_symbol is missing, use the ticker itself (many CEFs use their own ticker for NAV)
+    // This allows CEF metrics to be calculated even if nav_symbol wasn't manually uploaded
+    if (!navSymbol || navSymbol.trim() === '') {
+      navSymbol = ticker; // Use ticker as fallback
+      console.log(`  ⚠ nav_symbol is missing for ${ticker}, using ticker as fallback for NAV calculations`);
+    }
     const isCEF = navSymbol && navSymbol.trim() !== '';
     
     if (isCEF) {
@@ -545,7 +551,7 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
       }
 
       // For CEFs, calculate CEF-specific metrics (Signal, Z-Score, Total Returns 3Y/5Y/10Y/15Y)
-      console.log(`  🔍 Checking for CEF metrics: navSymbol=${navSymbol || 'NULL'}, isCEF=${isCEF}`);
+      // navSymbol is now guaranteed to be set (either from database or fallback to ticker)
       if (navSymbol && navSymbol.trim() !== '') {
         console.log(`  📊 Calculating CEF-specific metrics (requires 15 years of NAV data)...`);
         
