@@ -1471,14 +1471,16 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         // USE DATABASE VALUES ONLY - Do not calculate in real-time for list endpoint
         // This prevents timeouts. All values should be pre-computed by refresh_all.ts
         // Real-time calculations are only done in single CEF endpoint (/:symbol)
-        const fiveYearZScore: number | null = cef.five_year_z_score ?? null;
-        const navTrend6M: number | null = cef.nav_trend_6m ?? null;
-        const navTrend12M: number | null = cef.nav_trend_12m ?? null;
-        const signal: number | null = cef.signal ?? null;
-        const return3Yr: number | null = cef.return_3yr ?? null;
-        const return5Yr: number | null = cef.return_5yr ?? null;
-        const return10Yr: number | null = cef.return_10yr ?? null;
-        const return15Yr: number | null = cef.return_15yr ?? null;
+        // Read values directly from database - handle both null and undefined
+        const fiveYearZScore: number | null = (cef.five_year_z_score !== undefined && cef.five_year_z_score !== null) ? cef.five_year_z_score : null;
+        const navTrend6M: number | null = (cef.nav_trend_6m !== undefined && cef.nav_trend_6m !== null) ? cef.nav_trend_6m : null;
+        const navTrend12M: number | null = (cef.nav_trend_12m !== undefined && cef.nav_trend_12m !== null) ? cef.nav_trend_12m : null;
+        const signal: number | null = (cef.signal !== undefined && cef.signal !== null) ? cef.signal : null;
+        // For returns, check if column exists and has value
+        const return3Yr: number | null = (cef.return_3yr !== undefined && cef.return_3yr !== null) ? cef.return_3yr : null;
+        const return5Yr: number | null = (cef.return_5yr !== undefined && cef.return_5yr !== null) ? cef.return_5yr : null;
+        const return10Yr: number | null = (cef.return_10yr !== undefined && cef.return_10yr !== null) ? cef.return_10yr : null;
+        const return15Yr: number | null = (cef.return_15yr !== undefined && cef.return_15yr !== null) ? cef.return_15yr : null;
 
         return {
           symbol: cef.ticker,

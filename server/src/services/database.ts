@@ -265,17 +265,21 @@ export async function updateETFMetricsPreservingCEFFields(
     .eq('ticker', ticker.toUpperCase());
 
   if (error && error.message.includes('column') && error.message.includes('does not exist')) {
-    // Check if error is about return columns - if so, log warning but don't fail
+    // Check if error is about return columns - these MUST exist, so log error
     const isReturnColumnError = error.message.includes('return_3yr') || 
                                  error.message.includes('return_5yr') || 
                                  error.message.includes('return_10yr') || 
                                  error.message.includes('return_15yr');
     
     if (isReturnColumnError) {
-      logger.warn('Database', `Return columns may not exist in database for ${ticker}. Please add return_3yr, return_5yr, return_10yr, return_15yr columns.`);
+      logger.error('Database', `❌ CRITICAL: Return columns do not exist in database for ${ticker}!`);
+      logger.error('Database', `❌ Missing columns: return_3yr, return_5yr, return_10yr, return_15yr`);
+      logger.error('Database', `❌ Please add these columns to etf_static table: ALTER TABLE etf_static ADD COLUMN return_3yr NUMERIC, ADD COLUMN return_5yr NUMERIC, ADD COLUMN return_10yr NUMERIC, ADD COLUMN return_15yr NUMERIC;`);
+      // Don't retry - we need these columns to exist
+      throw new Error(`Return columns do not exist in database. Please add return_3yr, return_5yr, return_10yr, return_15yr columns.`);
     }
     
-    // Remove optional columns and try again
+    // Remove optional columns (only signal) and try again
     optionalColumns.forEach(col => {
       delete safeUpdateData[col];
     });
@@ -292,6 +296,7 @@ export async function updateETFMetricsPreservingCEFFields(
     }
   } else if (error) {
     logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
+    throw error;
   }
 }
 
