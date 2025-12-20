@@ -2,6 +2,21 @@
  * Test API call to check Signal and NAV returns
  */
 
+interface CEFResponse {
+  symbol?: string;
+  navSymbol?: string | null;
+  fiveYearZScore?: number | null;
+  navTrend6M?: number | null;
+  navTrend12M?: number | null;
+  signal?: number | null;
+  return15Yr?: number | null;
+  return10Yr?: number | null;
+  return5Yr?: number | null;
+  return3Yr?: number | null;
+  return12Mo?: number | null;
+  [key: string]: any;
+}
+
 const API_URL = process.env.API_URL || 'http://localhost:8080';
 const TICKER = process.argv[2] || 'BTO';
 
@@ -20,7 +35,7 @@ async function testAPI() {
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as CEFResponse;
     
     console.log('✅ API Response received\n');
     console.log('=== KEY METRICS ===');

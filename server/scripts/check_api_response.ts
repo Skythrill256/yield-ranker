@@ -4,6 +4,21 @@
  * Run with: npx tsx scripts/check_api_response.ts BTO
  */
 
+interface CEFResponse {
+  symbol?: string;
+  navSymbol?: string | null;
+  fiveYearZScore?: number | null;
+  navTrend6M?: number | null;
+  navTrend12M?: number | null;
+  signal?: number | null;
+  return15Yr?: number | null;
+  return10Yr?: number | null;
+  return5Yr?: number | null;
+  return3Yr?: number | null;
+  return12Mo?: number | null;
+  [key: string]: any;
+}
+
 const ticker = process.argv[2] || 'BTO';
 const API_URL = process.env.API_URL || 'http://localhost:8080';
 
@@ -21,7 +36,7 @@ async function checkAPIResponse() {
       return;
     }
 
-    const data = await response.json();
+    const data = await response.json() as CEFResponse;
     
     console.log('✅ API Response received\n');
     console.log('--- Key Metrics ---');
