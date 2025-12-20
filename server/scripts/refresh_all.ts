@@ -366,14 +366,31 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
     return record;
   }));
 
-  const { error } = await supabase
+  // Try to upsert with is_manual, but handle gracefully if column doesn't exist
+  let { error } = await supabase
     .from('dividends_detail')
     .upsert(allRecordsToUpsert, {
       onConflict: 'ticker,ex_date',
       ignoreDuplicates: false,
     });
 
-  if (error) {
+  if (error && error.message.includes('is_manual') && error.message.includes('does not exist')) {
+    // Remove is_manual from all records and try again
+    const recordsWithoutIsManual = allRecordsToUpsert.map(({ is_manual, ...rest }) => rest);
+    const { error: retryError } = await supabase
+      .from('dividends_detail')
+      .upsert(recordsWithoutIsManual, {
+        onConflict: 'ticker,ex_date',
+        ignoreDuplicates: false,
+      });
+    
+    if (retryError) {
+      console.error(`  Error upserting dividends: ${retryError.message}`);
+      return 0;
+    } else {
+      console.log(`  ✓ Upserted dividends (is_manual column not available)`);
+    }
+  } else if (error) {
     console.error(`  Error upserting dividends: ${error.message}`);
     return 0;
   }
