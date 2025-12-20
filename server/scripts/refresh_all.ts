@@ -641,10 +641,29 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
       }
 
       if (navSymbol) {
+        // Log what we're about to save for debugging
+        if (updateData.return_3yr !== undefined) console.log(`    💾 Saving return_3yr = ${updateData.return_3yr}`);
+        if (updateData.return_5yr !== undefined) console.log(`    💾 Saving return_5yr = ${updateData.return_5yr}`);
+        if (updateData.return_10yr !== undefined) console.log(`    💾 Saving return_10yr = ${updateData.return_10yr}`);
+        if (updateData.return_15yr !== undefined) console.log(`    💾 Saving return_15yr = ${updateData.return_15yr}`);
+        
         await batchUpdateETFMetricsPreservingCEFFields([{
           ticker,
           metrics: updateData,
         }]);
+        
+        // Verify the save worked by reading back
+        const { data: verify } = await supabase
+          .from('etf_static')
+          .select('return_3yr, return_5yr, return_10yr, return_15yr')
+          .eq('ticker', ticker.toUpperCase())
+          .maybeSingle();
+        
+        if (verify) {
+          console.log(`    ✓ Verified saved values: 3Y=${verify.return_3yr ?? 'NULL'}, 5Y=${verify.return_5yr ?? 'NULL'}, 10Y=${verify.return_10yr ?? 'NULL'}, 15Y=${verify.return_15yr ?? 'NULL'}`);
+        } else {
+          console.warn(`    ⚠ Could not verify saved values for ${ticker}`);
+        }
       } else {
         await batchUpdateETFMetrics([{
           ticker,
