@@ -1379,8 +1379,9 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
 
-    // Only include CEFs: must have nav_symbol OR nav set OR premium_discount set
-    // This ensures we don't filter out CEFs that might have data but missing nav_symbol
+    // Only include CEFs: must have nav_symbol OR nav set
+    // CEFs are identified by having a NAV symbol or NAV value
+    // Do NOT include records with only premium_discount (that could be ETFs)
     const staticData = allData.filter((item: any) => {
       const hasNavSymbol =
         item.nav_symbol !== null &&
@@ -1388,11 +1389,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
         item.nav_symbol !== "";
       const hasNav =
         item.nav !== null && item.nav !== undefined && item.nav !== "";
-      const hasPremDisc =
-        item.premium_discount !== null &&
-        item.premium_discount !== undefined;
-      // Must have at least one CEF identifier
-      return hasNavSymbol || hasNav || hasPremDisc;
+      // Must have nav_symbol OR nav to be considered a CEF
+      return hasNavSymbol || hasNav;
     });
 
     if (staticData.length === 0 && allData.length > 0) {
