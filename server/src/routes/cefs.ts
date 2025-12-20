@@ -117,10 +117,16 @@ export async function calculateCEFZScore(
       history.length;
     const stdDev = Math.sqrt(variance);
 
-    if (stdDev === 0) return 0.0;
+    if (stdDev === 0) {
+      // All discounts are identical - this is a valid case (Z-Score = 0)
+      logger.info("CEF Metrics", `Z-Score is 0.0 for ${ticker}: all discounts are identical (stdDev=0, mean=${avgDiscount.toFixed(4)})`);
+      return 0.0;
+    }
 
     // Z-Score Formula: (Current - Mean) / StdDev
     const zScore = (currentDiscount - avgDiscount) / stdDev;
+    
+    logger.info("CEF Metrics", `Z-Score for ${ticker}: ${zScore.toFixed(4)} (current=${currentDiscount.toFixed(4)}, mean=${avgDiscount.toFixed(4)}, stdDev=${stdDev.toFixed(4)}, samples=${history.length})`);
 
     return zScore;
   } catch (error) {

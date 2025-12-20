@@ -243,11 +243,15 @@ export async function updateETFMetricsPreservingCEFFields(
       // If field IS in updateData (even if null), use the new value (don't preserve)
     });
 
-    if (existing.premium_discount !== null && existing.premium_discount !== undefined && existing.premium_discount !== '') {
-      if (!('premium_discount' in updateData)) {
+    // Premium/discount should always be recalculated, so don't preserve it
+    // Only preserve if it's not explicitly in updateData (which means it wasn't calculated)
+    // But if it's explicitly set to null in updateData, use that (to clear stale values)
+    if (!('premium_discount' in updateData)) {
+      if (existing.premium_discount !== null && existing.premium_discount !== undefined && existing.premium_discount !== '') {
         updateData.premium_discount = existing.premium_discount;
       }
     }
+    // If premium_discount IS in updateData (even if null), use the new value
 
     if (existing.nav !== null && existing.nav !== undefined && existing.nav !== '') {
       if (!('nav' in updateData)) {
@@ -262,6 +266,8 @@ export async function updateETFMetricsPreservingCEFFields(
   // CRITICAL: Supabase doesn't update columns to NULL unless we explicitly include them
   // Make sure return columns and CEF metrics are explicitly set (even if null)
   // This ensures NULL values are actually saved to the database
+  // CRITICAL: Supabase doesn't update columns to NULL unless we explicitly include them
+  // Make sure all CEF metrics are explicitly set (even if null)
   if ('return_3yr' in updateData) safeUpdateData.return_3yr = updateData.return_3yr;
   if ('return_5yr' in updateData) safeUpdateData.return_5yr = updateData.return_5yr;
   if ('return_10yr' in updateData) safeUpdateData.return_10yr = updateData.return_10yr;
@@ -270,6 +276,7 @@ export async function updateETFMetricsPreservingCEFFields(
   if ('signal' in updateData) safeUpdateData.signal = updateData.signal;
   if ('nav_trend_6m' in updateData) safeUpdateData.nav_trend_6m = updateData.nav_trend_6m;
   if ('nav_trend_12m' in updateData) safeUpdateData.nav_trend_12m = updateData.nav_trend_12m;
+  if ('premium_discount' in updateData) safeUpdateData.premium_discount = updateData.premium_discount;
   
   // Log what we're trying to update
   if ('return_3yr' in safeUpdateData || 'return_5yr' in safeUpdateData || 'return_10yr' in safeUpdateData || 'return_15yr' in safeUpdateData) {

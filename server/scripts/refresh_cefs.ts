@@ -246,38 +246,45 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
       }
     }
 
-    // Get latest market price
-    if (!marketPrice) {
-      try {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - 30);
-        const priceHistory = await getPriceHistory(
-          ticker.toUpperCase(),
-          formatDate(startDate),
-          formatDate(endDate)
-        );
-        if (priceHistory.length > 0) {
-          priceHistory.sort((a, b) => a.date.localeCompare(b.date));
-          const latestPrice = priceHistory[priceHistory.length - 1];
-          marketPrice = latestPrice.close ?? latestPrice.adj_close ?? null;
+    // Always fetch latest market price (don't rely on stale database value)
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 30);
+      const priceHistory = await getPriceHistory(
+        ticker.toUpperCase(),
+        formatDate(startDate),
+        formatDate(endDate)
+      );
+      if (priceHistory.length > 0) {
+        priceHistory.sort((a, b) => a.date.localeCompare(b.date));
+        const latestPrice = priceHistory[priceHistory.length - 1];
+        const fetchedPrice = latestPrice.close ?? latestPrice.adj_close ?? null;
+        if (fetchedPrice !== null) {
+          marketPrice = fetchedPrice;
+          updateData.price = marketPrice;
+          console.log(`    ✓ Market Price: $${marketPrice.toFixed(2)}`);
         }
-      } catch (error) {
-        console.warn(`    ⚠ Failed to fetch market price: ${(error as Error).message}`);
       }
+    } catch (error) {
+      console.warn(`    ⚠ Failed to fetch market price: ${(error as Error).message}`);
     }
 
     // Calculate premium/discount: ((MP / NAV - 1) * 100)
+    // ALWAYS calculate and save premium/discount when we have both NAV and market price
     if (currentNav && currentNav !== 0 && marketPrice && marketPrice > 0) {
       premiumDiscount = (marketPrice / currentNav - 1) * 100;
+      // Always update premium_discount (don't preserve old values)
       updateData.premium_discount = premiumDiscount;
-      console.log(`    ✓ Premium/Discount: ${premiumDiscount >= 0 ? '+' : ''}${premiumDiscount.toFixed(2)}%`);
-    } else if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
-      // Keep existing value if we can't calculate
-      premiumDiscount = cef.premium_discount;
-      console.log(`    ⚠ Premium/Discount: Using existing value ${premiumDiscount?.toFixed(2) ?? 'N/A'}%`);
+      console.log(`    ✓ Premium/Discount: ${premiumDiscount >= 0 ? '+' : ''}${premiumDiscount.toFixed(2)}% (MP=$${marketPrice.toFixed(2)}, NAV=$${currentNav.toFixed(2)})`);
     } else {
-      console.log(`    ⚠ Premium/Discount: N/A (missing NAV or market price)`);
+      // If we can't calculate, set to null to clear stale values
+      updateData.premium_discount = null;
+      if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
+        console.log(`    ⚠ Premium/Discount: Cannot calculate (missing NAV or market price), clearing old value`);
+      } else {
+        console.log(`    ⚠ Premium/Discount: N/A (missing NAV or market price)`);
+      }
     }
 
     // Save to database
@@ -290,7 +297,7 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
     // Verify save
     const { data: verify } = await supabase
       .from('etf_static')
-      .select('return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal')
+      .select('return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal, premium_discount, nav, price')
       .eq('ticker', ticker.toUpperCase())
       .maybeSingle();
 
@@ -300,6 +307,7 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
       console.log(`      - Z-Score: ${verify.five_year_z_score ?? 'NULL'}`);
       console.log(`      - NAV Trends: 6M=${verify.nav_trend_6m ?? 'NULL'}, 12M=${verify.nav_trend_12m ?? 'NULL'}`);
       console.log(`      - Signal: ${verify.signal ?? 'NULL'}`);
+      console.log(`      - Premium/Discount: ${verify.premium_discount !== null && verify.premium_discount !== undefined ? (verify.premium_discount >= 0 ? '+' : '') + verify.premium_discount.toFixed(2) + '%' : 'NULL'} (MP=$${verify.price ?? 'NULL'}, NAV=$${verify.nav ?? 'NULL'})`);
     }
 
     console.log(`  ✅ ${ticker} complete`);
