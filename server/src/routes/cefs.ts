@@ -1554,10 +1554,23 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           // then fall back to metrics (price-based) - EXACTLY like short-term returns
           // CRITICAL: If database value is null/undefined, use metrics fallback
           // This ensures we always show data when available
-          return15Yr: (return15Yr != null) ? return15Yr : (metrics?.totalReturnDrip?.["15Y"] ?? null),
-          return10Yr: (return10Yr != null) ? return10Yr : (metrics?.totalReturnDrip?.["10Y"] ?? null),
-          return5Yr: (return5Yr != null) ? return5Yr : (metrics?.totalReturnDrip?.["5Y"] ?? null),
-          return3Yr: (return3Yr != null) ? return3Yr : (metrics?.totalReturnDrip?.["3Y"] ?? null),
+          const finalReturn15Yr = (return15Yr != null) ? return15Yr : (metrics?.totalReturnDrip?.["15Y"] ?? null);
+          const finalReturn10Yr = (return10Yr != null) ? return10Yr : (metrics?.totalReturnDrip?.["10Y"] ?? null);
+          const finalReturn5Yr = (return5Yr != null) ? return5Yr : (metrics?.totalReturnDrip?.["5Y"] ?? null);
+          const finalReturn3Yr = (return3Yr != null) ? return3Yr : (metrics?.totalReturnDrip?.["3Y"] ?? null);
+          
+          // LOG EVERY CEF to help debug - show first 5 CEFs
+          if (i < 5) {
+            console.log(`\n[CEF ${i+1}] ${cef.ticker}:`);
+            console.log(`  DB values: 3Y=${return3Yr}, 5Y=${return5Yr}, 10Y=${return10Yr}, 15Y=${return15Yr}`);
+            console.log(`  Metrics: 3Y=${metrics?.totalReturnDrip?.["3Y"]}, 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
+            console.log(`  FINAL: 3Y=${finalReturn3Yr}, 5Y=${finalReturn5Yr}, 10Y=${finalReturn10Yr}, 15Y=${finalReturn15Yr}`);
+          }
+          
+          return15Yr: finalReturn15Yr,
+          return10Yr: finalReturn10Yr,
+          return5Yr: finalReturn5Yr,
+          return3Yr: finalReturn3Yr,
           // Short-term returns: Use metrics first, then database - already working correctly
           return12Mo: metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
           return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
