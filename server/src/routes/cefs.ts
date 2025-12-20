@@ -1552,24 +1552,12 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             null,
           // Long-term returns: Use database values first (NAV-based from refresh_all.ts), 
           // then fall back to metrics (price-based) - EXACTLY like short-term returns
-          // Long-term returns: Use database value if it exists and is not null
-          // If database value is null (insufficient NAV data) or undefined (column missing), use metrics fallback
+          // CRITICAL: If database value is null/undefined, use metrics fallback
           // This ensures we always show data when available
-          const finalReturn15Yr = (return15Yr !== null && return15Yr !== undefined) ? return15Yr : (metrics?.totalReturnDrip?.["15Y"] ?? null);
-          const finalReturn10Yr = (return10Yr !== null && return10Yr !== undefined) ? return10Yr : (metrics?.totalReturnDrip?.["10Y"] ?? null);
-          const finalReturn5Yr = (return5Yr !== null && return5Yr !== undefined) ? return5Yr : (metrics?.totalReturnDrip?.["5Y"] ?? null);
-          const finalReturn3Yr = (return3Yr !== null && return3Yr !== undefined) ? return3Yr : (metrics?.totalReturnDrip?.["3Y"] ?? null);
-          
-          // DEBUG: Log final values being returned
-          if (cef.ticker === 'GAB' || cef.ticker === 'BCX') {
-            logger.info("CEF Debug", `${cef.ticker} - Final values: 3Y=${finalReturn3Yr}, 5Y=${finalReturn5Yr}, 10Y=${finalReturn10Yr}, 15Y=${finalReturn15Yr}`);
-            logger.info("CEF Debug", `${cef.ticker} - Metrics available: ${metrics ? 'YES' : 'NO'}, 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
-          }
-          
-          return15Yr: finalReturn15Yr,
-          return10Yr: finalReturn10Yr,
-          return5Yr: finalReturn5Yr,
-          return3Yr: finalReturn3Yr,
+          return15Yr: (return15Yr != null) ? return15Yr : (metrics?.totalReturnDrip?.["15Y"] ?? null),
+          return10Yr: (return10Yr != null) ? return10Yr : (metrics?.totalReturnDrip?.["10Y"] ?? null),
+          return5Yr: (return5Yr != null) ? return5Yr : (metrics?.totalReturnDrip?.["5Y"] ?? null),
+          return3Yr: (return3Yr != null) ? return3Yr : (metrics?.totalReturnDrip?.["3Y"] ?? null),
           // Short-term returns: Use metrics first, then database - already working correctly
           return12Mo: metrics?.totalReturnDrip?.["1Y"] ?? cef.tr_drip_12m ?? null,
           return6Mo: metrics?.totalReturnDrip?.["6M"] ?? cef.tr_drip_6m ?? null,
