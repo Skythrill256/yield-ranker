@@ -150,30 +150,33 @@ async function upsertPrices(ticker: string, prices: TiingoPriceData[], dryRun: b
   }
 
   // Ensure ticker exists in etf_static (required for foreign key constraint)
-  const { data: existingTicker } = await supabase
+  // This is especially important for NAV symbols like XBTOX
+  const { data: existingTicker, error: checkError } = await supabase
     .from('etf_static')
     .select('ticker')
     .eq('ticker', ticker.toUpperCase())
     .maybeSingle();
 
-  if (!existingTicker) {
+  if (!existingTicker && !checkError) {
     // Try to insert a minimal record for NAV symbols
+    console.log(`  Creating ticker record for ${ticker} (required for foreign key)...`);
     const { error: insertError } = await supabase
       .from('etf_static')
       .insert({
         ticker: ticker.toUpperCase(),
         name: `NAV Symbol: ${ticker}`,
         description: `Auto-created for NAV price data`,
-      })
-      .select()
-      .maybeSingle();
+      });
 
     if (insertError) {
       console.warn(`  ⚠ Could not create ticker record for ${ticker}: ${insertError.message}`);
-      // Continue anyway - might still work if ticker exists but query failed
+      console.warn(`  ⚠ Will skip inserting prices for ${ticker} to avoid foreign key error`);
+      return 0; // Skip this ticker
     } else {
       console.log(`  ✓ Created ticker record for ${ticker} (NAV symbol)`);
     }
+  } else if (checkError) {
+    console.warn(`  ⚠ Error checking ticker ${ticker}: ${checkError.message}`);
   }
 
   const records = prices.map(p => ({
@@ -355,16 +358,11 @@ async function upsertDividends(ticker: string, dividends: any[], dryRun: boolean
 
   // Ensure preserved manual uploads have is_manual flag set
   // Also ensure tiingoRecordsToUpsert that came from manual uploads keep is_manual flag
-  // Build records without is_manual if column doesn't exist
-  const allRecordsToUpsert = tiingoRecordsToUpsert.map(r => {
-    const record: any = { ...r };
-    // Only include is_manual if we know the column exists (we'll try and catch if it doesn't)
-    return record;
-  }).concat(manualUploadsToPreserve.map(r => {
-    const record: any = { ...r };
-    // Only include is_manual if column exists
-    return record;
-  }));
+  // Build records - include is_manual if it exists in the data, but don't require it
+  const allRecordsToUpsert = [
+    ...tiingoRecordsToUpsert,
+    ...manualUploadsToPreserve
+  ];
 
   // Try to upsert with is_manual, but handle gracefully if column doesn't exist
   let { error } = await supabase
