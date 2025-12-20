@@ -41,7 +41,7 @@ const router: Router = Router();
  * Uses flexible lookback: 2Y minimum, 5Y maximum
  * Returns null if less than 2 years of data available
  */
-async function calculateCEFZScore(
+export async function calculateCEFZScore(
   ticker: string,
   navSymbol: string | null
 ): Promise<number | null> {
@@ -138,7 +138,7 @@ async function calculateCEFZScore(
  * Uses exactly 126 trading days (not calendar months)
  * Requires adjusted NAV from Tiingo (adj_close) which accounts for distributions
  */
-async function calculateNAVTrend6M(
+export async function calculateNAVTrend6M(
   navSymbol: string | null
 ): Promise<number | null> {
   if (!navSymbol) return null;
@@ -161,7 +161,7 @@ async function calculateNAVTrend6M(
     
     // Need at least 127 records (126 days back + current day)
     if (navData.length < 127) {
-      logger.debug("CEF Metrics", `Insufficient NAV data for 6M trend: ${navData.length} records for ${navSymbol}`);
+      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 127 records)`);
       return null;
     }
 
@@ -203,7 +203,7 @@ async function calculateNAVTrend6M(
  * Uses exactly 252 trading days (not calendar year)
  * Requires adjusted NAV from Tiingo (adj_close) which accounts for distributions
  */
-async function calculateNAVReturn12M(
+export async function calculateNAVReturn12M(
   navSymbol: string | null
 ): Promise<number | null> {
   if (!navSymbol) return null;
@@ -226,7 +226,7 @@ async function calculateNAVReturn12M(
     
     // Need at least 253 records (252 days back + current day)
     if (navData.length < 253) {
-      logger.debug("CEF Metrics", `Insufficient NAV data for 12M trend: ${navData.length} records for ${navSymbol}`);
+      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 253 records)`);
       return null;
     }
 
@@ -269,7 +269,7 @@ async function calculateNAVReturn12M(
  * Formula: ((NAV_adj_end / NAV_adj_start) - 1) * 100
  * Same logic as calculateTotalReturnDrip but using NAV data instead of price data
  */
-async function calculateNAVReturns(
+export async function calculateNAVReturns(
   navSymbol: string | null,
   period: '3Y' | '5Y' | '10Y' | '15Y'
 ): Promise<number | null> {
@@ -338,7 +338,7 @@ async function calculateNAVReturns(
     // Find first NAV on/after start date
     const startRecord = navData.find(p => p.date >= startDate);
     if (!startRecord) {
-      logger.debug("CEF Metrics", `No NAV data found on/after start date ${startDate} for ${navSymbol}`);
+      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: no data on/after start date ${startDate}`);
       return null;
     }
 
@@ -346,7 +346,7 @@ async function calculateNAVReturns(
     const validEndNav = navData.filter(p => p.date <= endDate);
     const endRecord = validEndNav.length > 0 ? validEndNav[validEndNav.length - 1] : null;
     if (!endRecord) {
-      logger.debug("CEF Metrics", `No NAV data found on/before end date ${endDate} for ${navSymbol}`);
+      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: no data on/before end date ${endDate}`);
       return null;
     }
 
@@ -355,13 +355,13 @@ async function calculateNAVReturns(
     const endNav = endRecord.adj_close ?? endRecord.close;
 
     if (!startNav || !endNav || startNav <= 0 || endNav <= 0) {
-      logger.debug("CEF Metrics", `Invalid NAV prices for ${navSymbol}: start=${startNav}, end=${endNav}`);
+      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: invalid prices (start=${startNav}, end=${endNav})`);
       return null;
     }
 
     // Ensure dates are valid
     if (startRecord.date > endRecord.date) {
-      logger.debug("CEF Metrics", `Invalid date range for ${navSymbol}: ${startRecord.date} > ${endRecord.date}`);
+      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: invalid date range (${startRecord.date} > ${endRecord.date})`);
       return null;
     }
 
@@ -374,7 +374,7 @@ async function calculateNAVReturns(
       return null;
     }
 
-    logger.debug("CEF Metrics", `Calculated NAV return ${period} for ${navSymbol}: ${returnValue.toFixed(2)}% (${navData.length} records, ${startRecord.date} to ${endRecord.date})`);
+    logger.info("CEF Metrics", `✅ Calculated ${period} NAV return for ${navSymbol}: ${returnValue.toFixed(2)}% (${navData.length} records, ${startRecord.date} to ${endRecord.date})`);
     return returnValue;
   } catch (error) {
     logger.warn(
@@ -398,7 +398,7 @@ async function calculateNAVReturns(
  * -1: Value Trap - Z < -1.5 AND 6M Trend < 0
  * -2: Overvalued - Z > 1.5
  */
-async function calculateSignal(
+export async function calculateSignal(
   ticker: string,
   navSymbol: string | null,
   zScore: number | null,
@@ -407,14 +407,14 @@ async function calculateSignal(
 ): Promise<number | null> {
   // If we don't have required inputs, return null
   if (!navSymbol || zScore === null || navTrend6M === null || navTrend12M === null) {
-    logger.debug("CEF Metrics", `Signal calculation skipped for ${ticker}: missing inputs (zScore=${zScore}, navTrend6M=${navTrend6M}, navTrend12M=${navTrend12M})`);
+    logger.info("CEF Metrics", `Signal N/A for ${ticker}: missing inputs (zScore=${zScore}, navTrend6M=${navTrend6M}, navTrend12M=${navTrend12M})`);
     return null;
   }
 
   try {
     // Check if we have enough history (504 trading days = 2 years)
-    // This ensures Z-Score and Trends are reliable
     // Rule: Minimum 2 years (504 days) of history required for reliability
+    // Matches Python: if len(df) < 504: return "N/A"
     const endDate = new Date();
     const startDate = new Date();
     startDate.setFullYear(endDate.getFullYear() - 3); // Get 3 years to ensure we have 504 trading days
@@ -429,7 +429,7 @@ async function calculateSignal(
 
     // Need at least 504 trading days of history (matches Python: if len(df) < 504: return "N/A")
     if (navData.length < 504) {
-      logger.debug("CEF Metrics", `Signal N/A for ${ticker}: insufficient history (${navData.length} < 504 trading days)`);
+      logger.info("CEF Metrics", `Signal N/A for ${ticker}: insufficient history (${navData.length} < 504 trading days)`);
       return null; // N/A - insufficient history
     }
 
@@ -440,32 +440,32 @@ async function calculateSignal(
     // Logic Gate Scoring (matches Python exactly)
     // +3: Optimal (Cheap + 6mo Health + 12mo Health)
     if (z < -1.5 && t6 > 0 && t12 > 0) {
-      logger.debug("CEF Metrics", `Signal +3 (Optimal) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%, t12=${t12.toFixed(2)}%`);
+      logger.info("CEF Metrics", `Signal +3 (Optimal) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%, t12=${t12.toFixed(2)}%`);
       return 3;
     }
     // +2: Good Value (Cheap + 6mo Health)
     else if (z < -1.5 && t6 > 0) {
-      logger.debug("CEF Metrics", `Signal +2 (Good Value) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info("CEF Metrics", `Signal +2 (Good Value) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return 2;
     }
     // +1: Healthy (Not cheap, but growing assets)
     else if (z > -1.5 && t6 > 0) {
-      logger.debug("CEF Metrics", `Signal +1 (Healthy) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info("CEF Metrics", `Signal +1 (Healthy) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return 1;
     }
     // -1: Value Trap (Looks cheap, but assets are shrinking)
     else if (z < -1.5 && t6 < 0) {
-      logger.debug("CEF Metrics", `Signal -1 (Value Trap) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info("CEF Metrics", `Signal -1 (Value Trap) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return -1;
     }
     // -2: Overvalued (Statistically expensive)
     else if (z > 1.5) {
-      logger.debug("CEF Metrics", `Signal -2 (Overvalued) for ${ticker}: z=${z.toFixed(2)}`);
+      logger.info("CEF Metrics", `Signal -2 (Overvalued) for ${ticker}: z=${z.toFixed(2)}`);
       return -2;
     }
     // 0: Neutral
     else {
-      logger.debug("CEF Metrics", `Signal 0 (Neutral) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info("CEF Metrics", `Signal 0 (Neutral) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
       return 0;
     }
   } catch (error) {
