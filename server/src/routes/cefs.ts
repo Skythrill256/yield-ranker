@@ -1455,9 +1455,46 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
                            (cef.return_15yr !== null && cef.return_15yr !== undefined);
         const needsMetrics = !hasShortTerm || !hasLongTerm;
         
-        // Calculate metrics with timeout and caching to prevent loading issues
-        // CRITICAL: Always try to get metrics if long-term returns are missing
-        // This ensures we show data even if database values are null
+        // For CEFs, calculate NAV-based returns if database values are missing
+        // Use NAV symbol (or ticker as fallback) for accurate CEF returns
+        const navSymbolForCalc = cef.nav_symbol || cef.ticker;
+        let calculatedNAVReturns: { [key: string]: number | null } = {};
+        
+        // Calculate NAV-based returns if database values are missing
+        if (!hasLongTerm && navSymbolForCalc) {
+          try {
+            const { calculateNAVReturns } = await import('./cefs.js');
+            // Calculate missing returns with timeout
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('NAV calculation timeout')), 15000)
+            );
+            
+            const navCalcPromises = [
+              return3Yr == null ? calculateNAVReturns(navSymbolForCalc, '3Y') : Promise.resolve(return3Yr),
+              return5Yr == null ? calculateNAVReturns(navSymbolForCalc, '5Y') : Promise.resolve(return5Yr),
+              return10Yr == null ? calculateNAVReturns(navSymbolForCalc, '10Y') : Promise.resolve(return10Yr),
+              return15Yr == null ? calculateNAVReturns(navSymbolForCalc, '15Y') : Promise.resolve(return15Yr),
+            ];
+            
+            const navResults = await Promise.race([
+              Promise.all(navCalcPromises),
+              timeoutPromise
+            ]) as (number | null)[];
+            
+            calculatedNAVReturns = {
+              '3Y': navResults[0],
+              '5Y': navResults[1],
+              '10Y': navResults[2],
+              '15Y': navResults[3],
+            };
+            
+            logger.info("Routes", `Calculated NAV returns for ${cef.ticker}: 3Y=${calculatedNAVReturns['3Y']}, 5Y=${calculatedNAVReturns['5Y']}, 10Y=${calculatedNAVReturns['10Y']}, 15Y=${calculatedNAVReturns['15Y']}`);
+          } catch (error) {
+            logger.warn("Routes", `Failed to calculate NAV returns for ${cef.ticker}: ${(error as Error).message}`);
+          }
+        }
+        
+        // Calculate metrics for short-term returns if needed
         if (needsMetrics) {
           try {
             // Try cache first (5 minute TTL)
@@ -1465,10 +1502,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             const cachedMetrics = await getCached<any>(metricsCacheKey);
             if (cachedMetrics) {
               metrics = cachedMetrics;
-              logger.debug("Routes", `Using cached metrics for ${cef.ticker}`);
             } else {
               // Calculate with 10 second timeout to prevent hanging
-              logger.info("Routes", `Calculating metrics for ${cef.ticker} (missing database values)`);
               const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Metrics calculation timeout')), 10000)
               );
@@ -1480,11 +1515,9 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
               // Cache the result for 5 minutes
               if (metrics) {
                 await setCached(metricsCacheKey, metrics, 300);
-                logger.info("Routes", `Cached metrics for ${cef.ticker}: 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
               }
             }
           } catch (error) {
-            // Timeout or calculation error - just log and continue
             logger.warn("Routes", `Failed to calculate metrics for ${cef.ticker}: ${(error as Error).message}`);
             metrics = null;
           }
@@ -1550,19 +1583,18 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
             metrics?.dividendVolatilityIndex ??
             cef.dividend_volatility_index ??
             null,
-          // Long-term returns: Use database values first (NAV-based from refresh_all.ts), 
-          // then fall back to metrics (price-based) - EXACTLY like short-term returns
-          // CRITICAL: If database value is null/undefined, use metrics fallback
-          // This ensures we always show data when available
-          const finalReturn15Yr = (return15Yr != null) ? return15Yr : (metrics?.totalReturnDrip?.["15Y"] ?? null);
-          const finalReturn10Yr = (return10Yr != null) ? return10Yr : (metrics?.totalReturnDrip?.["10Y"] ?? null);
-          const finalReturn5Yr = (return5Yr != null) ? return5Yr : (metrics?.totalReturnDrip?.["5Y"] ?? null);
-          const finalReturn3Yr = (return3Yr != null) ? return3Yr : (metrics?.totalReturnDrip?.["3Y"] ?? null);
+          // Long-term returns: Use database values first, then NAV-based calculation, then metrics fallback
+          // For CEFs, NAV-based returns are preferred over price-based metrics
+          const finalReturn15Yr = (return15Yr != null) ? return15Yr : (calculatedNAVReturns['15Y'] ?? metrics?.totalReturnDrip?.["15Y"] ?? null);
+          const finalReturn10Yr = (return10Yr != null) ? return10Yr : (calculatedNAVReturns['10Y'] ?? metrics?.totalReturnDrip?.["10Y"] ?? null);
+          const finalReturn5Yr = (return5Yr != null) ? return5Yr : (calculatedNAVReturns['5Y'] ?? metrics?.totalReturnDrip?.["5Y"] ?? null);
+          const finalReturn3Yr = (return3Yr != null) ? return3Yr : (calculatedNAVReturns['3Y'] ?? metrics?.totalReturnDrip?.["3Y"] ?? null);
           
           // LOG EVERY CEF to help debug - show first 5 CEFs
-          if (i < 5) {
-            console.log(`\n[CEF ${i+1}] ${cef.ticker}:`);
+          if (globalIndex < 5) {
+            console.log(`\n[CEF ${globalIndex+1}] ${cef.ticker}:`);
             console.log(`  DB values: 3Y=${return3Yr}, 5Y=${return5Yr}, 10Y=${return10Yr}, 15Y=${return15Yr}`);
+            console.log(`  NAV calc: 3Y=${calculatedNAVReturns['3Y']}, 5Y=${calculatedNAVReturns['5Y']}, 10Y=${calculatedNAVReturns['10Y']}, 15Y=${calculatedNAVReturns['15Y']}`);
             console.log(`  Metrics: 3Y=${metrics?.totalReturnDrip?.["3Y"]}, 5Y=${metrics?.totalReturnDrip?.["5Y"]}, 10Y=${metrics?.totalReturnDrip?.["10Y"]}, 15Y=${metrics?.totalReturnDrip?.["15Y"]}`);
             console.log(`  FINAL: 3Y=${finalReturn3Yr}, 5Y=${finalReturn5Yr}, 10Y=${finalReturn10Yr}, 15Y=${finalReturn15Yr}`);
           }
