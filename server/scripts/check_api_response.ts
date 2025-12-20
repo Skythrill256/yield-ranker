@@ -55,15 +55,20 @@ async function checkAPIResponse() {
     console.log(`12Mo Return: ${data.return12Mo !== null ? `${data.return12Mo.toFixed(2)}%` : 'N/A'}`);
     
     console.log('\n--- Diagnosis ---');
-    if (data.signal === null) {
+    if (data.signal === null || data.signal === undefined) {
       console.log('⚠️  Signal is N/A. Reasons:');
       if (!data.navSymbol) console.log('   - Missing NAV symbol');
-      if (data.fiveYearZScore === null) console.log('   - Missing Z-Score');
-      if (data.navTrend6M === null) console.log('   - Missing 6M NAV Trend');
-      if (data.navTrend12M === null) console.log('   - Missing 12M NAV Trend');
+      if (data.fiveYearZScore === null || data.fiveYearZScore === undefined) console.log('   - Missing Z-Score');
+      if (data.navTrend6M === null || data.navTrend6M === undefined) console.log('   - Missing 6M NAV Trend');
+      if (data.navTrend12M === null || data.navTrend12M === undefined) console.log('   - Missing 12M NAV Trend');
     }
     
-    if (data.return15Yr === null && data.return10Yr === null && data.return5Yr === null && data.return3Yr === null) {
+    const return15Yr = data.return15Yr ?? null;
+    const return10Yr = data.return10Yr ?? null;
+    const return5Yr = data.return5Yr ?? null;
+    const return3Yr = data.return3Yr ?? null;
+    
+    if (return15Yr === null && return10Yr === null && return5Yr === null && return3Yr === null) {
       console.log('⚠️  All long-term returns are N/A. Possible reasons:');
       console.log('   - NAV symbol missing or incorrect');
       console.log('   - Insufficient historical data in Tiingo');

@@ -54,18 +54,23 @@ async function testAPI() {
     console.log(`12Mo Return: ${data.return12Mo !== null ? `${data.return12Mo.toFixed(2)}%` : 'N/A'}`);
     
     console.log('\n=== DIAGNOSIS ===');
-    if (data.signal === null) {
+    if (data.signal === null || data.signal === undefined) {
       console.log('⚠️  Signal is N/A. Possible reasons:');
       if (!data.navSymbol) console.log('   - Missing NAV symbol');
-      if (data.fiveYearZScore === null) console.log('   - Missing Z-Score');
-      if (data.navTrend6M === null) console.log('   - Missing 6M NAV Trend');
-      if (data.navTrend12M === null) console.log('   - Missing 12M NAV Trend');
+      if (data.fiveYearZScore === null || data.fiveYearZScore === undefined) console.log('   - Missing Z-Score');
+      if (data.navTrend6M === null || data.navTrend6M === undefined) console.log('   - Missing 6M NAV Trend');
+      if (data.navTrend12M === null || data.navTrend12M === undefined) console.log('   - Missing 12M NAV Trend');
       console.log('   - Check server logs for detailed reason');
     } else {
       console.log(`✅ Signal calculated: ${data.signal}`);
     }
     
-    const longTermReturns = [data.return15Yr, data.return10Yr, data.return5Yr, data.return3Yr];
+    const return15Yr = data.return15Yr ?? null;
+    const return10Yr = data.return10Yr ?? null;
+    const return5Yr = data.return5Yr ?? null;
+    const return3Yr = data.return3Yr ?? null;
+    
+    const longTermReturns = [return15Yr, return10Yr, return5Yr, return3Yr];
     const hasAnyLongTerm = longTermReturns.some(r => r !== null);
     
     if (!hasAnyLongTerm) {
@@ -76,10 +81,10 @@ async function testAPI() {
       console.log('   - Check server logs for detailed reason');
     } else {
       console.log('\n✅ Some long-term returns calculated');
-      if (data.return15Yr !== null) console.log(`   - 15Y: ${data.return15Yr.toFixed(2)}%`);
-      if (data.return10Yr !== null) console.log(`   - 10Y: ${data.return10Yr.toFixed(2)}%`);
-      if (data.return5Yr !== null) console.log(`   - 5Y: ${data.return5Yr.toFixed(2)}%`);
-      if (data.return3Yr !== null) console.log(`   - 3Y: ${data.return3Yr.toFixed(2)}%`);
+      if (return15Yr !== null) console.log(`   - 15Y: ${return15Yr.toFixed(2)}%`);
+      if (return10Yr !== null) console.log(`   - 10Y: ${return10Yr.toFixed(2)}%`);
+      if (return5Yr !== null) console.log(`   - 5Y: ${return5Yr.toFixed(2)}%`);
+      if (return3Yr !== null) console.log(`   - 3Y: ${return3Yr.toFixed(2)}%`);
     }
     
     console.log('\n=== Test Complete ===\n');
