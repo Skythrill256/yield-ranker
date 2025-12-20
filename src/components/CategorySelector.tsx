@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, LayoutGrid } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,11 +24,9 @@ export const CategorySelector = () => {
   const currentCategory = getCurrentCategory();
 
   const categories = [
-    { id: "covered-call-etfs" as Category, label: "CC ETFs", path: "/" },
-    { id: "cef" as Category, label: "CEFs", path: "/cef" },
+    { id: "covered-call-etfs" as Category, label: "Covered Call Option ETFs", path: "/" },
+    { id: "cef" as Category, label: "Closed End Funds", path: "/cef" },
   ];
-
-  const currentCategoryLabel = categories.find(c => c.id === currentCategory)?.label || "CC ETFs";
 
   const handleCategoryChange = (category: Category) => {
     const categoryConfig = categories.find(c => c.id === category);
@@ -41,11 +39,12 @@ export const CategorySelector = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
-          className="flex items-center gap-2 border-2 border-slate-300 hover:border-primary hover:bg-primary/5 transition-colors"
+          variant="ghost"
+          className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md flex items-center gap-1"
         >
-          <span className="font-medium">{currentCategoryLabel}</span>
-          <ChevronDown className="h-4 w-4" />
+          <LayoutGrid className="w-4 h-4" />
+          <span>Filter</span>
+          <ChevronDown className="w-4 h-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">

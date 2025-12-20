@@ -80,45 +80,24 @@ export const Header = () => {
             {/* Filter Dropdown - CEFs and CC ETFs */}
             <CategorySelector />
 
-            {/* Resources Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md flex items-center gap-1"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Resources</span>
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuLabel className="text-xs text-muted-foreground uppercase font-semibold">
-                  Information & Help
-                </DropdownMenuLabel>
-                <DropdownMenuItem 
-                  className="cursor-pointer"
-                  onClick={() => go("/covered-call-etfs")}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span>Covered Call Option ETFs</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="cursor-pointer"
-                  onClick={() => go("/closed-end-funds")}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span>Closed-End Funds</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="cursor-pointer"
-                  onClick={() => go("/resources")}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  <span>Resources</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Closed End Funds */}
+            <Button
+              variant="ghost"
+              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              onClick={() => go("/closed-end-funds")}
+            >
+              Closed End Funds
+            </Button>
+
+            {/* Resources - Simple link, no dropdown */}
+            <Button
+              variant="ghost"
+              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              onClick={() => go("/resources")}
+            >
+              <FileText className="w-4 h-4 mr-1.5" />
+              Resources
+            </Button>
 
             {/* Plans */}
             <Button
@@ -238,6 +217,13 @@ export const Header = () => {
               onClick={() => go("/covered-call-etfs")}
             >
               Covered Call Option ETFs
+            </Button>
+            <Button
+              variant="ghost"
+              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
+              onClick={() => go("/closed-end-funds")}
+            >
+              Closed End Funds
             </Button>
             <Button
               variant="ghost"
