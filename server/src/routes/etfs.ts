@@ -1061,12 +1061,12 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
     const supabase = getSupabase();
 
-    // Filter at database level: Only get ETFs (Covered Call Options)
-    // EXCLUDE CEFs: records where nav_symbol IS NULL or empty
+    // Filter at database level: Get ETFs (Covered Call Options)
+    // Include: records where nav_symbol IS NULL/empty OR records with nav_symbol but no NAV data
+    // This ensures records with nav_symbol but N/A NAV go to ETFs table, not CEFs
     const staticResult = await supabase
       .from('etf_static')
       .select('*')
-      .or('nav_symbol.is.null,nav_symbol.eq.')
       .order('ticker', { ascending: true })
       .limit(10000);
 
@@ -1076,9 +1076,24 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const staticData = staticResult.data || [];
+    const allData = staticResult.data || [];
 
-    logger.info('Routes', `Fetched ${staticData.length} ETFs (Covered Call Options - excluded CEFs with nav_symbol)`);
+    // Filter: Include records without nav_symbol OR records with nav_symbol but no NAV data
+    // Records with nav_symbol AND NAV data are shown on CEFs table
+    const staticData = allData.filter((item: any) => {
+      const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
+      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
+      
+      // If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
+      if (hasNavSymbol && hasNAVData) {
+        return false;
+      }
+      
+      // Include everything else: no nav_symbol, or nav_symbol but no NAV data
+      return true;
+    });
+
+    logger.info('Routes', `Fetched ${allData.length} total records, ${staticData.length} ETFs (excluded ${allData.length - staticData.length} CEFs with nav_symbol and NAV data)`);
 
     // Map to frontend format
     const results = staticData.map((etf: any) => ({

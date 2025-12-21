@@ -1398,32 +1398,23 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const staticData = staticResult.data || [];
 
-    // Filter out NAV symbol records (where ticker === nav_symbol)
-    // These are the NAV ticker records themselves, not the actual CEF records
-    // Also only include CEFs that have been processed by refresh_cefs.ts
-    // (indicated by having CEF-specific fields set, or at least having nav_symbol different from ticker)
+    // Filter: Only show CEFs that have actual NAV data (not N/A)
+    // Records with nav_symbol but no NAV data should go to Covered Call Options ETFs table
     const filteredData = staticData.filter((item: any) => {
       // Exclude if ticker equals nav_symbol (that's a NAV symbol record, not the CEF itself)
       if (item.ticker === item.nav_symbol) {
         return false;
       }
       
-      // Only include CEFs that have been processed by refresh_cefs.ts
-      // Check if they have CEF-specific fields or at least have nav_symbol set properly
-      // This ensures we only show CEFs that have been uploaded and processed
-      const hasCEFFields = 
-        item.five_year_z_score !== null && item.five_year_z_score !== undefined ||
-        item.signal !== null && item.signal !== undefined ||
-        item.nav_trend_6m !== null && item.nav_trend_6m !== undefined ||
-        item.nav_trend_12m !== null && item.nav_trend_12m !== undefined ||
-        item.premium_discount !== null && item.premium_discount !== undefined;
+      // CRITICAL: Only include CEFs that have actual NAV data (nav is not null)
+      // If nav is null/undefined, it means N/A - these should go to ETFs table, not CEFs
+      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
       
-      // If it has nav_symbol and ticker !== nav_symbol, it's a CEF
-      // But only show it if it's been processed (has CEF fields) or has issuer/description (uploaded CEF)
-      const isUploadedCEF = (item.issuer && item.issuer.trim() !== '') || 
-                           (item.description && item.description.trim() !== '');
+      if (!hasNAVData) {
+        return false; // No NAV data = not a valid CEF, should be on ETFs table
+      }
       
-      return hasCEFFields || isUploadedCEF;
+      return true; // Has nav_symbol, ticker !== nav_symbol, and has NAV data = valid CEF
     });
 
     if (filteredData.length === 0 && staticData.length > 0) {
