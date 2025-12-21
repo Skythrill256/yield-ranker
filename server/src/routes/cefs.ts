@@ -1385,17 +1385,14 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
 
-    // Only include uploaded CEFs: must have nav_symbol set AND issuer/description (real CEFs)
-    // Exclude NAV symbols themselves (auto-created tickers for NAV data)
+    // Simple rule: If it has nav_symbol, it's a CEF → show on CEF table
+    // If it doesn't have nav_symbol, it's an ETF → show on Covered Call Options table
     const staticData = allData.filter((item: any) => {
       const hasNavSymbol =
         item.nav_symbol !== null &&
         item.nav_symbol !== undefined &&
         item.nav_symbol !== "";
-      // Must have nav_symbol (uploaded CEF) AND issuer/description (not a NAV symbol)
-      const hasIssuer = item.issuer !== null && item.issuer !== undefined && item.issuer !== '';
-      const hasDescription = item.description !== null && item.description !== undefined && item.description !== '';
-      return hasNavSymbol && (hasIssuer || hasDescription);
+      return hasNavSymbol; // Include all records with nav_symbol
     });
 
     if (staticData.length === 0 && allData.length > 0) {
@@ -1411,19 +1408,9 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
       );
     }
 
-    // Log filtering details for debugging
-    const withNavSymbol = allData.filter((item: any) => 
-      item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== ""
-    ).length;
-    const withIssuerOrDesc = allData.filter((item: any) => {
-      const hasIssuer = item.issuer !== null && item.issuer !== undefined && item.issuer !== '';
-      const hasDescription = item.description !== null && item.description !== undefined && item.description !== '';
-      return hasIssuer || hasDescription;
-    }).length;
-    
     logger.info(
       "Routes",
-      `Fetched ${allData.length} total records, ${withNavSymbol} with nav_symbol, ${withIssuerOrDesc} with issuer/description, ${staticData.length} uploaded CEFs (filtered: nav_symbol AND issuer/description)`
+      `Fetched ${allData.length} total records, ${staticData.length} CEFs (has nav_symbol), ${allData.length - staticData.length} ETFs (no nav_symbol)`
     );
 
     // NO real-time calculations - use database values only
