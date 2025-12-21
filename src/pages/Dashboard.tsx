@@ -12,9 +12,15 @@ import {
   ChartType,
   ComparisonTimeframe,
 } from "@/services/etfData";
+import {
+  fetchCEFDataWithMetadata,
+  isCEFDataCached,
+  clearCEFCache,
+} from "@/services/cefData";
 import { rankETFs } from "@/utils/ranking";
 import { RankingWeights } from "@/types/etf";
 import { ETF } from "@/types/etf";
+import { CEF } from "@/types/cef";
 import {
   LogOut,
   Home,
@@ -112,13 +118,15 @@ export default function Dashboard() {
   const { toast } = useToast();
   const location = useLocation();
   const currentCategory = useCategory();
+  // Dashboard has its own category state - independent from navbar filter
   const [selectedCategory, setSelectedCategory] = useState<"cef" | "cc">(currentCategory);
-
-  // Update selected category when route changes
-  useEffect(() => {
-    setSelectedCategory(currentCategory);
-  }, [currentCategory]);
-  const { favorites, toggleFavorite: toggleFavoriteHook, cleanupFavorites } = useFavorites('etf');
+  const [cefData, setCefData] = useState<CEF[]>([]);
+  const [isLoadingCEFData, setIsLoadingCEFData] = useState(false);
+  
+  // Use appropriate favorites hook based on category
+  const { favorites, toggleFavorite: toggleFavoriteHook, cleanupFavorites } = useFavorites(
+    selectedCategory === "cef" ? "cef" : "etf"
+  );
   const [activeTab, setActiveTab] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllETFs, setShowAllETFs] = useState(false);
@@ -155,12 +163,56 @@ export default function Dashboard() {
   // Start with false - only show loading if we actually need to fetch (not cached)
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [lastDataUpdate, setLastDataUpdate] = useState<string | null>(null);
+  const [lastCEFDataUpdate, setLastCEFDataUpdate] = useState<string | null>(null);
   const [chartHeight, setChartHeight] = useState(300);
   const [isLandscape, setIsLandscape] = useState(false);
 
   const isAdmin = profile?.role === "admin";
   const isPremium = !!profile;
   const isGuest = !profile;
+
+  // Load CEF data
+  const loadCEFData = async (showLoading: boolean = true) => {
+    console.log("[Dashboard] Starting to load CEF data...");
+    if (showLoading && !isCEFDataCached()) {
+      setIsLoadingCEFData(true);
+    }
+    try {
+      const result = await fetchCEFDataWithMetadata();
+      console.log("[Dashboard] Fetched CEF data:", result.cefs?.length || 0, "CEFs");
+      const seen = new Set<string>();
+      const deduplicated = result.cefs.filter((cef) => {
+        if (seen.has(cef.ticker)) {
+          return false;
+        }
+        seen.add(cef.ticker);
+        return true;
+      });
+      console.log("[Dashboard] Deduplicated CEFs:", deduplicated.length);
+      setCefData(deduplicated);
+
+      // Format the last updated timestamp
+      if (result.lastUpdatedTimestamp) {
+        const date = new Date(result.lastUpdatedTimestamp);
+        const formatted = date.toLocaleString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+        setLastCEFDataUpdate(formatted);
+      } else if (result.lastUpdated) {
+        setLastCEFDataUpdate(result.lastUpdated);
+      }
+    } catch (error) {
+      console.error("[Dashboard] Failed to load CEF data:", error);
+      setCefData([]);
+    } finally {
+      setIsLoadingCEFData(false);
+    }
+  };
 
   // Load ETF data and site settings on initial mount only
   useEffect(() => {
@@ -226,16 +278,26 @@ export default function Dashboard() {
     };
 
     loadETFData();
+    loadCEFData();
     loadSiteSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Clean up favorites when ETF data changes
+  // Load CEF data when category changes to CEF
   useEffect(() => {
-    if (etfData.length > 0) {
-      cleanupFavorites(etfData.map(etf => etf.symbol));
+    if (selectedCategory === "cef" && cefData.length === 0) {
+      loadCEFData();
     }
-  }, [etfData, cleanupFavorites]);
+  }, [selectedCategory]);
+
+  // Clean up favorites when data changes
+  useEffect(() => {
+    if (selectedCategory === "cc" && etfData.length > 0) {
+      cleanupFavorites(etfData.map(etf => etf.symbol));
+    } else if (selectedCategory === "cef" && cefData.length > 0) {
+      cleanupFavorites(cefData.map(cef => cef.symbol));
+    }
+  }, [etfData, cefData, selectedCategory, cleanupFavorites]);
 
   // Handle ETF deletion events
   useEffect(() => {
@@ -950,9 +1012,22 @@ export default function Dashboard() {
     }
   };
 
+  // Process ETF data
   const rankedETFs = useMemo(() => {
+    if (selectedCategory !== "cc") return [];
     return rankETFs(etfData, weights);
-  }, [etfData, weights]);
+  }, [etfData, weights, selectedCategory]);
+
+  // Process CEF data - CEFs already have weightedRank from backend
+  const rankedCEFs = useMemo(() => {
+    if (selectedCategory !== "cef") return [];
+    // CEFs come pre-ranked from backend, just sort by weightedRank
+    return [...cefData].sort((a, b) => {
+      const aRank = a.weightedRank ?? Infinity;
+      const bRank = b.weightedRank ?? Infinity;
+      return aRank - bRank;
+    });
+  }, [cefData, selectedCategory]);
 
   const filteredETFs = rankedETFs.filter((etf) => {
     if (searchQuery.trim() === "") return true;
@@ -963,9 +1038,19 @@ export default function Dashboard() {
     );
   });
 
-  // Sort ETFs - preserve ranking order by default, allow manual sorting
+  const filteredCEFs = rankedCEFs.filter((cef) => {
+    if (searchQuery.trim() === "") return true;
+    return (
+      cef.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cef.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cef.issuer?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
+  // Sort data - preserve ranking order by default, allow manual sorting
   // Use stable sort to prevent chart from re-rendering unnecessarily
   const sortedETFs = useMemo(() => {
+    if (selectedCategory !== "cc") return [];
     console.log('[Dashboard] sortedETFs useMemo triggered - sortField:', sortField, 'sortDirection:', sortDirection, 'ETF count:', filteredETFs.length);
 
     // If no sort field is selected, return the ranked order (default by weightedRank asc)
@@ -1035,17 +1120,81 @@ export default function Dashboard() {
 
     console.log('[Dashboard] Sorted ETFs - first 3:', sorted.slice(0, 3).map(e => ({ symbol: e.symbol, [sortField]: e[sortField] })));
     return sorted;
-  }, [filteredETFs, sortField, sortDirection]);
+  }, [filteredETFs, sortField, sortDirection, selectedCategory]);
+
+  // Sort CEFs similarly
+  const sortedCEFs = useMemo(() => {
+    if (selectedCategory !== "cef") return [];
+    if (!sortField) return filteredCEFs;
+
+    const sorted = [...filteredCEFs].sort((a, b) => {
+      const aValue = (a as any)[sortField];
+      const bValue = (b as any)[sortField];
+
+      if (aValue === undefined || aValue === null) {
+        if (bValue === undefined || bValue === null) {
+          return a.symbol.localeCompare(b.symbol);
+        }
+        return 1;
+      }
+      if (bValue === undefined || bValue === null) return -1;
+
+      const parseNumeric = (val: any): number | null => {
+        if (typeof val === 'number') {
+          return isNaN(val) ? null : val;
+        }
+        if (typeof val === 'string') {
+          const clean = val.replace(/[$,%\s]/g, '');
+          if (clean === '') return null;
+          const num = Number(clean);
+          return isNaN(num) ? null : num;
+        }
+        return null;
+      };
+
+      const aNum = parseNumeric(aValue);
+      const bNum = parseNumeric(bValue);
+      const bothNumeric = aNum !== null && bNum !== null;
+      const textFields: string[] = ['symbol', 'issuer', 'description', 'dataSource'];
+      const forceString = textFields.includes(sortField);
+
+      let comparison: number = 0;
+      if (bothNumeric && !forceString) {
+        comparison = aNum - bNum;
+      } else {
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        comparison = aStr.localeCompare(bStr);
+      }
+
+      if (comparison !== 0) {
+        return sortDirection === "asc" ? comparison : -comparison;
+      }
+      return a.symbol.localeCompare(b.symbol);
+    });
+
+    return sorted;
+  }, [filteredCEFs, sortField, sortDirection, selectedCategory]);
 
   const favoritesFilteredETFs = showFavoritesOnly
     ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
     : sortedETFs;
 
+  const favoritesFilteredCEFs = showFavoritesOnly
+    ? sortedCEFs.filter((cef) => favorites.has(cef.symbol))
+    : sortedCEFs;
+
   const uniqueSymbolETFs = favoritesFilteredETFs.filter((etf, index, self) => {
     return self.findIndex((e) => e.symbol === etf.symbol) === index;
   });
 
-  const displayedETFs = uniqueSymbolETFs;
+  const uniqueSymbolCEFs = favoritesFilteredCEFs.filter((cef, index, self) => {
+    return self.findIndex((c) => c.symbol === cef.symbol) === index;
+  });
+
+  // Use appropriate data based on selected category
+  const displayedETFs = selectedCategory === "cc" ? uniqueSymbolETFs : [];
+  const displayedCEFs = selectedCategory === "cef" ? uniqueSymbolCEFs : [];
 
   const handleSort = (field: keyof ETF) => {
     console.log('[Dashboard] handleSort called with field:', field, 'current sortField:', sortField, 'current direction:', sortDirection);
@@ -2437,7 +2586,7 @@ export default function Dashboard() {
                     <DropdownMenuItem
                       onClick={() => {
                         setSelectedCategory("cc");
-                        navigate("/");
+                        // Stay in Dashboard - don't navigate
                       }}
                       className={`cursor-pointer ${selectedCategory === "cc" ? 'bg-slate-100 font-semibold' : ''}`}
                     >
@@ -2446,7 +2595,10 @@ export default function Dashboard() {
                     <DropdownMenuItem
                       onClick={() => {
                         setSelectedCategory("cef");
-                        navigate("/cef");
+                        // Stay in Dashboard - don't navigate
+                        if (cefData.length === 0) {
+                          loadCEFData();
+                        }
                       }}
                       className={`cursor-pointer ${selectedCategory === "cef" ? 'bg-slate-100 font-semibold' : ''}`}
                     >
@@ -3102,7 +3254,7 @@ export default function Dashboard() {
                                   </tr>
                                 </thead>
                                 <tbody className="[&_tr:last-child]:border-0">
-                                  {displayedETFs.map((etf, idx) => (
+                                  {selectedCategory === "cc" && displayedETFs.map((etf, idx) => (
                                     <tr
                                       key={`${etf.symbol}-${idx}`}
                                       className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
@@ -3251,6 +3403,126 @@ export default function Dashboard() {
                           </div>
                         </Card>
                       </div>
+                    </div>
+                  )}
+
+                  {/* CEF Table - Same structure as ETF table */}
+                  {selectedCategory === "cef" && (
+                    <div className="space-y-6">
+                      <Card className="p-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h2 className="text-2xl font-bold text-foreground">
+                                Closed End Funds
+                              </h2>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {isLoadingCEFData ? "Loading..." : `${displayedCEFs.length} CEFs`}
+                                {lastCEFDataUpdate && ` • Last updated: ${lastCEFDataUpdate}`}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-sm">
+                              <thead className="bg-slate-50 sticky top-0 z-20">
+                                <tr>
+                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
+                                    ★
+                                  </th>
+                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase sticky left-[40px] z-30 bg-slate-50 border-r border-slate-200">
+                                    Symbol
+                                  </th>
+                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase">
+                                    Name
+                                  </th>
+                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase">
+                                    Issuer
+                                  </th>
+                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
+                                    Market Price
+                                  </th>
+                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
+                                    NAV
+                                  </th>
+                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
+                                    Prem/Disc
+                                  </th>
+                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
+                                    Z-Score
+                                  </th>
+                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
+                                    Forward Yield
+                                  </th>
+                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
+                                    Yearly Div
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="[&_tr:last-child]:border-0">
+                                {displayedCEFs.map((cef, idx) => (
+                                  <tr
+                                    key={`${cef.symbol}-${idx}`}
+                                    className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
+                                  >
+                                    <td
+                                      className="py-0.5 px-1 align-middle text-center sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleFavorite(cef.symbol);
+                                      }}
+                                      title="Click to add to Favorites"
+                                    >
+                                      <Star
+                                        className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(cef.symbol)
+                                          ? "fill-yellow-400 text-yellow-400"
+                                          : "text-slate-500 hover:text-yellow-500 hover:scale-110"
+                                          }`}
+                                      />
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle sticky left-[40px] z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigate(`/cef/${cef.symbol}`);
+                                        }}
+                                        className="font-bold text-primary text-xs hover:underline cursor-pointer transition-colors"
+                                        title={`View ${cef.symbol} details`}
+                                      >
+                                        {cef.symbol}
+                                      </button>
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground max-w-[200px] truncate">
+                                      {cef.name}
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground uppercase font-medium">
+                                      {cef.issuer}
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-foreground">
+                                      {cef.marketPrice != null ? `$${cef.marketPrice.toFixed(2)}` : 'N/A'}
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-muted-foreground">
+                                      {cef.nav != null ? `$${cef.nav.toFixed(2)}` : 'N/A'}
+                                    </td>
+                                    <td className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${cef.premiumDiscount != null && cef.premiumDiscount < 0 ? 'text-green-600' : cef.premiumDiscount != null && cef.premiumDiscount > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                      {cef.premiumDiscount != null ? `${cef.premiumDiscount >= 0 ? '+' : ''}${cef.premiumDiscount.toFixed(2)}%` : 'N/A'}
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-muted-foreground">
+                                      {cef.fiveYearZScore != null ? cef.fiveYearZScore.toFixed(2) : 'N/A'}
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-center font-bold tabular-nums text-primary text-xs">
+                                      {cef.forwardYield != null ? `${cef.forwardYield.toFixed(1)}%` : 'N/A'}
+                                    </td>
+                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                                      {cef.yearlyDividend != null ? `$${cef.yearlyDividend.toFixed(2)}` : 'N/A'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </Card>
                     </div>
                   )}
 
