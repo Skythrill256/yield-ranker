@@ -54,15 +54,11 @@ export const Header = () => {
   };
 
   // Context-aware navbar based on selected category
-  // When CEF is selected: show "Closed End Funds Docs" and "Closed End Fund Resources"
-  // When CC is selected: show "Covered Call Option ETFs Docs" and "Covered Call Option ETF Resources"
+  // When CEF is selected: show "Closed End Funds Docs"
+  // When CC is selected: show "Covered Call Option ETFs Docs"
   const docsButton = currentCategory === "cef"
     ? { label: "Closed End Funds Docs", path: "/closed-end-funds" }
     : { label: "Covered Call Option ETFs Docs", path: "/covered-call-etfs" };
-  
-  const resourcesButton = currentCategory === "cef"
-    ? { label: "Closed End Fund Resources", path: "/resources" }
-    : { label: "Covered Call Option ETF Resources", path: "/resources" };
 
   return (
     <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur-md shadow-sm">
@@ -94,14 +90,14 @@ export const Header = () => {
               {docsButton.label}
             </Button>
 
-            {/* Resources - Context-aware based on selected category */}
+            {/* Resources - Content adjusts based on selected category */}
             <Button
               variant="ghost"
               className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
               onClick={() => go("/resources")}
             >
               <FileText className="w-4 h-4 mr-1.5" />
-              {resourcesButton.label}
+              Resources
             </Button>
 
             {/* Plans */}
@@ -228,7 +224,7 @@ export const Header = () => {
               className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
               onClick={() => go("/resources")}
             >
-              {resourcesButton.label}
+              Resources
             </Button>
             <Button
               variant="ghost"

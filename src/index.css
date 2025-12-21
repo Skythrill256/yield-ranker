@@ -48,6 +48,23 @@ All colors MUST be HSL.
     --shadow-card: 0 2px 8px -2px hsl(215 15% 15% / 0.08);
     --shadow-elevated: 0 8px 24px -4px hsl(215 15% 15% / 0.12);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth page transitions - prevent white flash */
+  html {
+    background-color: hsl(var(--background));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    transition: background-color 0.2s ease;
+  }
+
+  /* Smooth route transitions */
+  #root {
+    min-height: 100vh;
+    background-color: hsl(var(--background));
+  }
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;

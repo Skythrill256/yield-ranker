@@ -12,6 +12,7 @@ import {
   Play,
   Wrench,
 } from "lucide-react";
+import { useCategory } from "@/utils/category";
 
 interface Resource {
   id: string;
@@ -21,12 +22,15 @@ interface Resource {
   type: "article" | "video" | "tool";
   source: string;
   featured?: boolean;
+  category?: "cef" | "cc" | "both";
 }
 
 const Resources = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const currentCategory = useCategory();
 
-  const resources: Resource[] = [
+  // Covered Call Option ETF Resources
+  const ccResources: Resource[] = [
     {
       id: "1",
       title: "Doug The Retirement Guy",
@@ -76,8 +80,77 @@ const Resources = () => {
       type: "video",
       source: "YouTube",
       featured: true,
+      category: "cc",
     },
   ];
+
+  // Closed End Fund Resources
+  const cefResources: Resource[] = [
+    {
+      id: "cef-1",
+      title: "CEF Connect",
+      description:
+        "Comprehensive database and analysis tools for closed-end funds, including premium/discount tracking and distribution history",
+      url: "https://www.cefconnect.com/",
+      type: "tool",
+      source: "CEF Connect",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-2",
+      title: "Morningstar CEF Center",
+      description:
+        "In-depth research and analysis on closed-end funds, including performance metrics and fund manager insights",
+      url: "https://www.morningstar.com/",
+      type: "article",
+      source: "Morningstar",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-3",
+      title: "Nuveen CEF Education",
+      description:
+        "Educational resources on closed-end fund investing, including strategies for income generation and portfolio management",
+      url: "https://www.nuveen.com/",
+      type: "article",
+      source: "Nuveen",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-4",
+      title: "BlackRock CEF Insights",
+      description:
+        "Market insights and analysis on closed-end funds, including premium/discount trends and distribution strategies",
+      url: "https://www.blackrock.com/",
+      type: "article",
+      source: "BlackRock",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-5",
+      title: "Dividends and Total Returns",
+      description:
+        "Comprehensive data and analysis on closed-end fund dividends, total returns, and premium/discount metrics",
+      url: "https://www.dividendsandtotalreturns.com/",
+      type: "tool",
+      source: "Dividends and Total Returns",
+      featured: true,
+      category: "cef",
+    },
+  ];
+
+  // Filter resources based on selected category
+  const allResources = currentCategory === "cef" ? cefResources : ccResources;
+  
+  // Add category to existing CC resources
+  const resources: Resource[] = allResources.map((r, idx) => ({
+    ...r,
+    category: r.category || (currentCategory === "cc" ? "cc" : "cef"),
+  }));
 
   const filteredResources = resources.filter((resource) => {
     const matchesSearch =
@@ -118,7 +191,9 @@ const Resources = () => {
               <span className="text-foreground">Resources</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              There are a variety of resources available to investors. Here is our current list.
+              {currentCategory === "cef" 
+                ? "Resources for Closed End Fund investors. Here is our current list."
+                : "Resources for Covered Call Option ETF investors. Here is our current list."}
             </p>
           </motion.div>
 
