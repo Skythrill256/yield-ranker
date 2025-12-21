@@ -293,7 +293,11 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
       console.warn(`    ⚠ Failed to calculate Signal: ${(error as Error).message} - clearing old value`);
     }
 
-    // 5. Calculate DVI (Dividend Volatility Index) - same as ETFs
+    // 5. Calculate DVI (Dividend Volatility Index) for CEFs
+    // Formula: 
+    //   1. SD of annualized adjusted dividends
+    //   2. Average of annualized adjusted dividends
+    //   3. CV = SD / Average (NOT SD / Median)
     console.log(`  📊 Calculating DVI (Dividend Volatility Index)...`);
     let dviResult: any = null;
     try {
@@ -302,14 +306,16 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
 
       const dividends = await getDividendHistory(ticker.toUpperCase());
       if (dividends && dividends.length > 0) {
+        // calculateDividendVolatility uses: CV = (SD / Average) * 100
+        // This is correct for CEFs: SD of annualized adj div, Average of annualized adj div, CV = SD/Average
         dviResult = calculateDividendVolatility(dividends, 12, ticker);
         if (dviResult) {
-          updateData.dividend_sd = dviResult.dividendSD;
-          updateData.dividend_cv = dviResult.dividendCV;
-          updateData.dividend_cv_percent = dviResult.dividendCVPercent;
-          updateData.dividend_volatility_index = dviResult.volatilityIndex;
-          updateData.annual_dividend = dviResult.annualDividend;
-          console.log(`    ✓ DVI: ${dviResult.volatilityIndex || 'N/A'} (CV: ${dviResult.dividendCVPercent?.toFixed(2) || 'N/A'}%)`);
+          updateData.dividend_sd = dviResult.dividendSD; // SD of annualized adjusted dividends
+          updateData.dividend_cv = dviResult.dividendCV; // CV as decimal (SD / Average)
+          updateData.dividend_cv_percent = dviResult.dividendCVPercent; // CV as percentage (SD / Average) * 100
+          updateData.dividend_volatility_index = dviResult.volatilityIndex; // Rating (A+, A, B+, etc.)
+          updateData.annual_dividend = dviResult.annualDividend; // Average of annualized adjusted dividends
+          console.log(`    ✓ DVI: ${dviResult.volatilityIndex || 'N/A'} (CV: ${dviResult.dividendCVPercent?.toFixed(2) || 'N/A'}%, SD: ${dviResult.dividendSD?.toFixed(4) || 'N/A'}, Avg: ${dviResult.annualDividend?.toFixed(2) || 'N/A'})`);
         }
       } else {
         console.log(`    ⚠ DVI: N/A (no dividend data) - clearing old values`);
