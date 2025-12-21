@@ -3397,6 +3397,20 @@ export default function Dashboard() {
                                       })}
                                     </tr>
                                   ))}
+                                  {selectedCategory === "cc" && displayedETFs.length === 0 && !isLoadingData && (
+                                    <tr>
+                                      <td colSpan={20} className="py-8 text-center text-muted-foreground">
+                                        No ETFs found
+                                      </td>
+                                    </tr>
+                                  )}
+                                  {selectedCategory === "cc" && isLoadingData && (
+                                    <tr>
+                                      <td colSpan={20} className="py-8 text-center text-muted-foreground">
+                                        Loading ETFs...
+                                      </td>
+                                    </tr>
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -3518,6 +3532,20 @@ export default function Dashboard() {
                                     </td>
                                   </tr>
                                 ))}
+                                {displayedCEFs.length === 0 && !isLoadingCEFData && (
+                                  <tr>
+                                    <td colSpan={10} className="py-8 text-center text-muted-foreground">
+                                      No CEFs found
+                                    </td>
+                                  </tr>
+                                )}
+                                {isLoadingCEFData && (
+                                  <tr>
+                                    <td colSpan={10} className="py-8 text-center text-muted-foreground">
+                                      Loading CEFs...
+                                    </td>
+                                  </tr>
+                                )}
                               </tbody>
                             </table>
                           </div>
