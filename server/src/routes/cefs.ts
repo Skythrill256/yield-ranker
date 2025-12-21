@@ -1400,9 +1400,30 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     // Filter out NAV symbol records (where ticker === nav_symbol)
     // These are the NAV ticker records themselves, not the actual CEF records
+    // Also only include CEFs that have been processed by refresh_cefs.ts
+    // (indicated by having CEF-specific fields set, or at least having nav_symbol different from ticker)
     const filteredData = staticData.filter((item: any) => {
       // Exclude if ticker equals nav_symbol (that's a NAV symbol record, not the CEF itself)
-      return item.ticker !== item.nav_symbol;
+      if (item.ticker === item.nav_symbol) {
+        return false;
+      }
+      
+      // Only include CEFs that have been processed by refresh_cefs.ts
+      // Check if they have CEF-specific fields or at least have nav_symbol set properly
+      // This ensures we only show CEFs that have been uploaded and processed
+      const hasCEFFields = 
+        item.five_year_z_score !== null && item.five_year_z_score !== undefined ||
+        item.signal !== null && item.signal !== undefined ||
+        item.nav_trend_6m !== null && item.nav_trend_6m !== undefined ||
+        item.nav_trend_12m !== null && item.nav_trend_12m !== undefined ||
+        item.premium_discount !== null && item.premium_discount !== undefined;
+      
+      // If it has nav_symbol and ticker !== nav_symbol, it's a CEF
+      // But only show it if it's been processed (has CEF fields) or has issuer/description (uploaded CEF)
+      const isUploadedCEF = (item.issuer && item.issuer.trim() !== '') || 
+                           (item.description && item.description.trim() !== '');
+      
+      return hasCEFFields || isUploadedCEF;
     });
 
     if (filteredData.length === 0 && staticData.length > 0) {
