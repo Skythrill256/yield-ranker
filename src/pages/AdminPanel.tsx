@@ -853,9 +853,13 @@ const AdminPanel = () => {
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 {activeTab === "users"
                   ? "User Administration"
-                  : activeTab === "etf-data"
-                    ? "ETF Data Management"
-                    : "Site Settings"}
+                  : activeTab === "upload"
+                    ? "Upload Data"
+                    : activeTab === "delete"
+                      ? "Delete Data"
+                      : activeTab === "favorites"
+                        ? "Favorites"
+                        : "Site Settings"}
               </h1>
             </div>
             <div className="flex items-center gap-3">
@@ -1169,89 +1173,15 @@ const AdminPanel = () => {
                       <h2 className="text-lg font-bold text-foreground mb-2">
                         Upload DTR Spreadsheet
                       </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
-                      update all ETF data in the system. The file should have a
-                      Sheet1 with the standard DTR format.
-                      <br /><br />
-                      <strong>Dividend Synchronization:</strong> Include a "Div" column to update current dividend amounts.
-                      This will prioritize your value on the dashboard immediately.
-                      Tiingo sync will later "fill in" official dates and split factors while preserving your manual amount.
-                      If the most recent dividend in the system is older than 25 days, a new future dividend record will be created for the next period.
-                    </p>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                      <div className="flex-1">
-                        <label
-                          htmlFor="dtr-file-input"
-                          className="block text-sm font-medium text-foreground mb-2"
-                        >
-                          Select Excel File
-                        </label>
-                        <Input
-                          id="dtr-file-input"
-                          type="file"
-                          accept=".xlsx,.xls"
-                          onChange={handleFileChange}
-                          className="border-2"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <div className="flex flex-col gap-2">
-                          {uploadFile && (
-                            <p className="text-sm text-muted-foreground">
-                              Selected: {uploadFile.name}
-                            </p>
-                          )}
-                          <Button
-                            onClick={handleUploadDTR}
-                            disabled={!uploadFile || uploading}
-                            className="w-full sm:w-auto"
-                          >
-                            {uploading ? (
-                              <>
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="w-4 h-4 mr-2" />
-                                Upload & Process
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {uploadStatus && (
-                      <Card
-                        className={`p-4 ${uploadStatus.startsWith("Error")
-                          ? "bg-red-50 border-red-200"
-                          : "bg-green-50 border-green-200"
-                          }`}
-                      >
-                        <p
-                          className={`text-sm font-medium ${uploadStatus.startsWith("Error")
-                            ? "text-red-800"
-                            : "text-green-800"
-                            }`}
-                        >
-                          {uploadStatus}
-                        </p>
-                      </Card>
-                    )}
-                  </div>
-
-                  <div className="border-t pt-6 mt-6">
-                    <div>
-                      <h2 className="text-lg font-bold text-foreground mb-2">
-                        Upload CEF Spreadsheet
-                      </h2>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Upload CEF data from Excel file. <strong>Required:</strong> SYMBOL, Last Div. <strong>Optional:</strong> NAV Symbol, Description, OPEN (Open Date), DIV HISTORY, IPO PRICE, # (# Payments). All symbols in the SYMBOL column will be processed and added to the CEF section.
+                      <p className="text-sm text-muted-foreground">
+                        Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
+                        update all ETF data in the system. The file should have a
+                        Sheet1 with the standard DTR format.
+                        <br /><br />
+                        <strong>Dividend Synchronization:</strong> Include a "Div" column to update current dividend amounts.
+                        This will prioritize your value on the dashboard immediately.
+                        Tiingo sync will later "fill in" official dates and split factors while preserving your manual amount.
+                        If the most recent dividend in the system is older than 25 days, a new future dividend record will be created for the next period.
                       </p>
                     </div>
 
@@ -1259,32 +1189,32 @@ const AdminPanel = () => {
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                         <div className="flex-1">
                           <label
-                            htmlFor="cef-file-input"
+                            htmlFor="dtr-file-input"
                             className="block text-sm font-medium text-foreground mb-2"
                           >
                             Select Excel File
                           </label>
                           <Input
-                            id="cef-file-input"
+                            id="dtr-file-input"
                             type="file"
                             accept=".xlsx,.xls"
-                            onChange={handleCefFileChange}
+                            onChange={handleFileChange}
                             className="border-2"
                           />
                         </div>
                         <div className="flex items-end">
                           <div className="flex flex-col gap-2">
-                            {cefUploadFile && (
+                            {uploadFile && (
                               <p className="text-sm text-muted-foreground">
-                                Selected: {cefUploadFile.name}
+                                Selected: {uploadFile.name}
                               </p>
                             )}
                             <Button
-                              onClick={handleUploadCEF}
-                              disabled={!cefUploadFile || cefUploading}
+                              onClick={handleUploadDTR}
+                              disabled={!uploadFile || uploading}
                               className="w-full sm:w-auto"
                             >
-                              {cefUploading ? (
+                              {uploading ? (
                                 <>
                                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                                   Uploading...
@@ -1300,25 +1230,99 @@ const AdminPanel = () => {
                         </div>
                       </div>
 
-                      {cefUploadStatus && (
+                      {uploadStatus && (
                         <Card
-                          className={`p-4 ${cefUploadStatus.startsWith("Error")
+                          className={`p-4 ${uploadStatus.startsWith("Error")
                             ? "bg-red-50 border-red-200"
                             : "bg-green-50 border-green-200"
                             }`}
                         >
                           <p
-                            className={`text-sm font-medium ${cefUploadStatus.startsWith("Error")
+                            className={`text-sm font-medium ${uploadStatus.startsWith("Error")
                               ? "text-red-800"
                               : "text-green-800"
                               }`}
                           >
-                            {cefUploadStatus}
+                            {uploadStatus}
                           </p>
                         </Card>
                       )}
                     </div>
-                  </div>
+
+                    <div className="border-t pt-6 mt-6">
+                      <div>
+                        <h2 className="text-lg font-bold text-foreground mb-2">
+                          Upload CEF Spreadsheet
+                        </h2>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Upload CEF data from Excel file. <strong>Required:</strong> SYMBOL, Last Div. <strong>Optional:</strong> NAV Symbol, Description, OPEN (Open Date), DIV HISTORY, IPO PRICE, # (# Payments). All symbols in the SYMBOL column will be processed and added to the CEF section.
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                          <div className="flex-1">
+                            <label
+                              htmlFor="cef-file-input"
+                              className="block text-sm font-medium text-foreground mb-2"
+                            >
+                              Select Excel File
+                            </label>
+                            <Input
+                              id="cef-file-input"
+                              type="file"
+                              accept=".xlsx,.xls"
+                              onChange={handleCefFileChange}
+                              className="border-2"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <div className="flex flex-col gap-2">
+                              {cefUploadFile && (
+                                <p className="text-sm text-muted-foreground">
+                                  Selected: {cefUploadFile.name}
+                                </p>
+                              )}
+                              <Button
+                                onClick={handleUploadCEF}
+                                disabled={!cefUploadFile || cefUploading}
+                                className="w-full sm:w-auto"
+                              >
+                                {cefUploading ? (
+                                  <>
+                                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                    Uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Upload & Process
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {cefUploadStatus && (
+                          <Card
+                            className={`p-4 ${cefUploadStatus.startsWith("Error")
+                              ? "bg-red-50 border-red-200"
+                              : "bg-green-50 border-green-200"
+                              }`}
+                          >
+                            <p
+                              className={`text-sm font-medium ${cefUploadStatus.startsWith("Error")
+                                ? "text-red-800"
+                                : "text-green-800"
+                                }`}
+                            >
+                              {cefUploadStatus}
+                            </p>
+                          </Card>
+                        )}
+                      </div>
+                    </div>
 
                   </div>
                 </Card>
@@ -1541,7 +1545,7 @@ const AdminPanel = () => {
                     </p>
                     <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                       <p className="text-sm text-blue-800">
-                        <strong>Note:</strong> Favorites are managed individually by each user through the main interface. 
+                        <strong>Note:</strong> Favorites are managed individually by each user through the main interface.
                         This admin section is for viewing and managing favorites at the system level.
                       </p>
                     </div>
