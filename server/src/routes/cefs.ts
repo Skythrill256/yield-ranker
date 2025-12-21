@@ -1398,12 +1398,20 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const staticData = staticResult.data || [];
 
-    // Filter out NAV symbol records (where ticker === nav_symbol)
-    // These are the NAV ticker records themselves, not the actual CEF records
-    // CEFs are identified by having nav_symbol set - NAV data may or may not be populated yet
+    // Filter: Only include CEFs that have nav_symbol AND actual NAV data
+    // This aligns with ETF filter which EXCLUDES records with nav_symbol AND NAV data
+    // Records with nav_symbol but no NAV data go to ETFs table (covered calls)
     const filteredData = staticData.filter((item: any) => {
       // Exclude if ticker equals nav_symbol (that's a NAV symbol record, not the CEF itself)
-      return item.ticker !== item.nav_symbol;
+      if (item.ticker === item.nav_symbol) {
+        return false;
+      }
+
+      // Must have actual NAV data to be considered a CEF
+      // If NAV is null/undefined/0, it goes to ETFs table instead
+      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
+
+      return hasNAVData;
     });
 
     if (filteredData.length === 0 && staticData.length > 0) {
@@ -1423,7 +1431,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     const withNAV = staticData.filter((item: any) => item.nav !== null && item.nav !== undefined && item.nav !== 0).length;
     const withoutNAV = staticData.filter((item: any) => item.nav === null || item.nav === undefined || item.nav === 0).length;
     const navSymbolRecords = staticData.filter((item: any) => item.ticker === item.nav_symbol).length;
-    
+
     logger.info(
       "Routes",
       `CEF Filter Results: ${staticData.length} total with nav_symbol → ${filteredData.length} valid CEFs`
@@ -1440,7 +1448,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
       "Routes",
       `  - NAV symbol records (ticker === nav_symbol): ${navSymbolRecords} (excluded)`
     );
-    
+
     // Log sample of filtered CEFs
     if (filteredData.length > 0) {
       const sample = filteredData.slice(0, 5).map((cef: any) => `${cef.ticker} (nav=$${cef.nav?.toFixed(2) || 'N/A'})`).join(', ');
