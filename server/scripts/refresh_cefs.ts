@@ -343,11 +343,15 @@ async function main() {
     }
 
     if (!cefs || cefs.length === 0) {
-      console.error(`❌ No CEFs found in database`);
+      console.error(`❌ No uploaded CEFs found in database`);
       process.exit(1);
     }
 
-    console.log(`Found ${cefs.length} CEFs to process\n`);
+    const navSymbolCount = (allCefs || []).length - cefs.length;
+    console.log(`\n📊 Filtered CEFs:`);
+    console.log(`   - Total records with nav_symbol: ${(allCefs || []).length}`);
+    console.log(`   - NAV symbols excluded: ${navSymbolCount}`);
+    console.log(`   - Uploaded CEFs to process: ${cefs.length}\n`);
 
     // Process each CEF
     for (let i = 0; i < cefs.length; i++) {
