@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { CEFTable } from "@/components/CEFTable";
-import { CEFDataMetadata } from "@/components/CEFDataMetadata";
 import { fetchCEFDataWithMetadata, clearCEFCache, isCEFDataCached } from "@/services/cefData";
 import { CEF, RankingWeights } from "@/types/cef";
 import { Loader2, Clock, Star, Sliders, X, Plus, RotateCcw } from "lucide-react";
@@ -505,9 +504,6 @@ const Index = () => {
                 />
               )}
             </div>
-
-            {/* Data Source Metadata - Collapsible documentation of data sources and formulas */}
-            <CEFDataMetadata />
           </section>
         </div>
 

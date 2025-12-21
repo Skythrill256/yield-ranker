@@ -84,15 +84,6 @@ export const Header = () => {
             {/* Filter Dropdown - CEFs and CC ETFs */}
             <CategorySelector />
 
-            {/* Closed End Fund - Direct link to CEF documentation */}
-            <Button
-              variant="ghost"
-              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
-              onClick={() => go("/closed-end-funds")}
-            >
-              Closed End Fund
-            </Button>
-
             {/* Docs button - Shows same category as Filter, links to its documentation page */}
             <Button
               variant="ghost"
@@ -223,13 +214,6 @@ export const Header = () => {
               onClick={() => go("/focus")}
             >
               My Focus
-            </Button>
-            <Button
-              variant="ghost"
-              className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
-              onClick={() => go("/closed-end-funds")}
-            >
-              Closed End Fund
             </Button>
             <Button
               variant="ghost"

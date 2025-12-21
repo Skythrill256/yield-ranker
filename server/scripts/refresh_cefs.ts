@@ -455,27 +455,15 @@ async function refreshCEF(ticker: string, dryRun: boolean): Promise<void> {
 
 async function main() {
   const options = parseArgs();
-  const batchStartTime = Date.now();
-  let successCount = 0;
-  let failCount = 0;
 
   console.log('='.repeat(60));
   console.log('CEF METRICS REFRESH');
   console.log('='.repeat(60));
-  console.log(`Started at: ${new Date().toISOString()}`);
   console.log(`Mode: ${options.dryRun ? 'DRY RUN' : 'LIVE'}`);
 
   if (options.ticker) {
     // Process single ticker
-    const tickerStart = Date.now();
-    try {
-      await refreshCEF(options.ticker, options.dryRun);
-      successCount++;
-      console.log(`\n⏱ Single ticker processed in ${((Date.now() - tickerStart) / 1000).toFixed(1)}s`);
-    } catch (error) {
-      failCount++;
-      console.error(`\n❌ Failed to process ${options.ticker}`);
-    }
+    await refreshCEF(options.ticker, options.dryRun);
   } else {
     // Get only CEFs from database (those with nav_symbol set)
     // nav_symbol is the definitive identifier for CEFs
@@ -513,33 +501,18 @@ async function main() {
     for (let i = 0; i < actualCEFs.length; i++) {
       const cef = actualCEFs[i];
       console.log(`\n[${i + 1}/${actualCEFs.length}]`);
-      const cefStart = Date.now();
-      try {
-        await refreshCEF(cef.ticker, options.dryRun);
-        successCount++;
-        console.log(`  ⏱ Completed in ${((Date.now() - cefStart) / 1000).toFixed(1)}s`);
-      } catch (error) {
-        failCount++;
-        console.error(`  ❌ Failed in ${((Date.now() - cefStart) / 1000).toFixed(1)}s`);
-      }
+      await refreshCEF(cef.ticker, options.dryRun);
 
       // Small delay to avoid overwhelming the API (reduced from 1000ms to 500ms for faster execution)
       if (i < actualCEFs.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
-  }
 
-  // Batch job completion summary
-  const totalDuration = (Date.now() - batchStartTime) / 1000;
-  console.log(`\n${'='.repeat(60)}`);
-  console.log('BATCH JOB SUMMARY');
-  console.log(`${'='.repeat(60)}`);
-  console.log(`Completed at: ${new Date().toISOString()}`);
-  console.log(`Total duration: ${totalDuration.toFixed(1)}s (${(totalDuration / 60).toFixed(1)}m)`);
-  console.log(`✅ Success: ${successCount}`);
-  console.log(`❌ Failed: ${failCount}`);
-  console.log(`${'='.repeat(60)}`);
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`✅ Completed processing ${actualCEFs.length} CEFs`);
+    console.log(`${'='.repeat(60)}`);
+  }
 }
 
 main().catch(error => {
