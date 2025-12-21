@@ -1430,10 +1430,33 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
       );
     }
 
+    // Detailed logging for debugging
+    const withNAV = staticData.filter((item: any) => item.nav !== null && item.nav !== undefined && item.nav !== 0).length;
+    const withoutNAV = staticData.filter((item: any) => item.nav === null || item.nav === undefined || item.nav === 0).length;
+    const navSymbolRecords = staticData.filter((item: any) => item.ticker === item.nav_symbol).length;
+    
     logger.info(
       "Routes",
-      `Fetched ${staticData.length} records with nav_symbol, ${filteredData.length} CEFs after excluding NAV symbol records (ticker !== nav_symbol)`
+      `CEF Filter Results: ${staticData.length} total with nav_symbol → ${filteredData.length} valid CEFs`
     );
+    logger.info(
+      "Routes",
+      `  - Records with NAV data: ${withNAV}`
+    );
+    logger.info(
+      "Routes",
+      `  - Records without NAV (N/A): ${withoutNAV} (will go to ETFs table)`
+    );
+    logger.info(
+      "Routes",
+      `  - NAV symbol records (ticker === nav_symbol): ${navSymbolRecords} (excluded)`
+    );
+    
+    // Log sample of filtered CEFs
+    if (filteredData.length > 0) {
+      const sample = filteredData.slice(0, 5).map((cef: any) => `${cef.ticker} (nav=$${cef.nav?.toFixed(2) || 'N/A'})`).join(', ');
+      logger.info("Routes", `Sample CEFs: ${sample}`);
+    }
 
     // NO real-time calculations - use database values only
     // Process in smaller batches to prevent timeout

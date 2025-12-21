@@ -1093,7 +1093,23 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       return true;
     });
 
-    logger.info('Routes', `Fetched ${allData.length} total records, ${staticData.length} ETFs (excluded ${allData.length - staticData.length} CEFs with nav_symbol and NAV data)`);
+    // Detailed logging for debugging
+    const withoutNavSymbol = allData.filter((item: any) => !item.nav_symbol || item.nav_symbol === '').length;
+    const withNavSymbolNoNAV = allData.filter((item: any) => {
+      const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
+      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
+      return hasNavSymbol && !hasNAVData;
+    }).length;
+    const excludedCEFs = allData.filter((item: any) => {
+      const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
+      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
+      return hasNavSymbol && hasNAVData;
+    }).length;
+    
+    logger.info('Routes', `ETF Filter Results: ${allData.length} total → ${staticData.length} ETFs`);
+    logger.info('Routes', `  - Records without nav_symbol: ${withoutNavSymbol}`);
+    logger.info('Routes', `  - Records with nav_symbol but no NAV: ${withNavSymbolNoNAV} (included in ETFs)`);
+    logger.info('Routes', `  - Excluded CEFs (nav_symbol + NAV data): ${excludedCEFs} (shown on CEFs table)`);
 
     // Map to frontend format
     const results = staticData.map((etf: any) => ({
