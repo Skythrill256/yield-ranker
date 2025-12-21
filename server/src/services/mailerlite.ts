@@ -4,8 +4,6 @@
  * Handles newsletter subscriptions via MailerLite API
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import MailerLite from '@mailerlite/mailerlite-nodejs';
 import { logger } from '../utils/index.js';
 
 // ============================================================================
@@ -35,10 +33,18 @@ function getClient(): typeof client {
         return null;
     }
 
-    // The SDK exports a class that should be instantiated with 'new'
-    // @ts-expect-error - MailerLite SDK has non-standard TypeScript exports
-    client = new MailerLite({ api_key: apiKey });
-    return client;
+    try {
+        // Dynamic import to handle missing package gracefully
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const MailerLite = require('@mailerlite/mailerlite-nodejs');
+        // The SDK exports a class that should be instantiated with 'new'
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+        client = new MailerLite({ api_key: apiKey });
+        return client;
+    } catch (error) {
+        logger.warn('MailerLite', `Failed to initialize MailerLite client: ${(error as Error).message}`);
+        return null;
+    }
 }
 
 // ============================================================================

@@ -1077,11 +1077,11 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
 
-    // Filter out CEFs: exclude records that have nav_symbol or nav set
+    // Simple rule: If it does NOT have nav_symbol, it's an ETF → show on Covered Call Options table
+    // If it has nav_symbol, it's a CEF → show on CEF table (handled by /cefs route)
     const staticData = allData.filter((item: any) => {
       const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
-      const hasNav = item.nav !== null && item.nav !== undefined && item.nav !== '';
-      return !hasNavSymbol && !hasNav;
+      return !hasNavSymbol; // Exclude all records with nav_symbol
     });
 
     logger.info('Routes', `Fetched ${allData.length} total records, ${staticData.length} ETFs (excluded ${allData.length - staticData.length} CEFs)`);
