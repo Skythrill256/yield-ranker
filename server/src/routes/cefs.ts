@@ -1379,16 +1379,21 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
 
-    // Only include uploaded CEFs: must have nav_symbol set (not just nav)
-    // CEFs are identified by having nav_symbol (uploaded via Excel)
+    // Only include uploaded CEFs: must have nav_symbol AND issuer/description
+    // CEFs are identified by having nav_symbol (uploaded via Excel) AND issuer/description
+    // This excludes NAV symbol records (which have nav_symbol but no issuer/description)
     // Do NOT include records with only nav or premium_discount (those could be ETFs)
     const staticData = allData.filter((item: any) => {
       const hasNavSymbol =
         item.nav_symbol !== null &&
         item.nav_symbol !== undefined &&
         item.nav_symbol !== "";
-      // Must have nav_symbol to be considered an uploaded CEF
-      return hasNavSymbol;
+      // Must also have issuer or description to be the actual CEF record (not NAV symbol)
+      const hasContext = 
+        (item.issuer !== null && item.issuer !== undefined && item.issuer !== "") ||
+        (item.description !== null && item.description !== undefined && item.description !== "");
+      // Must have nav_symbol AND issuer/description to be considered an uploaded CEF
+      return hasNavSymbol && hasContext;
     });
 
     if (staticData.length === 0 && allData.length > 0) {
@@ -1406,7 +1411,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     logger.info(
       "Routes",
-      `Fetched ${allData.length} total records, ${staticData.length} CEFs (filtered by nav_symbol or nav)`
+      `Fetched ${allData.length} total records, ${staticData.length} CEFs (filtered by nav_symbol AND issuer/description)`
     );
 
     // NO real-time calculations - use database values only

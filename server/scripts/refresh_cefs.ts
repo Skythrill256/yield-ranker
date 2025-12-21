@@ -364,14 +364,16 @@ async function main() {
     // Process single ticker
     await refreshCEF(options.ticker, options.dryRun);
   } else {
-    // Get only uploaded CEFs from database (those with nav_symbol set)
-    // Only process CEFs that were actually uploaded (have nav_symbol)
+    // Get only uploaded CEFs from database (those with nav_symbol AND issuer/description)
+    // Only process CEFs that were actually uploaded (have nav_symbol AND issuer/description)
+    // This excludes NAV symbol records (which have nav_symbol but no issuer/description)
     console.log('Fetching uploaded CEFs from database...');
     const { data: cefs, error } = await supabase
       .from('etf_static')
-      .select('ticker, nav_symbol, nav')
+      .select('ticker, nav_symbol, nav, issuer, description')
       .not('nav_symbol', 'is', null)
       .neq('nav_symbol', '')
+      .or('issuer.not.is.null,description.not.is.null')
       .order('ticker', { ascending: true });
 
     if (error) {
