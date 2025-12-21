@@ -479,12 +479,88 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
         price_return_1w: metrics.priceReturn?.['1W'],
       };
 
+<<<<<<< HEAD
       // This script only processes ETFs (CEFs excluded at query level)
       await batchUpdateETFMetrics([{
         ticker,
         metrics: updateData,
       }]);
       
+=======
+      if (navSymbol) {
+        const { data: existingCEF } = await supabase
+          .from('etf_static')
+          .select('nav, premium_discount')
+          .eq('ticker', ticker.toUpperCase())
+          .maybeSingle();
+
+        const { data: navPriceData } = await supabase
+          .from('prices_daily')
+          .select('close')
+          .eq('ticker', navSymbol.toUpperCase())
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (navPriceData?.close) {
+          if (!existingCEF?.nav || existingCEF.nav === null || existingCEF.nav === undefined) {
+            updateData.nav = navPriceData.close;
+          }
+
+          if (metrics.currentPrice && navPriceData.close) {
+            if (!existingCEF?.premium_discount || existingCEF.premium_discount === null || existingCEF.premium_discount === undefined) {
+              updateData.premium_discount = ((metrics.currentPrice - navPriceData.close) / navPriceData.close) * 100;
+            }
+          }
+        }
+      }
+
+      // SKIP CEF-specific metrics in refresh_all.ts - use refresh_cefs.ts instead
+      // This prevents conflicts and ensures CEF metrics are calculated separately
+      if (navSymbol && navSymbol.trim() !== '') {
+        console.log(`  ⚠ CEF detected: ${ticker}`);
+        console.log(`  ⚠ Skipping CEF-specific metrics (Z-Score, Signal, NAV Returns)`);
+        console.log(`  ⚠ Run 'npm run refresh:cefs' or 'npm run refresh:all' to calculate CEF metrics`);
+        
+        // Still update NAV and premium_discount if we have the data
+        // But skip the expensive CEF metric calculations
+        // CEF calculations disabled - use refresh_cefs.ts instead
+        // This prevents conflicts and ensures CEF metrics are calculated separately
+      } else {
+        // Not a CEF, continue normally
+      }
+
+      if (navSymbol) {
+        // Log what we're about to save for debugging
+        if (updateData.return_3yr !== undefined) console.log(`    💾 Saving return_3yr = ${updateData.return_3yr}`);
+        if (updateData.return_5yr !== undefined) console.log(`    💾 Saving return_5yr = ${updateData.return_5yr}`);
+        if (updateData.return_10yr !== undefined) console.log(`    💾 Saving return_10yr = ${updateData.return_10yr}`);
+        if (updateData.return_15yr !== undefined) console.log(`    💾 Saving return_15yr = ${updateData.return_15yr}`);
+        
+        await batchUpdateETFMetricsPreservingCEFFields([{
+          ticker,
+          metrics: updateData,
+        }]);
+        
+        // Verify the save worked by reading back
+        const { data: verify } = await supabase
+          .from('etf_static')
+          .select('return_3yr, return_5yr, return_10yr, return_15yr')
+          .eq('ticker', ticker.toUpperCase())
+          .maybeSingle();
+        
+        if (verify) {
+          console.log(`    ✓ Verified saved values: 3Y=${verify.return_3yr ?? 'NULL'}, 5Y=${verify.return_5yr ?? 'NULL'}, 10Y=${verify.return_10yr ?? 'NULL'}, 15Y=${verify.return_15yr ?? 'NULL'}`);
+        } else {
+          console.warn(`    ⚠ Could not verify saved values for ${ticker}`);
+        }
+      } else {
+        await batchUpdateETFMetrics([{
+          ticker,
+          metrics: updateData,
+        }]);
+      }
+>>>>>>> 41e2db658c30b5202f776f73cb3a6be1edb5c16f
       console.log(`  ✓ Metrics recalculated`);
       console.log(`    - Annual Dividend: ${metrics.annualizedDividend?.toFixed(2) || 'N/A'}`);
       console.log(`    - DVI: ${metrics.dividendCVPercent?.toFixed(1) || 'N/A'}%`);

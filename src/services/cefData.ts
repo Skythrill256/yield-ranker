@@ -11,7 +11,9 @@ export interface CEFDataResponse {
 // Cache management
 const CEF_CACHE_KEY = "cef-data-cache";
 const CEF_CACHE_TIMESTAMP_KEY = "cef-data-cache-timestamp";
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+// Cache duration: 24 hours - data is updated daily from backend
+// Frontend fetches once and keeps cached data until manually refreshed or cache expires
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours (same as ETFs)
 
 export function isCEFDataCached(): boolean {
   try {
@@ -50,11 +52,11 @@ export async function fetchCEFData(): Promise<CEF[]> {
 }
 
 export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
-  try {
-    // Check cache first
-    if (isCEFDataCached()) {
-      const cached = localStorage.getItem(CEF_CACHE_KEY);
-      if (cached) {
+  // Check cache first - return immediately if valid cache exists (like ETFs do)
+  if (isCEFDataCached()) {
+    const cached = localStorage.getItem(CEF_CACHE_KEY);
+    if (cached) {
+      try {
         const data = JSON.parse(cached);
         // Use the lastUpdatedTimestamp from the cached data, not the cache timestamp
         return {
@@ -62,9 +64,16 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
           lastUpdatedTimestamp: data.lastUpdatedTimestamp || data.last_updated_timestamp || undefined,
           lastUpdated: data.lastUpdated || data.last_updated || undefined,
         };
+      } catch (parseError) {
+        console.warn("Failed to parse cached CEF data:", parseError);
+        // Fall through to fetch fresh data
       }
     }
+  }
 
+  // Try to fetch fresh data from server
+  let fetchError: Error | null = null;
+  try {
     // Add timeout to fetch request - increased to 90 seconds to allow for database queries
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
@@ -80,36 +89,57 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
       }
       const json = await response.json();
     
-    // Handle both array response and wrapped response (same as ETF data)
-    const cefs: CEF[] = Array.isArray(json) ? json : (json.cefs || []);
-    const lastUpdated = Array.isArray(json) ? null : (json.last_updated || json.lastUpdated || null);
-    const lastUpdatedTimestamp = Array.isArray(json) ? null : (json.last_updated_timestamp || json.lastUpdatedTimestamp || json.last_updated || null);
-    
-    const data: CEFDataResponse = {
-      cefs,
-      lastUpdated,
-      lastUpdatedTimestamp,
-    };
-    
-    // Cache the response
-    try {
-      localStorage.setItem(CEF_CACHE_KEY, JSON.stringify(data));
-      localStorage.setItem(CEF_CACHE_TIMESTAMP_KEY, Date.now().toString());
-    } catch (cacheError) {
-      console.warn("Failed to cache CEF data:", cacheError);
-    }
-    
+      // Handle both array response and wrapped response (same as ETF data)
+      const cefs: CEF[] = Array.isArray(json) ? json : (json.cefs || []);
+      const lastUpdated = Array.isArray(json) ? null : (json.last_updated || json.lastUpdated || null);
+      const lastUpdatedTimestamp = Array.isArray(json) ? null : (json.last_updated_timestamp || json.lastUpdatedTimestamp || json.last_updated || null);
+      
+      const data: CEFDataResponse = {
+        cefs,
+        lastUpdated,
+        lastUpdatedTimestamp,
+      };
+      
+      // Cache the response
+      try {
+        localStorage.setItem(CEF_CACHE_KEY, JSON.stringify(data));
+        localStorage.setItem(CEF_CACHE_TIMESTAMP_KEY, Date.now().toString());
+      } catch (cacheError) {
+        console.warn("Failed to cache CEF data:", cacheError);
+      }
+      
       return data;
-    } catch (fetchError) {
+    } catch (err) {
       clearTimeout(timeoutId);
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        throw new Error("Request timeout: CEF data fetch took too long");
+      if (err instanceof Error && err.name === 'AbortError') {
+        fetchError = new Error("Request timeout: CEF data fetch took too long");
+      } else {
+        fetchError = err instanceof Error ? err : new Error(String(err));
       }
       throw fetchError;
     }
   } catch (error) {
-    console.error("Error fetching CEF data with metadata:", error);
-    throw error;
+    // If fetch failed, try to use stale cache as fallback (even if expired)
+    // This matches ETF behavior - show cached data when server is down
+    console.warn("[CEF Data] Failed to fetch CEF data from backend, attempting to use cached data:", error);
+    
+    const staleCache = localStorage.getItem(CEF_CACHE_KEY);
+    if (staleCache) {
+      try {
+        const data = JSON.parse(staleCache);
+        console.log("[CEF Data] Using stale cached data as fallback");
+        return {
+          ...data,
+          lastUpdatedTimestamp: data.lastUpdatedTimestamp || data.last_updated_timestamp || undefined,
+          lastUpdated: data.lastUpdated || data.last_updated || undefined,
+        };
+      } catch (parseError) {
+        console.error("[CEF Data] Failed to parse stale cache:", parseError);
+      }
+    }
+    
+    // No cache available, throw the original error
+    throw fetchError || (error instanceof Error ? error : new Error(String(error)));
   }
 }
 

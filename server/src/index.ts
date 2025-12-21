@@ -142,6 +142,8 @@ app.use('/api/cefs', cefRoutes);
 app.use('/api/admin', etfRoutes); // legacy
 app.use('/api/user', userRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use("/api/newsletter", newsletterRoutes);
+>>>>>>> 41e2db658c30b5202f776f73cb3a6be1edb5c16f
 
 // ============================================================================
 // 404 Handler
