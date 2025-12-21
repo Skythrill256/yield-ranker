@@ -59,31 +59,25 @@ All colors MUST be HSL.
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
-  /* Smooth page transitions - prevent white flash */
+  /* Prevent white flash - no transitions, just solid backgrounds */
   html {
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--background)) !important;
     overflow-x: hidden;
   }
 
   body {
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--background)) !important;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
   }
 
-  /* Smooth route transitions - ensure no white flash */
+  /* Ensure root always has background - no white flash */
   #root {
     min-height: 100vh;
     width: 100%;
-    background-color: hsl(var(--background));
+    background-color: hsl(var(--background)) !important;
     position: relative;
-  }
-  
-  /* Ensure all page containers have background */
-  [data-page-container] {
-    background-color: hsl(var(--background));
-    min-height: 100vh;
   }
 
   .dark {
