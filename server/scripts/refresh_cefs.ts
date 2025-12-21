@@ -329,18 +329,31 @@ async function main() {
     // Process single ticker
     await refreshCEF(options.ticker, options.dryRun);
   } else {
-    // Get all CEFs from database
-    console.log('Fetching all CEFs from database...');
-    const { data: cefs, error } = await supabase
+    // Get only uploaded CEFs from database (those with nav_symbol set)
+    // Exclude NAV symbols themselves (auto-created tickers for NAV data)
+    // Only process real CEFs that were uploaded (have nav_symbol AND issuer/description)
+    console.log('Fetching uploaded CEFs from database...');
+    const { data: allCefs, error } = await supabase
       .from('etf_static')
-      .select('ticker, nav_symbol, nav')
-      .or('nav_symbol.not.is.null,nav.not.is.null')
+      .select('ticker, nav_symbol, nav, issuer, description')
+      .not('nav_symbol', 'is', null)
+      .neq('nav_symbol', '')
       .order('ticker', { ascending: true });
 
     if (error) {
       console.error(`❌ Error fetching CEFs: ${error.message}`);
       process.exit(1);
     }
+
+    // Filter out NAV symbols (auto-created tickers that don't have issuer/description)
+    // These are tickers created just to store NAV price data, not real CEFs
+    const cefs = (allCefs || []).filter((cef: any) => {
+      // Real CEFs have issuer or description (uploaded via Excel)
+      // NAV symbols are auto-created and don't have these fields
+      const hasIssuer = cef.issuer !== null && cef.issuer !== undefined && cef.issuer !== '';
+      const hasDescription = cef.description !== null && cef.description !== undefined && cef.description !== '';
+      return hasIssuer || hasDescription;
+    });
 
     if (!cefs || cefs.length === 0) {
       console.error(`❌ No uploaded CEFs found in database`);
