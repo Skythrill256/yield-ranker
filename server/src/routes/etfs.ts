@@ -1080,20 +1080,34 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
     // Filter: Include records without nav_symbol OR records with nav_symbol but no NAV data
     // Records with nav_symbol AND NAV data are shown on CEFs table
+    // Also exclude NAV proxy symbols (tickers like XDNPX, XGABX that start and end with X)
     const staticData = allData.filter((item: any) => {
+      const ticker = item.ticker || '';
+
+      // Exclude NAV proxy symbols (auto-created records for CEF NAV price data)
+      // These follow the pattern X + base_symbol + X (e.g., XDNPX for DNP, XGABX for GAB)
+      const isNavProxySymbol = ticker.length >= 4 && ticker.startsWith('X') && ticker.endsWith('X');
+      if (isNavProxySymbol) {
+        return false;
+      }
+
       const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
       const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
-      
+
       // If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
       if (hasNavSymbol && hasNAVData) {
         return false;
       }
-      
+
       // Include everything else: no nav_symbol, or nav_symbol but no NAV data
       return true;
     });
 
     // Detailed logging for debugging
+    const navProxySymbols = allData.filter((item: any) => {
+      const ticker = item.ticker || '';
+      return ticker.length >= 4 && ticker.startsWith('X') && ticker.endsWith('X');
+    }).length;
     const withoutNavSymbol = allData.filter((item: any) => !item.nav_symbol || item.nav_symbol === '').length;
     const withNavSymbolNoNAV = allData.filter((item: any) => {
       const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
@@ -1105,11 +1119,12 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
       return hasNavSymbol && hasNAVData;
     }).length;
-    
+
     logger.info('Routes', `ETF Filter Results: ${allData.length} total → ${staticData.length} ETFs`);
     logger.info('Routes', `  - Records without nav_symbol: ${withoutNavSymbol}`);
     logger.info('Routes', `  - Records with nav_symbol but no NAV: ${withNavSymbolNoNAV} (included in ETFs)`);
     logger.info('Routes', `  - Excluded CEFs (nav_symbol + NAV data): ${excludedCEFs} (shown on CEFs table)`);
+    logger.info('Routes', `  - Excluded NAV proxy symbols (X...X pattern): ${navProxySymbols}`);
 
     // Map to frontend format
     const results = staticData.map((etf: any) => ({
