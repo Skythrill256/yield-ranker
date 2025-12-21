@@ -1434,7 +1434,7 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     );
     logger.info(
       "Routes",
-      `  - Records without NAV (N/A): ${withoutNAV} (will go to ETFs table)`
+      `  - Records without NAV (N/A): ${withoutNAV}`
     );
     logger.info(
       "Routes",
