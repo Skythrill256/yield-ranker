@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/Header";
 import { CEFTable } from "@/components/CEFTable";
+import { CEFDataMetadata } from "@/components/CEFDataMetadata";
 import { fetchCEFDataWithMetadata, clearCEFCache, isCEFDataCached } from "@/services/cefData";
 import { CEF, RankingWeights } from "@/types/cef";
 import { Loader2, Clock, Star, Sliders, X, Plus, RotateCcw } from "lucide-react";
@@ -16,18 +17,18 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-  loadRankingWeights, 
-  saveRankingWeights, 
-  saveRankingPreset, 
-  loadRankingPresets, 
+import {
+  loadRankingWeights,
+  saveRankingWeights,
+  saveRankingPreset,
+  loadRankingPresets,
   deleteRankingPreset,
   loadCEFRankingWeights,
   saveCEFRankingWeights,
   loadCEFRankingPresets,
   saveCEFRankingPreset,
   deleteCEFRankingPreset,
-  RankingPreset 
+  RankingPreset
 } from "@/services/preferences";
 
 const Index = () => {
@@ -66,15 +67,15 @@ const Index = () => {
       if (isInitialLoad && !isCEFDataCached()) {
         setIsLoading(true);
       }
-      
+
       // Add timeout to prevent infinite loading - increased to 90 seconds
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error("Request timeout: CEF data fetch took too long")), 90000); // 90 second timeout
       });
-      
+
       const fetchPromise = fetchCEFDataWithMetadata();
       const result = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<ReturnType<typeof fetchCEFDataWithMetadata>>;
-      
+
       const seen = new Set<string>();
       const deduplicated = (result.cefs || []).filter((cef) => {
         if (seen.has(cef.symbol)) {
@@ -84,7 +85,7 @@ const Index = () => {
         return true;
       });
       setCefData(deduplicated);
-      
+
       cleanupFavorites(deduplicated.map(cef => cef.symbol));
 
       // Format the last updated timestamp to match ETF format
@@ -139,7 +140,7 @@ const Index = () => {
         setPremiumMessage("");
       }
     };
-    
+
     loadData(true);
     loadSiteSettings();
 
@@ -457,11 +458,10 @@ const Index = () => {
                   {isPremium && (
                     <button
                       onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                      className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center px-4 rounded-md flex items-center ${
-                        showFavoritesOnly
+                      className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center px-4 rounded-md flex items-center ${showFavoritesOnly
                           ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
                           : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                      }`}
+                        }`}
                     >
                       <Star
                         className={`h-4 w-4 mr-2 ${showFavoritesOnly ? "fill-white" : "fill-yellow-400"
@@ -505,6 +505,9 @@ const Index = () => {
                 />
               )}
             </div>
+
+            {/* Data Source Metadata - Collapsible documentation of data sources and formulas */}
+            <CEFDataMetadata />
           </section>
         </div>
 

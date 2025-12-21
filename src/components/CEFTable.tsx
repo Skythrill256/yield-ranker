@@ -39,9 +39,8 @@ const SortButton = ({
       type="button"
       variant="ghost"
       size="sm"
-      className={`h-8 hover:bg-slate-100 hover:text-foreground transition-colors ${
-        align === "left" ? "-ml-3" : "-mr-3"
-      } ${isActive ? "font-semibold" : ""}`}
+      className={`h-8 hover:bg-slate-100 hover:text-foreground transition-colors ${align === "left" ? "-ml-3" : "-mr-3"
+        } ${isActive ? "font-semibold" : ""}`}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -525,11 +524,10 @@ export const CEFTable = ({
                     title="Click to add to Favorites"
                   >
                     <Star
-                      className={`h-4 w-4 mx-auto cursor-pointer transition-all ${
-                        favorites.has(cef.symbol)
+                      className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(cef.symbol)
                           ? "fill-yellow-400 text-yellow-400"
                           : "text-slate-500 hover:text-yellow-500 hover:scale-110"
-                      }`}
+                        }`}
                     />
                   </button>
                 </td>
@@ -555,13 +553,12 @@ export const CEFTable = ({
                   {cef.dividendHistory || "N/A"}
                 </td>
                 <td
-                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    cef.ipoPrice &&
-                    cef.marketPrice &&
-                    cef.marketPrice > cef.ipoPrice
+                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.ipoPrice &&
+                      cef.marketPrice &&
+                      cef.marketPrice > cef.ipoPrice
                       ? "bg-green-100 text-green-700"
                       : ""
-                  }`}
+                    }`}
                 >
                   {cef.ipoPrice != null ? formatCurrency(cef.ipoPrice) : "N/A"}
                 </td>
@@ -601,44 +598,40 @@ export const CEFTable = ({
                     : "N/A"}
                 </td>
                 <td
-                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    cef.premiumDiscount != null && cef.premiumDiscount >= 0
+                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.premiumDiscount != null && cef.premiumDiscount >= 0
                       ? "text-green-600"
                       : "text-red-600"
-                  }`}
+                    }`}
                 >
                   {cef.premiumDiscount != null
                     ? formatPercentage(cef.premiumDiscount)
                     : "N/A"}
                 </td>
                 <td
-                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    cef.fiveYearZScore != null && cef.fiveYearZScore >= 0
+                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.fiveYearZScore != null && cef.fiveYearZScore >= 0
                       ? "text-green-600"
                       : "text-red-600"
-                  }`}
+                    }`}
                 >
                   {cef.fiveYearZScore != null
                     ? cef.fiveYearZScore.toFixed(2)
                     : "N/A"}
                 </td>
                 <td
-                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    cef.navTrend6M != null && cef.navTrend6M >= 0
+                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.navTrend6M != null && cef.navTrend6M >= 0
                       ? "text-green-600"
                       : "text-red-600"
-                  }`}
+                    }`}
                 >
                   {cef.navTrend6M != null
                     ? formatPercentage(cef.navTrend6M)
                     : "N/A"}
                 </td>
                 <td
-                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${
-                    cef.navTrend12M != null && cef.navTrend12M >= 0
+                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.navTrend12M != null && cef.navTrend12M >= 0
                       ? "text-green-600"
                       : "text-red-600"
-                  }`}
+                    }`}
                 >
                   {cef.navTrend12M != null
                     ? formatPercentage(cef.navTrend12M)
@@ -651,14 +644,14 @@ export const CEFTable = ({
                         cef.signal === 3
                           ? "text-green-700 bg-green-50 px-2 py-0.5 rounded"
                           : cef.signal === 2
-                          ? "text-green-600 bg-green-50/50 px-2 py-0.5 rounded"
-                          : cef.signal === 1
-                          ? "text-blue-600"
-                          : cef.signal === 0
-                          ? "text-gray-500"
-                          : cef.signal === -1
-                          ? "text-orange-600"
-                          : "text-red-600"
+                            ? "text-green-600 bg-green-50/50 px-2 py-0.5 rounded"
+                            : cef.signal === 1
+                              ? "text-blue-600"
+                              : cef.signal === 0
+                                ? "text-gray-500"
+                                : cef.signal === -1
+                                  ? "text-orange-600"
+                                  : "text-red-600"
                       }
                     >
                       {cef.signal > 0 ? `+${cef.signal}` : cef.signal}
@@ -671,8 +664,8 @@ export const CEFTable = ({
                   {cef.dividendCVPercent != null
                     ? `${cef.dividendCVPercent.toFixed(1)}%`
                     : cef.dividendCV != null
-                    ? `${(cef.dividendCV * 100).toFixed(1)}%`
-                    : "N/A"}
+                      ? `${(cef.dividendCV * 100).toFixed(1)}%`
+                      : "N/A"}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
                   {isGuest ? (
@@ -702,21 +695,20 @@ export const CEFTable = ({
                     numericValue === undefined
                       ? "text-muted-foreground"
                       : numericValue >= 0
-                      ? "text-green-600"
-                      : "text-red-600";
+                        ? "text-green-600"
+                        : "text-red-600";
                   return (
                     <td
                       key={`${cef.symbol}-${String(col.key)}`}
-                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[60px] sm:min-w-[70px] ${
-                        colIndex === returnColumns.length - 1
+                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[60px] sm:min-w-[70px] ${colIndex === returnColumns.length - 1
                           ? "border-r-2 border-slate-300"
                           : ""
-                      }`}
+                        }`}
                     >
                       {numericValue !== undefined
                         ? `${numericValue > 0 ? "+" : ""}${numericValue.toFixed(
-                            1
-                          )}%`
+                          1
+                        )}%`
                         : "N/A"}
                     </td>
                   );
