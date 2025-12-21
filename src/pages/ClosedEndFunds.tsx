@@ -6,13 +6,13 @@ function ClosedEndFunds() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      
+
       <main className="flex-1">
         <section className="relative border-b overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white to-blue-50/30" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.05)_0%,transparent_50%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(59,130,246,0.03)_0%,transparent_50%)]" />
-          
+
           <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-32 relative">
             <div className="max-w-4xl mx-auto text-center space-y-6">
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
@@ -145,6 +145,117 @@ function ClosedEndFunds() {
                   <h3 className="text-xl font-bold text-slate-900 mb-2">Total Returns</h3>
                   <p>This is the combined gain or loss from price change plus dividends paid during specific periods of time. The table provides total returns over several time periods, including 1 week, 1 month, 3 months, 6 months, 12 months, 3 years, 5 years, 10 years, and 15 years.</p>
                 </div>
+              </div>
+
+              <h2 className="text-3xl font-bold text-slate-900 mt-12 mb-6">
+                Data Sources & Calculations
+              </h2>
+
+              <p className="mb-6">
+                The following table describes where each data field comes from and how calculated values are derived. All calculations are performed server-side and stored in the database.
+              </p>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse border border-slate-300 text-sm">
+                  <thead>
+                    <tr className="bg-slate-100">
+                      <th className="border border-slate-300 px-4 py-2 text-left font-bold">Field Name</th>
+                      <th className="border border-slate-300 px-4 py-2 text-left font-bold">Source</th>
+                      <th className="border border-slate-300 px-4 py-2 text-left font-bold">Calculation / Formula</th>
+                      <th className="border border-slate-300 px-4 py-2 text-left font-bold"># Records</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">Symbol</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">RICH</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Manual upload from Excel</td>
+                      <td className="border border-slate-300 px-4 py-2">1</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="border border-slate-300 px-4 py-2">NAV Symbol</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">RICH</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Manual upload from Excel</td>
+                      <td className="border border-slate-300 px-4 py-2">1</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">Market Price (MP)</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">API</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Tiingo EOD close price</td>
+                      <td className="border border-slate-300 px-4 py-2">~15 years</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="border border-slate-300 px-4 py-2">NAV Value</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">API</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Tiingo NAV symbol close price</td>
+                      <td className="border border-slate-300 px-4 py-2">~15 years</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">Premium/Discount</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">CALC</span></td>
+                      <td className="border border-slate-300 px-4 py-2">(Market Price / NAV - 1) × 100</td>
+                      <td className="border border-slate-300 px-4 py-2">1 (latest)</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="border border-slate-300 px-4 py-2">5-Year Z-Score</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">FORMULA</span></td>
+                      <td className="border border-slate-300 px-4 py-2">(Current P/D - Mean P/D) / StdDev<sup>*</sup></td>
+                      <td className="border border-slate-300 px-4 py-2">504-1260 days</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">NAV Trend 6M</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">CALC</span></td>
+                      <td className="border border-slate-300 px-4 py-2">(NAV_now / NAV_126d_ago - 1) × 100</td>
+                      <td className="border border-slate-300 px-4 py-2">126 trading days</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="border border-slate-300 px-4 py-2">NAV Trend 12M</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">CALC</span></td>
+                      <td className="border border-slate-300 px-4 py-2">(NAV_now / NAV_252d_ago - 1) × 100</td>
+                      <td className="border border-slate-300 px-4 py-2">252 trading days</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">Signal</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">FORMULA</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Logic gate scoring -2 to +3<sup>†</sup></td>
+                      <td className="border border-slate-300 px-4 py-2">504+ days</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="border border-slate-300 px-4 py-2">Total Returns</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">FORMULA</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Annualized CAGR from NAV adj_close<sup>‡</sup></td>
+                      <td className="border border-slate-300 px-4 py-2">3Y, 5Y, 10Y, 15Y</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">Last Dividend</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">API</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Tiingo dividend data</td>
+                      <td className="border border-slate-300 px-4 py-2">1</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="border border-slate-300 px-4 py-2">Forward Yield</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">CALC</span></td>
+                      <td className="border border-slate-300 px-4 py-2">Annual Dividend / Price × 100</td>
+                      <td className="border border-slate-300 px-4 py-2">1</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-slate-300 px-4 py-2">DVI</td>
+                      <td className="border border-slate-300 px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">FORMULA</span></td>
+                      <td className="border border-slate-300 px-4 py-2">(SD / Mean of annualized dividends) × 100</td>
+                      <td className="border border-slate-300 px-4 py-2">~365 days</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6 space-y-3 text-sm text-slate-600">
+                <p><strong>Source Legend:</strong> <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">RICH</span> = Manual upload, <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">API</span> = Tiingo API, <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">CALC</span> = Simple calculation, <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">FORMULA</span> = Complex formula</p>
+
+                <p><sup>*</sup> <strong>Z-Score:</strong> Uses 5-year lookback (max 1260 trading days). Minimum 2 years (504 days) required. Returns N/A if insufficient history.</p>
+
+                <p><sup>†</sup> <strong>Signal Scoring:</strong> +3 (Optimal): Z &lt; -1.5 AND 6M &gt; 0 AND 12M &gt; 0 | +2 (Good Value): Z &lt; -1.5 AND 6M &gt; 0 | +1 (Healthy): Z &gt; -1.5 AND 6M &gt; 0 | 0 (Neutral) | -1 (Value Trap): Z &lt; -1.5 AND 6M &lt; 0 | -2 (Overvalued): Z &gt; 1.5</p>
+
+                <p><sup>‡</sup> <strong>Total Returns:</strong> For periods ≥1 year: ((End_AdjPrice / Start_AdjPrice)^(1/years) - 1) × 100 (Annualized CAGR). For periods &lt;1 year: ((End_AdjPrice / Start_AdjPrice) - 1) × 100.</p>
               </div>
             </div>
           </Card>
