@@ -1264,7 +1264,11 @@ const AdminPanel = () => {
                           Upload CEF Spreadsheet
                         </h2>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Upload CEF data from Excel file. <strong>Required:</strong> SYMBOL, Last Div. <strong>Optional:</strong> NAV Symbol, Description, OPEN (Open Date), DIV HISTORY, IPO PRICE, # (# Payments). All symbols in the SYMBOL column will be processed and added to the CEF section.
+                          Upload Closed End Fund data from Excel file.
+                          <br /><br />
+                          <strong>Required:</strong> SYMBOL, Last Div
+                          <br />
+                          <strong>Optional:</strong> NAV Symbol, Description, OPEN (Open Date), DIV HISTORY, IPO PRICE, # (# Payments)
                         </p>
                       </div>
 
