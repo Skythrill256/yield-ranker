@@ -81,7 +81,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
 
   const yearlyDividends = useMemo(() => {
     // Use filtered dividends to match what's shown in the table
-    const filteredDivs = getFilteredDividends();
+    const filteredDivs = getFilteredDividends;
     if (!filteredDivs || filteredDivs.length === 0) return [];
 
     const result: YearlyDividend[] = [];
