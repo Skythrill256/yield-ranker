@@ -97,7 +97,7 @@ export const Header = () => {
             <Button
               variant="ghost"
               className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
-              onClick={() => go("/resources")}
+              onClick={() => go(currentCategory === "cef" ? "/resources-cef" : "/resources-cc")}
             >
               <FileText className="w-4 h-4 mr-1.5" />
               Resources
@@ -220,7 +220,7 @@ export const Header = () => {
             <Button
               variant="ghost"
               className="justify-start px-4 py-3 text-base font-semibold text-foreground hover:bg-slate-100 rounded-md"
-              onClick={() => go("/resources")}
+              onClick={() => go(currentCategory === "cef" ? "/resources-cef" : "/resources-cc")}
             >
               Resources
             </Button>

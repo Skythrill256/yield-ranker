@@ -5,6 +5,14 @@ import { useLocation } from "react-router-dom";
  * @returns "cef" for Closed End Funds, "cc" for Covered Call Option ETFs
  */
 export const getCurrentCategory = (pathname: string): "cef" | "cc" => {
+  // Check resources routes first
+  if (pathname === "/resources-cef") {
+    return "cef";
+  }
+  if (pathname === "/resources-cc") {
+    return "cc";
+  }
+  // Check CEF routes
   if (pathname.startsWith("/cef")) {
     return "cef";
   }

@@ -72,7 +72,9 @@ const AppRoutes = () => {
               <Route path="/covered-call-etfs" element={<CoveredCallETFs />} />
               <Route path="/closed-end-funds" element={<ClosedEndFunds />} />
               <Route path="/plans" element={<Plans />} />
-              <Route path="/resources" element={<Resources />} />
+              <Route path="/resources" element={<Navigate to="/resources-cc" replace />} />
+              <Route path="/resources-cc" element={<Resources />} />
+              <Route path="/resources-cef" element={<Resources />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/terms" element={<TermsOfService />} />
