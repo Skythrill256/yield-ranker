@@ -412,7 +412,7 @@ const CEFDetail = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {chartType !== "totalReturn" && (
+                {(chartType === "totalReturn" || chartType === "priceReturn") && (
                   <div className="flex gap-1 flex-wrap">
                     {timeframes.map((tf) => (
                       <Button
