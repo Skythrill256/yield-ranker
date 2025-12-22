@@ -27,7 +27,7 @@ import {
 import { ReturnsComparisonChart } from "@/components/ReturnsComparisonChart";
 import { fetchCEFData } from "@/services/cefData";
 
-type Timeframe = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "10Y" | "15Y" | "MAX";
+type Timeframe = "1M" | "3M" | "6M" | "1Y" | "3Y" | "5Y" | "10Y" | "20Y";
 type ChartType = "priceNAV" | "totalReturn" | "priceReturn";
 
 const CEFDetail = () => {
@@ -192,8 +192,8 @@ const CEFDetail = () => {
     );
   }
 
-  // Price/NAV chart timeframes - align with total returns (3Y, 5Y, 10Y, 15Y)
-  const timeframes: Timeframe[] = ["1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "15Y", "MAX"];
+  // Price/NAV chart timeframes - align with total returns (3Y, 5Y, 10Y, 20Y)
+  const timeframes: Timeframe[] = ["1M", "3M", "6M", "1Y", "3Y", "5Y", "10Y", "20Y"];
 
   // Calculate current return for display (using 12 Mo return as default)
   const currentReturn = cef.return12Mo;
@@ -545,7 +545,7 @@ const CEFDetail = () => {
               <ReturnsComparisonChart
                 ticker={symbol || ""}
                 allTickers={allCEFs.map(c => c.symbol)}
-                externalPeriod={selectedTimeframe === "10Y" ? "5Y" : selectedTimeframe === "15Y" ? "MAX" : selectedTimeframe as any}
+                externalPeriod={selectedTimeframe === "10Y" ? "5Y" : selectedTimeframe === "20Y" ? "MAX" : selectedTimeframe as any}
                 hidePeriodSelector={true}
               />
             )}
