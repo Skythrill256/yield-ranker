@@ -1185,8 +1185,8 @@ const AdminPanel = () => {
                       <h2 className="text-lg font-bold text-foreground mb-2">
                         Upload CC ETF Spreadsheet
                       </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Upload the Covered Call Option ETF Excel file to update all ETF data in the system.
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Upload Covered Call Option ETF data from Excel file.
                         <br /><br />
                         <strong>Required:</strong> Standard DTR format columns
                         <br />
