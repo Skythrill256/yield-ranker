@@ -39,14 +39,13 @@ const CEFDetail = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>("6M");
   const [chartType, setChartType] = useState<ChartType>("priceNAV");
   const [chartData, setChartData] = useState<any[]>([]);
-  const [isChartLoading, setIsChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const buildChartData = useCallback(async () => {
     if (!symbol || chartType !== "priceNAV") return;
 
-    setIsChartLoading(true);
+    // Don't show loading spinner when switching timeframes - keep existing data visible for smooth transition
     setChartError(null);
 
     try {
@@ -91,8 +90,6 @@ const CEFDetail = () => {
       console.error("[CEFDetail] Error building chart data:", error);
       setChartError("Unable to load chart data right now.");
       setChartData([]);
-    } finally {
-      setIsChartLoading(false);
     }
   }, [symbol, selectedTimeframe, chartType]);
 
@@ -457,11 +454,7 @@ const CEFDetail = () => {
 
             {chartType === "priceNAV" ? (
               <>
-                {isChartLoading ? (
-                  <div className="flex items-center justify-center h-96">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : chartError ? (
+                {chartError ? (
                   <div className="flex items-center justify-center h-96 text-muted-foreground">
                     <p>{chartError}</p>
                   </div>
