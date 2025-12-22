@@ -134,9 +134,10 @@ export async function calculateCEFZScore(
 
 /**
  * Calculate 6-Month NAV Trend (percentage change using adjusted close)
- * Formula: ((Current NAV / NAV 126 days ago) - 1) * 100
+ * Formula: ((Current NAV - NAV 126 days ago) / NAV 126 days ago) * 100
  * Uses exactly 126 trading days (not calendar months)
  * Requires adjusted NAV from Tiingo (adj_close) which accounts for distributions
+ * Example: (36.27 - 35.79) / 35.79 * 100 = 1.3%
  */
 export async function calculateNAVTrend6M(
   navSymbol: string | null
@@ -199,9 +200,10 @@ export async function calculateNAVTrend6M(
 
 /**
  * Calculate 12-Month NAV Trend (percentage change using adjusted close)
- * Formula: ((Current NAV / NAV 252 days ago) - 1) * 100
+ * Formula: ((Current NAV - NAV 252 days ago) / NAV 252 days ago) * 100
  * Uses exactly 252 trading days (not calendar year)
  * Requires adjusted NAV from Tiingo (adj_close) which accounts for distributions
+ * Example: (36.27 - 31.96) / 31.96 * 100 = 13.48%
  */
 export async function calculateNAVReturn12M(
   navSymbol: string | null
