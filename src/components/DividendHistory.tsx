@@ -281,9 +281,9 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
 
   const chartData = useMemo(() => {
     // Determine how many years to show based on available data
-    // Show 15 years if available, otherwise 10 years, otherwise all available
+    // Show 20 years if available, otherwise 10 years, otherwise all available
     const totalYears = yearlyDividends.length;
-    const yearsToShow = totalYears >= 15 ? 15 : totalYears >= 10 ? 10 : totalYears;
+    const yearsToShow = totalYears >= 20 ? 20 : totalYears >= 10 ? 10 : totalYears;
     
     // Get the last N years (most recent) and display oldest to newest (left to right)
     return yearlyDividends

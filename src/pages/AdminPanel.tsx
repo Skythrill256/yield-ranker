@@ -1569,13 +1569,19 @@ const AdminPanel = () => {
             {activeTab === "site-settings" && (
               <Card className="border-2 border-slate-200">
                 <div className="p-6 space-y-6">
-                  <div>
-                    <h2 className="text-lg font-bold text-foreground mb-2">
-                      Site Settings
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      Manage homepage content and site-wide settings
-                    </p>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-foreground mb-2">
+                        Site Settings
+                      </h2>
+                      <p className="text-sm text-muted-foreground">
+                        Manage homepage content and site-wide settings
+                      </p>
+                    </div>
+                    <Button onClick={handleSaveSettings} className="gap-2">
+                      <Upload className="w-4 h-4" />
+                      Save Settings
+                    </Button>
                   </div>
 
                   {settingsLoading ? (
@@ -1684,12 +1690,6 @@ const AdminPanel = () => {
                           </div>
                         ))}
 
-                      <div className="flex justify-end pt-4 border-t">
-                        <Button onClick={handleSaveSettings} className="gap-2">
-                          <Upload className="w-4 h-4" />
-                          Save Settings
-                        </Button>
-                      </div>
                     </div>
                   )}
                 </div>
