@@ -1640,7 +1640,12 @@ const AdminPanel = () => {
 
                       {/* Other settings */}
                       {siteSettings
-                        .filter((s) => !s.key.startsWith("guest_message_") && !s.key.startsWith("premium_message_"))
+                        .filter((s) => 
+                          !s.key.startsWith("guest_message_") && 
+                          !s.key.startsWith("premium_message_") &&
+                          s.key !== "guest_message" &&
+                          s.key !== "premium_message"
+                        )
                         .map((setting) => (
                           <div key={setting.key} className="space-y-2">
                             <label className="block text-sm font-medium text-foreground">
