@@ -280,9 +280,14 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
   }, [getFilteredDividends]);
 
   const chartData = useMemo(() => {
-    // Get the last 5 years (most recent) and display oldest to newest (left to right)
+    // Determine how many years to show based on available data
+    // Show 15 years if available, otherwise 10 years, otherwise all available
+    const totalYears = yearlyDividends.length;
+    const yearsToShow = totalYears >= 15 ? 15 : totalYears >= 10 ? 10 : totalYears;
+    
+    // Get the last N years (most recent) and display oldest to newest (left to right)
     return yearlyDividends
-      .slice(-5)
+      .slice(-yearsToShow)
       .map(y => {
         const total = typeof y.total === 'number' && !isNaN(y.total) && isFinite(y.total) && y.total > 0
           ? Number(y.total.toFixed(4))
