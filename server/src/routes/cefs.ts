@@ -177,12 +177,17 @@ export async function calculateNAVTrend6M(
     if (!currentRecord || !past126Record) return null;
 
     // Use adjusted close for accuracy (handles splits/dividends/distributions)
-    const currentNav = currentRecord.adj_close ?? currentRecord.close;
-    const past126Nav = past126Record.adj_close ?? past126Record.close;
+    // MUST use adj_close (adjusted NAV) - this is critical for accurate calculations
+    const currentNav = currentRecord.adj_close;
+    const past126Nav = past126Record.adj_close;
 
-    if (!currentNav || !past126Nav || past126Nav <= 0) return null;
+    if (!currentNav || !past126Nav || past126Nav <= 0) {
+      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: missing adj_close data (current=${currentNav}, past126=${past126Nav})`);
+      return null;
+    }
 
-    // Calculate percentage change: ((Current - Past) / Past) * 100
+    // Calculate percentage change: ((Current NAV - NAV 126 days ago) / NAV 126 days ago) * 100
+    // Example: (36.27 - 35.79) / 35.79 * 100 = 1.3%
     const trend = ((currentNav - past126Nav) / past126Nav) * 100;
 
     // Sanity check
@@ -243,12 +248,17 @@ export async function calculateNAVReturn12M(
     if (!currentRecord || !past252Record) return null;
 
     // Use adjusted close for accuracy (handles splits/dividends/distributions)
-    const currentNav = currentRecord.adj_close ?? currentRecord.close;
-    const past252Nav = past252Record.adj_close ?? past252Record.close;
+    // MUST use adj_close (adjusted NAV) - this is critical for accurate calculations
+    const currentNav = currentRecord.adj_close;
+    const past252Nav = past252Record.adj_close;
 
-    if (!currentNav || !past252Nav || past252Nav <= 0) return null;
+    if (!currentNav || !past252Nav || past252Nav <= 0) {
+      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: missing adj_close data (current=${currentNav}, past252=${past252Nav})`);
+      return null;
+    }
 
-    // Calculate percentage change: ((Current - Past) / Past) * 100
+    // Calculate percentage change: ((Current NAV - NAV 252 days ago) / NAV 252 days ago) * 100
+    // Example: (36.27 - 31.96) / 31.96 * 100 = 13.48%
     const trend = ((currentNav - past252Nav) / past252Nav) * 100;
 
     // Sanity check
