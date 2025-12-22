@@ -36,6 +36,8 @@ const Contact = () => {
             <p><strong>Message:</strong></p>
             <p>${formData.message.replace(/\n/g, "<br>")}</p>
           `,
+          name: formData.name,
+          email: formData.email,
         }),
       });
 

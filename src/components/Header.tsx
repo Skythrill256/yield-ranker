@@ -54,11 +54,11 @@ export const Header = () => {
   };
 
   // Context-aware navbar based on selected category
-  // When CEF is selected: show "Closed End Funds Docs"
-  // When CC is selected: show "Covered Call Option ETFs Docs"
+  // When CEF is selected: show "Closed End Funds"
+  // When CC is selected: show "Covered Call Option ETFs"
   const docsButton = currentCategory === "cef"
-    ? { label: "Closed End Funds Docs", path: "/closed-end-funds" }
-    : { label: "Covered Call Option ETFs Docs", path: "/covered-call-etfs" };
+    ? { label: "Closed End Funds", path: "/closed-end-funds" }
+    : { label: "Covered Call Option ETFs", path: "/covered-call-etfs" };
 
   // Logo should navigate to the appropriate table based on selected category
   const logoPath = currentCategory === "cef" ? "/cef" : "/";

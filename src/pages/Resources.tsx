@@ -85,63 +85,8 @@ const Resources = () => {
   ];
 
   // Closed End Fund Resources
-  const cefResources: Resource[] = [
-    {
-      id: "cef-1",
-      title: "CEF Connect",
-      description:
-        "Comprehensive database and analysis tools for closed-end funds, including premium/discount tracking and distribution history",
-      url: "https://www.cefconnect.com/",
-      type: "tool",
-      source: "CEF Connect",
-      featured: true,
-      category: "cef",
-    },
-    {
-      id: "cef-2",
-      title: "Morningstar CEF Center",
-      description:
-        "In-depth research and analysis on closed-end funds, including performance metrics and fund manager insights",
-      url: "https://www.morningstar.com/",
-      type: "article",
-      source: "Morningstar",
-      featured: true,
-      category: "cef",
-    },
-    {
-      id: "cef-3",
-      title: "Nuveen CEF Education",
-      description:
-        "Educational resources on closed-end fund investing, including strategies for income generation and portfolio management",
-      url: "https://www.nuveen.com/",
-      type: "article",
-      source: "Nuveen",
-      featured: true,
-      category: "cef",
-    },
-    {
-      id: "cef-4",
-      title: "BlackRock CEF Insights",
-      description:
-        "Market insights and analysis on closed-end funds, including premium/discount trends and distribution strategies",
-      url: "https://www.blackrock.com/",
-      type: "article",
-      source: "BlackRock",
-      featured: true,
-      category: "cef",
-    },
-    {
-      id: "cef-5",
-      title: "Dividends and Total Returns",
-      description:
-        "Comprehensive data and analysis on closed-end fund dividends, total returns, and premium/discount metrics",
-      url: "https://www.dividendsandtotalreturns.com/",
-      type: "tool",
-      source: "Dividends and Total Returns",
-      featured: true,
-      category: "cef",
-    },
-  ];
+  // Currently empty - CEF resources will be added later
+  const cefResources: Resource[] = [];
 
   // Filter resources based on selected category
   const allResources = currentCategory === "cef" ? cefResources : ccResources;
