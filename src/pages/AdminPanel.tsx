@@ -1183,17 +1183,14 @@ const AdminPanel = () => {
                   <div className="p-6 space-y-6">
                     <div>
                       <h2 className="text-lg font-bold text-foreground mb-2">
-                        Upload DTR Spreadsheet
+                        Upload CC ETF Spreadsheet
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        Upload the DTR Excel file (e.g., DTR 11-16-25.xlsx) to
-                        update all ETF data in the system. The file should have a
-                        Sheet1 with the standard DTR format.
+                        Upload the Covered Call Option ETF Excel file to update all ETF data in the system.
                         <br /><br />
-                        <strong>Dividend Synchronization:</strong> Include a "Div" column to update current dividend amounts.
-                        This will prioritize your value on the dashboard immediately.
-                        Tiingo sync will later "fill in" official dates and split factors while preserving your manual amount.
-                        If the most recent dividend in the system is older than 25 days, a new future dividend record will be created for the next period.
+                        <strong>Required:</strong> Standard DTR format columns
+                        <br />
+                        <strong>Optional:</strong> "Div" column to update current dividend amounts
                       </p>
                     </div>
 
