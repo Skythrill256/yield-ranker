@@ -109,8 +109,9 @@ const Index = () => {
     const loadSiteSettings = async () => {
       try {
         const settings = await getSiteSettings();
-        const guestMsgSetting = settings.find((s) => s.key === "guest_message");
-        const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
+        // Load CC category-specific messages
+        const guestMsgSetting = settings.find((s) => s.key === "guest_message_cc");
+        const premiumMsgSetting = settings.find((s) => s.key === "premium_message_cc");
         // Always set values, even if empty (so empty strings are preserved)
         setGuestMessage(guestMsgSetting?.value || "");
         setPremiumMessage(premiumMsgSetting?.value || "");

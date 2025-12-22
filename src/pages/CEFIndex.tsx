@@ -129,8 +129,9 @@ const Index = () => {
     const loadSiteSettings = async () => {
       try {
         const settings = await getSiteSettings();
-        const guestMsgSetting = settings.find((s) => s.key === "guest_message");
-        const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
+        // Load CEF category-specific messages
+        const guestMsgSetting = settings.find((s) => s.key === "guest_message_cef");
+        const premiumMsgSetting = settings.find((s) => s.key === "premium_message_cef");
         setGuestMessage(guestMsgSetting?.value || "");
         setPremiumMessage(premiumMsgSetting?.value || "");
       } catch (error) {

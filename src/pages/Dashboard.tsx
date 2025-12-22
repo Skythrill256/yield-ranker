@@ -214,6 +214,25 @@ export default function Dashboard() {
     }
   };
 
+  // Load site settings function - can be called with different categories
+  const loadSiteSettings = async (category: "cc" | "cef" = "cc") => {
+    try {
+      const { getSiteSettings } = await import("@/services/admin");
+      const settings = await getSiteSettings();
+      // Load category-specific messages
+      const guestMsgSetting = settings.find((s) => s.key === `guest_message_${category}`);
+      const premiumMsgSetting = settings.find((s) => s.key === `premium_message_${category}`);
+      // Always set values, even if empty (so empty strings are preserved)
+      setGuestMessage(guestMsgSetting?.value || "");
+      setPremiumMessage(premiumMsgSetting?.value || "");
+    } catch (error) {
+      console.error("Failed to load site settings:", error);
+      // Set empty strings on error so UI doesn't break
+      setGuestMessage("");
+      setPremiumMessage("");
+    }
+  };
+
   // Load ETF data and site settings on initial mount only
   useEffect(() => {
     const loadETFData = async (showLoading: boolean = true) => {
@@ -260,28 +279,16 @@ export default function Dashboard() {
       }
     };
 
-    const loadSiteSettings = async () => {
-      try {
-        const { getSiteSettings } = await import("@/services/admin");
-        const settings = await getSiteSettings();
-        const guestMsgSetting = settings.find((s) => s.key === "guest_message");
-        const premiumMsgSetting = settings.find((s) => s.key === "premium_message");
-        // Always set values, even if empty (so empty strings are preserved)
-        setGuestMessage(guestMsgSetting?.value || "");
-        setPremiumMessage(premiumMsgSetting?.value || "");
-      } catch (error) {
-        console.error("Failed to load site settings:", error);
-        // Set empty strings on error so UI doesn't break
-        setGuestMessage("");
-        setPremiumMessage("");
-      }
-    };
-
     loadETFData();
     loadCEFData();
-    loadSiteSettings();
+    loadSiteSettings(selectedCategory);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload site settings when category changes
+  useEffect(() => {
+    loadSiteSettings(selectedCategory);
+  }, [selectedCategory]);
 
   // Load CEF data when category changes to CEF
   useEffect(() => {

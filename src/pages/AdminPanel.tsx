@@ -63,6 +63,12 @@ const formatDate = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+// Define categories - easily extensible for new categories
+const CATEGORIES = [
+  { id: "cc", name: "Covered Call Option ETFs", label: "CC ETFs" },
+  { id: "cef", name: "Closed End Funds", label: "CEF" },
+] as const;
+
 const AdminPanel = () => {
   const { user, profile, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -220,13 +226,15 @@ const AdminPanel = () => {
       filteredData.forEach((setting) => {
         values[setting.key] = setting.value;
       });
-      // Ensure guest_message and premium_message exist in values (even if empty)
-      if (!values["guest_message"]) {
-        values["guest_message"] = "";
-      }
-      if (!values["premium_message"]) {
-        values["premium_message"] = "";
-      }
+      // Ensure category-specific messages exist in values (even if empty)
+      CATEGORIES.forEach((category) => {
+        if (!values[`guest_message_${category.id}`]) {
+          values[`guest_message_${category.id}`] = "";
+        }
+        if (!values[`premium_message_${category.id}`]) {
+          values[`premium_message_${category.id}`] = "";
+        }
+      });
       setSettingsValues(values);
     } catch (error) {
       toast({
@@ -241,20 +249,24 @@ const AdminPanel = () => {
 
   const handleSaveSettings = async () => {
     try {
-      // Always save guest_message and premium_message, even if empty
-      const messagesToSave = [
-        { key: "guest_message", value: settingsValues["guest_message"] || "" },
-        { key: "premium_message", value: settingsValues["premium_message"] || "" },
-      ];
+      // Always save category-specific messages, even if empty
+      const messagesToSave: Array<{ key: string; value: string }> = [];
+      CATEGORIES.forEach((category) => {
+        messagesToSave.push(
+          { key: `guest_message_${category.id}`, value: settingsValues[`guest_message_${category.id}`] || "" },
+          { key: `premium_message_${category.id}`, value: settingsValues[`premium_message_${category.id}`] || "" }
+        );
+      });
 
       // Save message settings first
       for (const { key, value } of messagesToSave) {
         await updateSiteSetting(key, value, profile?.id ?? null);
       }
 
-      // Save all other settings
+      // Save all other settings (excluding category-specific messages)
+      const messageKeys = new Set(messagesToSave.map(m => m.key));
       for (const [key, value] of Object.entries(settingsValues)) {
-        if (key !== "guest_message" && key !== "premium_message") {
+        if (!messageKeys.has(key)) {
           await updateSiteSetting(key, value as string, profile?.id ?? null);
         }
       }
@@ -1575,51 +1587,60 @@ const AdminPanel = () => {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      {/* Guest Message - Always show */}
-                      <div className="space-y-2 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
-                        <label className="block text-sm font-semibold text-foreground">
-                          Message for Guests (without account)
-                        </label>
-                        <Input
-                          value={settingsValues["guest_message"] || ""}
-                          onChange={(event) =>
-                            setSettingsValues((prev) => ({
-                              ...prev,
-                              guest_message: event.target.value,
-                            }))
-                          }
-                          placeholder="Enter message to display for guests above the chart"
-                          className="border-2"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          This message appears above the chart for users without an account
-                        </p>
-                      </div>
+                      {/* Category-specific messages */}
+                      {CATEGORIES.map((category) => (
+                        <div key={category.id} className="space-y-4 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
+                          <h3 className="text-base font-bold text-foreground border-b border-slate-300 pb-2">
+                            {category.name}
+                          </h3>
+                          
+                          {/* Guest Message for this category */}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-foreground">
+                              Message for Guests (without account)
+                            </label>
+                            <Input
+                              value={settingsValues[`guest_message_${category.id}`] || ""}
+                              onChange={(event) =>
+                                setSettingsValues((prev) => ({
+                                  ...prev,
+                                  [`guest_message_${category.id}`]: event.target.value,
+                                }))
+                              }
+                              placeholder={`Enter message to display for guests above the ${category.label} chart`}
+                              className="border-2"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              This message appears above the {category.label} chart for users without an account
+                            </p>
+                          </div>
 
-                      {/* Premium Message - Always show */}
-                      <div className="space-y-2 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
-                        <label className="block text-sm font-semibold text-foreground">
-                          Premium Banner Message
-                        </label>
-                        <Input
-                          value={settingsValues["premium_message"] || ""}
-                          onChange={(event) =>
-                            setSettingsValues((prev) => ({
-                              ...prev,
-                              premium_message: event.target.value,
-                            }))
-                          }
-                          placeholder="Enter message to display for premium subscribers above the chart"
-                          className="border-2"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          This message appears above the chart for premium subscribers
-                        </p>
-                      </div>
+                          {/* Premium Message for this category */}
+                          <div className="space-y-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                            <label className="block text-sm font-semibold text-foreground">
+                              Premium Banner Message
+                            </label>
+                            <Input
+                              value={settingsValues[`premium_message_${category.id}`] || ""}
+                              onChange={(event) =>
+                                setSettingsValues((prev) => ({
+                                  ...prev,
+                                  [`premium_message_${category.id}`]: event.target.value,
+                                }))
+                              }
+                              placeholder={`Enter message to display for premium subscribers above the ${category.label} chart`}
+                              className="border-2"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              This message appears above the {category.label} chart for premium subscribers
+                            </p>
+                          </div>
+                        </div>
+                      ))}
 
                       {/* Other settings */}
                       {siteSettings
-                        .filter((s) => s.key !== "guest_message" && s.key !== "premium_message")
+                        .filter((s) => !s.key.startsWith("guest_message_") && !s.key.startsWith("premium_message_"))
                         .map((setting) => (
                           <div key={setting.key} className="space-y-2">
                             <label className="block text-sm font-medium text-foreground">
