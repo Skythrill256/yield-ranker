@@ -85,8 +85,52 @@ const Resources = () => {
   ];
 
   // Closed End Fund Resources
-  // Currently empty - CEF resources will be added later
-  const cefResources: Resource[] = [];
+  const cefResources: Resource[] = [
+    {
+      id: "cef-1",
+      title: "Dividends and Total Returns Instruction Video 1",
+      description:
+        "Instructional video on understanding dividends and total returns for closed-end fund investors",
+      url: "#", // TODO: Add video URL when available
+      type: "video",
+      source: "Dividends and Total Returns",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-2",
+      title: "CEF Connect",
+      description:
+        "Comprehensive database and research platform for closed-end fund data, premiums, discounts, and distribution information",
+      url: "https://www.cefconnect.com/",
+      type: "tool",
+      source: "CEF Connect",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-3",
+      title: "CEF Advisors",
+      description:
+        "Specialized CEF investment management, research, and data services with over 35 years of expertise in closed-end funds, BDCs, and interval funds",
+      url: "https://cefdata.com/",
+      type: "tool",
+      source: "CEF Advisors",
+      featured: true,
+      category: "cef",
+    },
+    {
+      id: "cef-4",
+      title: "Seeking Alpha",
+      description:
+        "Financial research platform providing in-depth analysis, market insights, and investment strategies for closed-end funds and other securities",
+      url: "https://seekingalpha.com/",
+      type: "article",
+      source: "Seeking Alpha",
+      featured: true,
+      category: "cef",
+    },
+  ];
 
   // Filter resources based on selected category
   const allResources = currentCategory === "cef" ? cefResources : ccResources;
