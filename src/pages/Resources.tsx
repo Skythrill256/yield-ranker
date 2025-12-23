@@ -125,7 +125,7 @@ const Resources = () => {
       description:
         "Financial research platform providing in-depth analysis, market insights, and investment strategies for closed-end funds and other securities",
       url: "https://seekingalpha.com/",
-      type: "article",
+      type: "tool",
       source: "Seeking Alpha",
       featured: true,
       category: "cef",
