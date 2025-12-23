@@ -14,7 +14,8 @@ const CEF_CACHE_TIMESTAMP_KEY = "cef-data-cache-timestamp";
 const CEF_CACHE_VERSION_KEY = "cef-data-cache-version";
 // Increment this version when cache needs to be invalidated (e.g., after data filter changes)
 // v2: Fixed CEF filter to only show 12 actual CEFs instead of 141 records with nav_symbol
-const CURRENT_CACHE_VERSION = "v2";
+// v3: Fixed NAV trend calculations (6M/12M) to use calendar months and close price (not trading days/adj_close)
+const CURRENT_CACHE_VERSION = "v3";
 // Cache duration: 24 hours - data is updated daily from backend
 // Frontend fetches once and keeps cached data until manually refreshed or cache expires
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours (same as ETFs)

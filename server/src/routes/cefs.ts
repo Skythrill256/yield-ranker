@@ -133,11 +133,11 @@ export async function calculateCEFZScore(
 }
 
 /**
- * Calculate 6-Month NAV Trend (percentage change using adjusted close)
- * Formula: ((Current NAV - NAV 126 days ago) / NAV 126 days ago) * 100
- * Uses exactly 126 trading days (not calendar months)
- * Requires adjusted NAV from Tiingo (adj_close) which accounts for distributions
- * Example: (36.27 - 35.79) / 35.79 * 100 = 1.3%
+ * Calculate 6-Month NAV Trend (percentage change using close price)
+ * Formula: ((Current NAV - NAV 6 calendar months ago) / NAV 6 calendar months ago) * 100
+ * Uses exactly 6 calendar months (not trading days)
+ * Uses close price (not adj_close) to match CEO's calculation from chart data
+ * Example: (36.50 - 35.79) / 35.79 * 100 = 1.9%
  */
 export async function calculateNAVTrend6M(
   navSymbol: string | null
@@ -145,12 +145,10 @@ export async function calculateNAVTrend6M(
   if (!navSymbol) return null;
 
   try {
-    // Get enough history: need at least 126 trading days + buffer
-    // 126 trading days ≈ 6 months, but we need buffer for weekends/holidays
-    // Fetch ~1 year to ensure we have enough trading days
+    // Get enough history: need at least 6 calendar months + buffer
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 1); // Get 1 year of data
+    startDate.setMonth(endDate.getMonth() - 7); // Get 7 months to ensure we have data
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
@@ -160,9 +158,8 @@ export async function calculateNAVTrend6M(
       endDateStr
     );
 
-    // Need at least 127 records (126 days back + current day)
-    if (navData.length < 127) {
-      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 127 records)`);
+    if (navData.length === 0) {
+      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: no data available`);
       return null;
     }
 
@@ -171,24 +168,36 @@ export async function calculateNAVTrend6M(
 
     // Get current NAV (last record)
     const currentRecord = navData[navData.length - 1];
-    // Get NAV from 126 trading days ago
-    const past126Record = navData[navData.length - 1 - 126];
+    if (!currentRecord) return null;
 
-    if (!currentRecord || !past126Record) return null;
+    // Calculate date exactly 6 calendar months ago
+    const sixMonthsAgo = new Date(endDate);
+    sixMonthsAgo.setMonth(endDate.getMonth() - 6);
+    const sixMonthsAgoStr = formatDate(sixMonthsAgo);
 
-    // Use adjusted close for accuracy (handles splits/dividends/distributions)
-    // MUST use adj_close (adjusted NAV) - this is critical for accurate calculations
-    const currentNav = currentRecord.adj_close;
-    const past126Nav = past126Record.adj_close;
+    // Find NAV record on or before 6 months ago (get closest available date)
+    const sixMonthsRecords = navData.filter(r => r.date <= sixMonthsAgoStr);
+    const past6MRecord = sixMonthsRecords.length > 0 
+      ? sixMonthsRecords[sixMonthsRecords.length - 1] 
+      : navData.find(r => r.date >= sixMonthsAgoStr);
 
-    if (!currentNav || !past126Nav || past126Nav <= 0) {
-      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: missing adj_close data (current=${currentNav}, past126=${past126Nav})`);
+    if (!past6MRecord) {
+      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: no data available for 6 months ago (${sixMonthsAgoStr})`);
       return null;
     }
 
-    // Calculate percentage change: ((Current NAV - NAV 126 days ago) / NAV 126 days ago) * 100
-    // Example: (36.27 - 35.79) / 35.79 * 100 = 1.3%
-    const trend = ((currentNav - past126Nav) / past126Nav) * 100;
+    // Use close price (not adj_close) to match CEO's calculation from chart
+    const currentNav = currentRecord.close ?? currentRecord.adj_close;
+    const past6MNav = past6MRecord.close ?? past6MRecord.adj_close;
+
+    if (!currentNav || !past6MNav || past6MNav <= 0) {
+      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past6M=${past6MNav})`);
+      return null;
+    }
+
+    // Calculate percentage change: ((Current NAV - NAV 6 months ago) / NAV 6 months ago) * 100
+    // Example: (36.50 - 35.79) / 35.79 * 100 = 1.9%
+    const trend = ((currentNav - past6MNav) / past6MNav) * 100;
 
     // Sanity check
     if (!isFinite(trend) || trend < -99 || trend > 10000) return null;
@@ -204,11 +213,11 @@ export async function calculateNAVTrend6M(
 }
 
 /**
- * Calculate 12-Month NAV Trend (percentage change using adjusted close)
- * Formula: ((Current NAV - NAV 252 days ago) / NAV 252 days ago) * 100
- * Uses exactly 252 trading days (not calendar year)
- * Requires adjusted NAV from Tiingo (adj_close) which accounts for distributions
- * Example: (36.27 - 31.96) / 31.96 * 100 = 13.48%
+ * Calculate 12-Month NAV Trend (percentage change using close price)
+ * Formula: ((Current NAV - NAV 12 calendar months ago) / NAV 12 calendar months ago) * 100
+ * Uses exactly 12 calendar months (not trading days)
+ * Uses close price (not adj_close) to match CEO's calculation from chart data
+ * Example: (36.50 - 31.96) / 31.96 * 100 = 14.2%
  */
 export async function calculateNAVReturn12M(
   navSymbol: string | null
@@ -216,12 +225,10 @@ export async function calculateNAVReturn12M(
   if (!navSymbol) return null;
 
   try {
-    // Get enough history: need at least 252 trading days + buffer
-    // 252 trading days ≈ 1 year, but we need buffer for weekends/holidays
-    // Fetch ~2 years to ensure we have enough trading days
+    // Get enough history: need at least 12 calendar months + buffer
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 2); // Get 2 years of data
+    startDate.setFullYear(endDate.getFullYear() - 2); // Get 2 years to ensure we have data
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
@@ -231,9 +238,8 @@ export async function calculateNAVReturn12M(
       endDateStr
     );
 
-    // Need at least 253 records (252 days back + current day)
-    if (navData.length < 253) {
-      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 253 records)`);
+    if (navData.length === 0) {
+      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: no data available`);
       return null;
     }
 
@@ -242,24 +248,36 @@ export async function calculateNAVReturn12M(
 
     // Get current NAV (last record)
     const currentRecord = navData[navData.length - 1];
-    // Get NAV from 252 trading days ago
-    const past252Record = navData[navData.length - 1 - 252];
+    if (!currentRecord) return null;
 
-    if (!currentRecord || !past252Record) return null;
+    // Calculate date exactly 12 calendar months ago
+    const twelveMonthsAgo = new Date(endDate);
+    twelveMonthsAgo.setMonth(endDate.getMonth() - 12);
+    const twelveMonthsAgoStr = formatDate(twelveMonthsAgo);
 
-    // Use adjusted close for accuracy (handles splits/dividends/distributions)
-    // MUST use adj_close (adjusted NAV) - this is critical for accurate calculations
-    const currentNav = currentRecord.adj_close;
-    const past252Nav = past252Record.adj_close;
+    // Find NAV record on or before 12 months ago (get closest available date)
+    const twelveMonthsRecords = navData.filter(r => r.date <= twelveMonthsAgoStr);
+    const past12MRecord = twelveMonthsRecords.length > 0 
+      ? twelveMonthsRecords[twelveMonthsRecords.length - 1] 
+      : navData.find(r => r.date >= twelveMonthsAgoStr);
 
-    if (!currentNav || !past252Nav || past252Nav <= 0) {
-      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: missing adj_close data (current=${currentNav}, past252=${past252Nav})`);
+    if (!past12MRecord) {
+      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: no data available for 12 months ago (${twelveMonthsAgoStr})`);
       return null;
     }
 
-    // Calculate percentage change: ((Current NAV - NAV 252 days ago) / NAV 252 days ago) * 100
-    // Example: (36.27 - 31.96) / 31.96 * 100 = 13.48%
-    const trend = ((currentNav - past252Nav) / past252Nav) * 100;
+    // Use close price (not adj_close) to match CEO's calculation from chart
+    const currentNav = currentRecord.close ?? currentRecord.adj_close;
+    const past12MNav = past12MRecord.close ?? past12MRecord.adj_close;
+
+    if (!currentNav || !past12MNav || past12MNav <= 0) {
+      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past12M=${past12MNav})`);
+      return null;
+    }
+
+    // Calculate percentage change: ((Current NAV - NAV 12 months ago) / NAV 12 months ago) * 100
+    // Example: (36.50 - 31.96) / 31.96 * 100 = 14.2%
+    const trend = ((currentNav - past12MNav) / past12MNav) * 100;
 
     // Sanity check
     if (!isFinite(trend) || trend < -99 || trend > 10000) return null;
