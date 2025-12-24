@@ -244,7 +244,22 @@ export const ETFTable = ({
                 </Tooltip>
               </th>
               <th className="h-7 px-1.5 sm:px-2 text-left sticky left-[28px] z-30 bg-slate-50 border-r border-slate-200 text-xs shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]">
-                <SortButton field="symbol" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Symbol</SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton field="symbol" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                        <span className="font-bold">Symbol</span>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Click to see charts</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-left bg-slate-50 text-xs min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px]">
                 <SortButton field="issuer" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Issuer</SortButton>
@@ -376,23 +391,12 @@ export const ETFTable = ({
                   data-symbol-cell
                   className="py-1 px-1.5 sm:px-2 align-middle sticky left-[28px] z-10 bg-white border-r border-slate-200 text-primary text-xs transition-all shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]"
                 >
-                  <Tooltip delayDuration={200}>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => navigate(`/etf/${etf.symbol}`)}
-                        className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap font-bold"
-                      >
-                        {etf.symbol}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="top"
-                      sideOffset={8}
-                      className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
-                    >
-                      <p>Click to see charts</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <button
+                    onClick={() => navigate(`/etf/${etf.symbol}`)}
+                    className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap font-bold"
+                  >
+                    {etf.symbol}
+                  </button>
                 </td>
                 <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px] truncate">
                   {etf.issuer}
