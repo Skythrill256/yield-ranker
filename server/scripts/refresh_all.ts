@@ -584,7 +584,7 @@ async function main() {
 
     console.log(`\n📊 Filtered tickers:`);
     console.log(`   - Covered Call ETFs to process: ${tickers.length}`);
-    console.log(`   - CEFs excluded (have nav_symbol - use refresh:cefs script)`);
+    console.log(`   - CEFs excluded (have nav_symbol - will be processed by refresh:cef script)`);
   }
 
   console.log(`\nFound ${tickers.length} ticker(s) to refresh\n`);

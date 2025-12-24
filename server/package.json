@@ -27,7 +27,7 @@
     "recalc:metrics": "tsx scripts/recalc_metrics.ts",
     "sync:volatility": "tsx scripts/sync_dividend_volatility.ts",
     "cron:hourly": "tsx scripts/hourly_sync.ts",
-    "refresh:all": "tsx scripts/refresh_all.ts && tsx scripts/refresh_cefs.ts",
+    "refresh:all": "tsx scripts/refresh_all.ts && tsx scripts/refresh_cef.ts",
     "refresh:ticker": "tsx scripts/refresh_all.ts --ticker",
     "refresh:cefs": "tsx scripts/refresh_cefs.ts",
     "refresh:cefs:ticker": "tsx scripts/refresh_cefs.ts --ticker",
