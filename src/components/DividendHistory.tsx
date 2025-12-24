@@ -182,18 +182,19 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       frequencyChanged = uniqueFrequencies.size > 1;
     }
 
-    // Do NOT calculate normalized rate when frequency changed - just show actual payments
+    // Calculate normalized rate when frequency changed to show comparison line
     // Use actual payment frequency (numPayments) when available, otherwise detect from intervals
     const chartData = dividends.map((div, index, array) => {
+      let normalizedRate: number | null = null;
+
       // Always use adjAmount for dividend history charts (no fallback to amount)
       // This ensures accuracy and consistency with split-adjusted amounts
       const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
         ? div.adjAmount
         : 0;
 
-      // Do NOT calculate normalized rate when frequency changed - removed per user request
-      // Previously calculated normalized rate here, but now just show actual payments
-      if (false && frequencyChanged && amount > 0) {
+      // Calculate normalized rate when frequency changed to show comparison
+      if (frequencyChanged && amount > 0) {
         // Determine payment frequency:
         // 1. Use numPayments if provided (for CEFs)
         // 2. Otherwise detect from days between payments
@@ -250,7 +251,11 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         ? Number(amount.toFixed(4))
         : 0;
       
-      // Do NOT include normalizedRate when frequency changed - removed per user request
+      // Ensure normalizedRate is a valid number or null
+      const validNormalizedRate = normalizedRate !== null && typeof normalizedRate === 'number' && !isNaN(normalizedRate) && isFinite(normalizedRate)
+        ? Number(normalizedRate.toFixed(4))
+        : null;
+
       return {
         exDate: div.exDate,
         amount: validAmount,
@@ -263,7 +268,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         frequency: div.frequency,
         description: div.description,
         currency: div.currency,
-        normalizedRate: null, // Always null - normalization line removed when frequency changed
+        normalizedRate: validNormalizedRate,
       };
     }).filter(item => {
       // Filter out items with invalid amounts or NaN values
@@ -480,12 +485,102 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         <div className="mb-4 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">
             {individualChartData.frequencyChanged
-              ? `Dividend History: Individual Adjusted Dividends`
+              ? `Dividend History: Individual Adjusted Dividends vs. Normalized Rate`
               : `Dividend Payments by Ex-Date`}
           </h3>
           <div className="relative">
             <ResponsiveContainer width="100%" height={210} className="sm:h-[315px] landscape:h-[245px] landscape:sm:h-[280px]">
-              {(
+              {individualChartData.frequencyChanged ? (
+                <ComposedChart
+                  data={individualChartData.chartData.filter(d => d.amount > 0 && !isNaN(d.amount) && isFinite(d.amount))}
+                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis
+                    dataKey="exDate"
+                    stroke="#94a3b8"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => {
+                      if (!value) return '';
+                      try {
+                        return new Date(value).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+                      } catch {
+                        return '';
+                      }
+                    }}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => {
+                      if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                        return `$${value.toFixed(2)}`;
+                      }
+                      return '';
+                    }}
+                    width={50}
+                    domain={[0, 'dataMax']}
+                    allowDataOverflow={false}
+                  />
+                  <RechartsTooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || !payload.length) return null;
+                      
+                      const data = payload[0]?.payload;
+                      if (!data) return null;
+                      
+                      const date = new Date(label);
+                      const exDateStr = `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })},${date.getFullYear()}`;
+                      
+                      const amount = payload.find(p => p.dataKey === 'amount')?.value;
+                      const normalizedRate = payload.find(p => p.dataKey === 'normalizedRate')?.value;
+                      
+                      const amountValue = typeof amount === 'number' ? amount : parseFloat(String(amount || 0));
+                      const normalizedValue = typeof normalizedRate === 'number' ? normalizedRate : parseFloat(String(normalizedRate || 0));
+                      
+                      return (
+                        <div
+                          style={{
+                            backgroundColor: "rgba(255, 255, 255, 0.98)",
+                            border: "none",
+                            borderRadius: "8px",
+                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                            padding: "8px 12px",
+                          }}
+                        >
+                          <div style={{ fontWeight: 500, marginBottom: '4px' }}>
+                            Ex-Date: {exDateStr}
+                          </div>
+                          {!isNaN(amountValue) && isFinite(amountValue) && (
+                            <div style={{ fontSize: '12px' }}>
+                              Actual Div: {amountValue.toFixed(4)}
+                            </div>
+                          )}
+                          {!isNaN(normalizedValue) && isFinite(normalizedValue) && normalizedValue > 0 && (
+                            <div style={{ fontSize: '12px', color: '#ef4444' }}>
+                              Normalized: {normalizedValue.toFixed(4)}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar dataKey="amount" fill="#93c5fd" radius={[2, 2, 0, 0]} name="Individual Payment Amount" minPointSize={3} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="normalizedRate" 
+                    stroke="#ef4444" 
+                    strokeWidth={2}
+                    dot={false}
+                    name="Normalized Rate"
+                    connectNulls={false}
+                  />
+                </ComposedChart>
+              ) : (
                 <BarChart
                   data={individualChartData.chartData.filter(d => d.amount > 0 && !isNaN(d.amount) && isFinite(d.amount))}
                   margin={{ top: 5, right: 10, left: 10, bottom: 5 }}

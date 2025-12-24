@@ -223,7 +223,7 @@ const ETFDetail = () => {
             className="mb-6 hover:bg-slate-100 hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Rankings
+            Back to Home Page
           </Button>
         </div>
 
