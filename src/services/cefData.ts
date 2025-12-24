@@ -32,11 +32,8 @@ export function clearCEFCache(): void {
 export async function fetchCEFData(): Promise<CEF[]> {
   try {
     // NO CACHING - Always fetch fresh data from database
-    const response = await fetch(`${API_URL}/api/cefs`, {
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    });
+    // Use timestamp query param for cache-busting (doesn't require CORS header)
+    const response = await fetch(`${API_URL}/api/cefs?t=${Date.now()}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch CEF data: ${response.statusText}`);
     }
@@ -58,12 +55,9 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
     const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
 
     try {
-      const response = await fetch(`${API_URL}/api/cefs`, {
+      // Use timestamp query param for cache-busting (doesn't require CORS header)
+      const response = await fetch(`${API_URL}/api/cefs?t=${Date.now()}`, {
         signal: controller.signal,
-        // Add cache-busting header to ensure fresh data
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
       });
       clearTimeout(timeoutId);
 
@@ -102,11 +96,8 @@ export async function fetchCEFDataWithMetadata(): Promise<CEFDataResponse> {
 export async function fetchSingleCEF(symbol: string): Promise<CEF | null> {
   try {
     // NO CACHING - Always fetch fresh data from database
-    const response = await fetch(`${API_URL}/api/cefs/${symbol}`, {
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    });
+    // Use timestamp query param for cache-busting (doesn't require CORS header)
+    const response = await fetch(`${API_URL}/api/cefs/${symbol}?t=${Date.now()}`);
     if (!response.ok) {
       if (response.status === 404) return null;
       throw new Error(`Failed to fetch CEF data: ${response.statusText}`);
@@ -135,11 +126,8 @@ export interface PriceNAVResponse {
 export async function fetchCEFPriceNAV(symbol: string, period: string = '1Y'): Promise<PriceNAVResponse> {
   try {
     // NO CACHING - Always fetch fresh chart data from database
-    const response = await fetch(`${API_URL}/api/cefs/${symbol}/price-nav?period=${period}`, {
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    });
+    // Use timestamp query param for cache-busting (doesn't require CORS header)
+    const response = await fetch(`${API_URL}/api/cefs/${symbol}/price-nav?period=${period}&t=${Date.now()}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch price/NAV data: ${response.statusText}`);
     }
