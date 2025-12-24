@@ -23,17 +23,22 @@ function calculateDividendHistory(dividends: DividendRecord[]): { result: string
     totalDividends: dividends.length,
     step1_filtering: {
       description: "Step 1: Filter to regular dividends only (exclude special dividends)",
-      allDividends: dividends.map(d => ({
-        exDate: d.ex_date.toISOString().split('T')[0],
-        divCash: d.div_cash,
-        adjAmount: d.adj_amount,
-        divType: d.div_type || 'null',
-        isRegular: !d.div_type || 
-                   d.div_type.toLowerCase().includes('regular') ||
-                   d.div_type.toLowerCase() === 'cash' ||
-                   d.div_type === '' ||
-                   !d.div_type.toLowerCase().includes('special')
-      })),
+      allDividends: dividends.map(d => {
+        const exDate = d.ex_date instanceof Date 
+          ? d.ex_date.toISOString().split('T')[0]
+          : new Date(d.ex_date).toISOString().split('T')[0];
+        return {
+          exDate,
+          divCash: Number(d.div_cash),
+          adjAmount: d.adj_amount !== null ? Number(d.adj_amount) : null,
+          divType: d.div_type || 'null',
+          isRegular: !d.div_type || 
+                     d.div_type.toLowerCase().includes('regular') ||
+                     d.div_type.toLowerCase() === 'cash' ||
+                     d.div_type === '' ||
+                     !d.div_type.toLowerCase().includes('special')
+        };
+      }),
       regularDividends: [] as any[],
       excludedDividends: [] as any[]
     },
