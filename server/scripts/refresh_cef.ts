@@ -75,7 +75,10 @@ function getDateDaysAgo(days: number): string {
   return date.toISOString().split("T")[0];
 }
 
-async function upsertPrices(ticker: string, prices: TiingoPriceData[]): Promise<number> {
+async function upsertPrices(
+  ticker: string,
+  prices: TiingoPriceData[]
+): Promise<number> {
   if (prices.length === 0) return 0;
 
   // Ensure ticker exists in etf_static (required for foreign key constraint)
@@ -87,18 +90,22 @@ async function upsertPrices(ticker: string, prices: TiingoPriceData[]): Promise<
 
   if (!existingTicker && !checkError) {
     // Try to insert a minimal record for NAV symbols
-    console.log(`    Creating ticker record for ${ticker} (required for foreign key)...`);
-    const { error: insertError } = await supabase
-      .from("etf_static")
-      .insert({
-        ticker: ticker.toUpperCase(),
-        name: `NAV Symbol: ${ticker}`,
-        description: `Auto-created for NAV price data`,
-      });
+    console.log(
+      `    Creating ticker record for ${ticker} (required for foreign key)...`
+    );
+    const { error: insertError } = await supabase.from("etf_static").insert({
+      ticker: ticker.toUpperCase(),
+      name: `NAV Symbol: ${ticker}`,
+      description: `Auto-created for NAV price data`,
+    });
 
     if (insertError) {
-      console.warn(`    ⚠ Could not create ticker record for ${ticker}: ${insertError.message}`);
-      console.warn(`    ⚠ Will skip inserting prices for ${ticker} to avoid foreign key error`);
+      console.warn(
+        `    ⚠ Could not create ticker record for ${ticker}: ${insertError.message}`
+      );
+      console.warn(
+        `    ⚠ Will skip inserting prices for ${ticker} to avoid foreign key error`
+      );
       return 0;
     } else {
       console.log(`    ✓ Created ticker record for ${ticker} (NAV symbol)`);
@@ -208,9 +215,9 @@ async function calculateNAVTrend6M(navSymbol: string): Promise<number | null> {
       return null;
     }
 
-    // Use close price (not adj_close) to match CEO's calculation from chart
-    const currentNav = currentRecord.close ?? currentRecord.adj_close;
-    const past6MNav = past6MRecord.close ?? past6MRecord.adj_close;
+    // Use adjusted close price (adj_close) for NAV trends to account for distributions
+    const currentNav = currentRecord.adj_close ?? currentRecord.close;
+    const past6MNav = past6MRecord.adj_close ?? past6MRecord.close;
 
     if (!currentNav || !past6MNav || past6MNav <= 0) {
       console.log(
@@ -321,9 +328,9 @@ async function calculateNAVReturn12M(
       return null;
     }
 
-    // Use close price (not adj_close) to match CEO's calculation from chart
-    const currentNav = currentRecord.close ?? currentRecord.adj_close;
-    const past12MNav = past12MRecord.close ?? past12MRecord.adj_close;
+    // Use adjusted close price (adj_close) for NAV trends to account for distributions
+    const currentNav = currentRecord.adj_close ?? currentRecord.close;
+    const past12MNav = past12MRecord.adj_close ?? past12MRecord.close;
 
     if (!currentNav || !past12MNav || past12MNav <= 0) {
       console.log(
@@ -419,7 +426,9 @@ async function refreshCEF(ticker: string): Promise<void> {
       );
     } catch (error) {
       console.warn(
-        `    ⚠ Failed to fetch market prices for ${ticker}: ${(error as Error).message}`
+        `    ⚠ Failed to fetch market prices for ${ticker}: ${
+          (error as Error).message
+        }`
       );
     }
 
@@ -427,24 +436,26 @@ async function refreshCEF(ticker: string): Promise<void> {
     if (navSymbolForCalc !== ticker) {
       try {
         console.log(`    Fetching NAV prices for ${navSymbolForCalc}...`);
-        const navPrices = await fetchPriceHistory(navSymbolForCalc, priceStartDate);
+        const navPrices = await fetchPriceHistory(
+          navSymbolForCalc,
+          priceStartDate
+        );
         const navPricesAdded = await upsertPrices(navSymbolForCalc, navPrices);
         console.log(
           `    ✓ Added/updated ${navPricesAdded} NAV price records for ${navSymbolForCalc}`
         );
       } catch (error) {
         console.warn(
-          `    ⚠ Failed to fetch NAV prices for ${navSymbolForCalc}: ${(error as Error).message}`
+          `    ⚠ Failed to fetch NAV prices for ${navSymbolForCalc}: ${
+            (error as Error).message
+          }`
         );
       }
     }
 
     // Import CEF calculation functions
-    const {
-      calculateCEFZScore,
-      calculateSignal,
-      calculateNAVReturns,
-    } = await import("../src/routes/cefs.js");
+    const { calculateCEFZScore, calculateSignal, calculateNAVReturns } =
+      await import("../src/routes/cefs.js");
 
     const updateData: any = {};
 
@@ -459,12 +470,16 @@ async function refreshCEF(ticker: string): Promise<void> {
       if (fiveYearZScore !== null) {
         console.log(`    ✓ 5Y Z-Score: ${fiveYearZScore.toFixed(2)}`);
       } else {
-        console.log(`    ⚠ 5Y Z-Score: N/A (insufficient data) - clearing old value`);
+        console.log(
+          `    ⚠ 5Y Z-Score: N/A (insufficient data) - clearing old value`
+        );
       }
     } catch (error) {
       updateData.five_year_z_score = null;
       console.warn(
-        `    ⚠ Failed to calculate Z-Score: ${(error as Error).message} - clearing old value`
+        `    ⚠ Failed to calculate Z-Score: ${
+          (error as Error).message
+        } - clearing old value`
       );
     }
 
@@ -481,7 +496,9 @@ async function refreshCEF(ticker: string): Promise<void> {
     } catch (error) {
       updateData.nav_trend_6m = null;
       console.warn(
-        `    ⚠ Failed to calculate 6M NAV Trend: ${(error as Error).message} - clearing old value`
+        `    ⚠ Failed to calculate 6M NAV Trend: ${
+          (error as Error).message
+        } - clearing old value`
       );
     }
 
@@ -498,7 +515,9 @@ async function refreshCEF(ticker: string): Promise<void> {
     } catch (error) {
       updateData.nav_trend_12m = null;
       console.warn(
-        `    ⚠ Failed to calculate 12M NAV Return: ${(error as Error).message} - clearing old value`
+        `    ⚠ Failed to calculate 12M NAV Return: ${
+          (error as Error).message
+        } - clearing old value`
       );
     }
 
@@ -523,7 +542,9 @@ async function refreshCEF(ticker: string): Promise<void> {
           "-2": "Overvalued",
         };
         console.log(
-          `    ✓ Signal: ${signal} (${signalLabels[signal as keyof typeof signalLabels] || "Unknown"})`
+          `    ✓ Signal: ${signal} (${
+            signalLabels[signal as keyof typeof signalLabels] || "Unknown"
+          })`
         );
       } else {
         console.log(`    ⚠ Signal: N/A - clearing old value`);
@@ -531,7 +552,9 @@ async function refreshCEF(ticker: string): Promise<void> {
     } catch (error) {
       updateData.signal = null;
       console.warn(
-        `    ⚠ Failed to calculate Signal: ${(error as Error).message} - clearing old value`
+        `    ⚠ Failed to calculate Signal: ${
+          (error as Error).message
+        } - clearing old value`
       );
     }
 
@@ -553,7 +576,11 @@ async function refreshCEF(ticker: string): Promise<void> {
           updateData.dividend_volatility_index = dviResult.volatilityIndex;
           updateData.annual_dividend = dviResult.annualDividend;
           console.log(
-            `    ✓ DVI: ${dviResult.volatilityIndex || "N/A"} (CV: ${dviResult.dividendCVPercent?.toFixed(2) || "N/A"}%, SD: ${dviResult.dividendSD?.toFixed(4) || "N/A"}, Avg: ${dviResult.annualDividend?.toFixed(2) || "N/A"})`
+            `    ✓ DVI: ${dviResult.volatilityIndex || "N/A"} (CV: ${
+              dviResult.dividendCVPercent?.toFixed(2) || "N/A"
+            }%, SD: ${dviResult.dividendSD?.toFixed(4) || "N/A"}, Avg: ${
+              dviResult.annualDividend?.toFixed(2) || "N/A"
+            })`
           );
         }
       } else {
@@ -565,7 +592,9 @@ async function refreshCEF(ticker: string): Promise<void> {
       }
     } catch (error) {
       console.warn(
-        `    ⚠ Failed to calculate DVI: ${(error as Error).message} - clearing old values`
+        `    ⚠ Failed to calculate DVI: ${
+          (error as Error).message
+        } - clearing old values`
       );
       updateData.dividend_sd = null;
       updateData.dividend_cv = null;
@@ -595,16 +624,18 @@ async function refreshCEF(ticker: string): Promise<void> {
       `      - 5Y: ${return5Yr !== null ? `${return5Yr.toFixed(2)}%` : "N/A"}`
     );
     console.log(
-      `      - 10Y: ${return10Yr !== null ? `${return10Yr.toFixed(2)}%` : "N/A"}`
+      `      - 10Y: ${
+        return10Yr !== null ? `${return10Yr.toFixed(2)}%` : "N/A"
+      }`
     );
     console.log(
-      `      - 15Y: ${return15Yr !== null ? `${return15Yr.toFixed(2)}%` : "N/A"}`
+      `      - 15Y: ${
+        return15Yr !== null ? `${return15Yr.toFixed(2)}%` : "N/A"
+      }`
     );
 
     // 7. Update NAV, Market Price, and Premium/Discount from latest prices
-    console.log(
-      `  📊 Updating NAV, Market Price, and Premium/Discount...`
-    );
+    console.log(`  📊 Updating NAV, Market Price, and Premium/Discount...`);
     let currentNav: number | null = cef.nav ?? null;
     let marketPrice: number | null = cef.price ?? null;
 
@@ -622,7 +653,8 @@ async function refreshCEF(ticker: string): Promise<void> {
         if (navHistory.length > 0) {
           navHistory.sort((a, b) => a.date.localeCompare(b.date));
           const latestNav = navHistory[navHistory.length - 1];
-          currentNav = latestNav.close ?? latestNav.adj_close ?? null;
+          // Use unadjusted close for NAV display (home page table)
+          currentNav = latestNav.close ?? null;
           if (currentNav !== null) {
             updateData.nav = currentNav;
             console.log(`    ✓ NAV: $${currentNav.toFixed(2)}`);
@@ -646,7 +678,8 @@ async function refreshCEF(ticker: string): Promise<void> {
       if (priceHistory.length > 0) {
         priceHistory.sort((a, b) => a.date.localeCompare(b.date));
         const latestPrice = priceHistory[priceHistory.length - 1];
-        const fetchedPrice = latestPrice.close ?? latestPrice.adj_close ?? null;
+        // Use unadjusted close for market price display (home page table)
+        const fetchedPrice = latestPrice.close ?? null;
         if (fetchedPrice !== null) {
           marketPrice = fetchedPrice;
           updateData.price = marketPrice;
@@ -664,14 +697,15 @@ async function refreshCEF(ticker: string): Promise<void> {
       const premiumDiscount = (marketPrice / currentNav - 1) * 100;
       updateData.premium_discount = premiumDiscount;
       console.log(
-        `    ✓ Premium/Discount: ${premiumDiscount >= 0 ? "+" : ""}${premiumDiscount.toFixed(2)}% (MP=$${marketPrice.toFixed(2)}, NAV=$${currentNav.toFixed(2)})`
+        `    ✓ Premium/Discount: ${
+          premiumDiscount >= 0 ? "+" : ""
+        }${premiumDiscount.toFixed(2)}% (MP=$${marketPrice.toFixed(
+          2
+        )}, NAV=$${currentNav.toFixed(2)})`
       );
     } else {
       updateData.premium_discount = null;
-      if (
-        cef.premium_discount !== null &&
-        cef.premium_discount !== undefined
-      ) {
+      if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
         console.log(
           `    ⚠ Premium/Discount: Cannot calculate (missing NAV or market price), clearing old value`
         );
@@ -708,15 +742,28 @@ async function refreshCEF(ticker: string): Promise<void> {
     if (verify) {
       console.log(`    ✓ Verified saved values:`);
       console.log(
-        `      - Returns: 3Y=${verify.return_3yr ?? "NULL"}, 5Y=${verify.return_5yr ?? "NULL"}, 10Y=${verify.return_10yr ?? "NULL"}, 15Y=${verify.return_15yr ?? "NULL"}`
+        `      - Returns: 3Y=${verify.return_3yr ?? "NULL"}, 5Y=${
+          verify.return_5yr ?? "NULL"
+        }, 10Y=${verify.return_10yr ?? "NULL"}, 15Y=${
+          verify.return_15yr ?? "NULL"
+        }`
       );
       console.log(`      - Z-Score: ${verify.five_year_z_score ?? "NULL"}`);
       console.log(
-        `      - NAV Trends: 6M=${verify.nav_trend_6m ?? "NULL"}, 12M=${verify.nav_trend_12m ?? "NULL"}`
+        `      - NAV Trends: 6M=${verify.nav_trend_6m ?? "NULL"}, 12M=${
+          verify.nav_trend_12m ?? "NULL"
+        }`
       );
       console.log(`      - Signal: ${verify.signal ?? "NULL"}`);
       console.log(
-        `      - Premium/Discount: ${verify.premium_discount !== null && verify.premium_discount !== undefined ? (verify.premium_discount >= 0 ? "+" : "") + verify.premium_discount.toFixed(2) + "%" : "NULL"} (MP=$${verify.price ?? "NULL"}, NAV=$${verify.nav ?? "NULL"})`
+        `      - Premium/Discount: ${
+          verify.premium_discount !== null &&
+          verify.premium_discount !== undefined
+            ? (verify.premium_discount >= 0 ? "+" : "") +
+              verify.premium_discount.toFixed(2) +
+              "%"
+            : "NULL"
+        } (MP=$${verify.price ?? "NULL"}, NAV=$${verify.nav ?? "NULL"})`
       );
       console.log(`      - Last Updated: ${verify.last_updated ?? "NULL"}`);
     }

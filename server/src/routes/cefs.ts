@@ -67,19 +67,21 @@ export async function calculateCEFZScore(
     if (priceData.length === 0 || navData.length === 0) return null;
 
     // Create maps by date for efficient lookup
-    // Use adjusted close for price (like Python example uses adjClose)
+    // Use unadjusted close for Z-Score calculation (premium/discount uses actual trading prices)
     const priceMap = new Map<string, number>();
     priceData.forEach((p: PriceRecord) => {
-      const price = p.adj_close ?? p.close;
+      // Z-Score uses unadjusted prices for premium/discount calculation
+      const price = p.close ?? null;
       if (price !== null && price > 0) {
         priceMap.set(p.date, price);
       }
     });
 
-    // Use adjusted close for NAV as well (consistent with price data)
+    // Use unadjusted close for NAV as well (premium/discount uses actual NAV values)
     const navMap = new Map<string, number>();
     navData.forEach((p: PriceRecord) => {
-      const nav = p.adj_close ?? p.close;
+      // Z-Score uses unadjusted NAV for premium/discount calculation
+      const nav = p.close ?? null;
       if (nav !== null && nav > 0) {
         navMap.set(p.date, nav);
       }
@@ -202,9 +204,9 @@ export async function calculateNAVTrend6M(
       return null;
     }
 
-    // Use close price (not adj_close) to match CEO's calculation from chart
-    const currentNav = currentRecord.close ?? currentRecord.adj_close;
-    const past6MNav = past6MRecord.close ?? past6MRecord.adj_close;
+    // Use adjusted close price (adj_close) for NAV trends to account for distributions
+    const currentNav = currentRecord.adj_close ?? currentRecord.close;
+    const past6MNav = past6MRecord.adj_close ?? past6MRecord.close;
 
     if (!currentNav || !past6MNav || past6MNav <= 0) {
       logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past6M=${past6MNav})`);
@@ -299,9 +301,9 @@ export async function calculateNAVReturn12M(
       return null;
     }
 
-    // Use close price (not adj_close) to match CEO's calculation from chart
-    const currentNav = currentRecord.close ?? currentRecord.adj_close;
-    const past12MNav = past12MRecord.close ?? past12MRecord.adj_close;
+    // Use adjusted close price (adj_close) for NAV trends to account for distributions
+    const currentNav = currentRecord.adj_close ?? currentRecord.close;
+    const past12MNav = past12MRecord.adj_close ?? past12MRecord.close;
 
     if (!currentNav || !past12MNav || past12MNav <= 0) {
       logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past12M=${past12MNav})`);
@@ -1896,13 +1898,15 @@ router.get(
         );
       }
 
+      // Use unadjusted close (close) for charts - PRICE (CHART) and NAV (CHART) are UNADJUSTED
       const priceMap = new Map<
         string,
         { close: number | null; date: string }
       >();
       priceData.forEach((p: any) => {
         const date = typeof p.date === "string" ? p.date.split("T")[0] : p.date;
-        const closePrice = p.close ?? p.adj_close ?? null;
+        // Charts use unadjusted close price
+        const closePrice = p.close ?? null;
         if (closePrice !== null) {
           priceMap.set(date, { close: closePrice, date });
         }
@@ -1911,7 +1915,8 @@ router.get(
       const navMap = new Map<string, { close: number | null; date: string }>();
       navData.forEach((p: any) => {
         const date = typeof p.date === "string" ? p.date.split("T")[0] : p.date;
-        const closePrice = p.close ?? p.adj_close ?? null;
+        // Charts use unadjusted close price for NAV
+        const closePrice = p.close ?? null;
         if (closePrice !== null) {
           navMap.set(date, { close: closePrice, date });
         }

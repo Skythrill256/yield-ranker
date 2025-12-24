@@ -1568,22 +1568,23 @@ const AdminPanel = () => {
             )}
 
             {activeTab === "site-settings" && (
-              <Card className="border-2 border-slate-200">
-                <div className="p-6 space-y-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-lg font-bold text-foreground mb-2">
-                        Site Settings
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Manage homepage content and site-wide settings
-                      </p>
+              <div className="space-y-6">
+                <Card className="border-2 border-slate-200">
+                  <div className="p-6 space-y-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-bold text-foreground mb-2">
+                          Site Settings
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          Manage homepage content and site-wide settings
+                        </p>
+                      </div>
+                      <Button onClick={handleSaveSettings} className="gap-2">
+                        <Upload className="w-4 h-4" />
+                        Save Settings
+                      </Button>
                     </div>
-                    <Button onClick={handleSaveSettings} className="gap-2">
-                      <Upload className="w-4 h-4" />
-                      Save Settings
-                    </Button>
-                  </div>
 
                   {settingsLoading ? (
                     <div className="text-center py-8">
@@ -1695,6 +1696,102 @@ const AdminPanel = () => {
                   )}
                 </div>
               </Card>
+
+              {/* Adjusted vs Unadjusted Price Reference */}
+              <Card className="border-2 border-blue-200 bg-blue-50/30">
+                <div className="p-6 space-y-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+                      <Database className="w-5 h-5 text-primary" />
+                      Adjusted vs Unadjusted Price Reference
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      This reference document defines which metrics use ADJUSTED (adj_close) vs UNADJUSTED (close) prices as specified by the CEO.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg border-2 border-slate-200 p-4 space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-3">Summary Table</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100">
+                              <th className="border border-slate-300 px-3 py-2 text-left font-semibold">Metric</th>
+                              <th className="border border-slate-300 px-3 py-2 text-left font-semibold">Type</th>
+                              <th className="border border-slate-300 px-3 py-2 text-left font-semibold">Price Field</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="border border-slate-300 px-3 py-2">MARKET PRICE (HOME PAGE TABLE)</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+                            </tr>
+                            <tr className="bg-slate-50">
+                              <td className="border border-slate-300 px-3 py-2">NAV (HOME PAGE)</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+                            </tr>
+                            <tr>
+                              <td className="border border-slate-300 px-3 py-2">PRICE (CHART)</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+                            </tr>
+                            <tr className="bg-slate-50">
+                              <td className="border border-slate-300 px-3 py-2">NAV (CHART)</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+                            </tr>
+                            <tr>
+                              <td className="border border-slate-300 px-3 py-2">PRICE (CHART) AND TABLE</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+                            </tr>
+                            <tr className="bg-slate-50">
+                              <td className="border border-slate-300 px-3 py-2">TOTAL RETURNS</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">adj_close</td>
+                            </tr>
+                            <tr>
+                              <td className="border border-slate-300 px-3 py-2">6 MO NAV TREND</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">adj_close</td>
+                            </tr>
+                            <tr className="bg-slate-50">
+                              <td className="border border-slate-300 px-3 py-2">12 MO NAV TREND</td>
+                              <td className="border border-slate-300 px-3 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
+                              <td className="border border-slate-300 px-3 py-2 font-mono text-xs">adj_close</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                      <h4 className="font-semibold text-foreground mb-2">⚠️ Common Mistakes to Avoid</h4>
+                      <ul className="text-sm space-y-1 text-muted-foreground list-disc list-inside">
+                        <li><strong>WRONG:</strong> <code className="bg-slate-100 px-1 rounded">close ?? adj_close</code> for NAV trends (prioritizes unadjusted)</li>
+                        <li><strong>CORRECT:</strong> <code className="bg-slate-100 px-1 rounded">adj_close ?? close</code> for NAV trends (prioritizes adjusted)</li>
+                        <li><strong>WRONG:</strong> <code className="bg-slate-100 px-1 rounded">adj_close</code> for market price display</li>
+                        <li><strong>CORRECT:</strong> <code className="bg-slate-100 px-1 rounded">close</code> for market price display</li>
+                        <li><strong>WRONG:</strong> <code className="bg-slate-100 px-1 rounded">close</code> for total return calculations</li>
+                        <li><strong>CORRECT:</strong> <code className="bg-slate-100 px-1 rounded">adj_close</code> for total return calculations</li>
+                      </ul>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                      <h4 className="font-semibold text-foreground mb-2">📋 Code Locations</h4>
+                      <ul className="text-sm space-y-1 text-muted-foreground">
+                        <li><strong>Market Price & NAV (Unadjusted):</strong> <code className="bg-slate-100 px-1 rounded">server/scripts/refresh_cef.ts</code>, <code className="bg-slate-100 px-1 rounded">server/src/routes/cefs.ts</code></li>
+                        <li><strong>Total Returns (Adjusted):</strong> <code className="bg-slate-100 px-1 rounded">server/src/services/metrics.ts</code>, <code className="bg-slate-100 px-1 rounded">server/src/routes/cefs.ts</code></li>
+                        <li><strong>NAV Trends (Adjusted):</strong> <code className="bg-slate-100 px-1 rounded">server/src/routes/cefs.ts</code>, <code className="bg-slate-100 px-1 rounded">server/scripts/refresh_cef.ts</code></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
             )}
           </div>
         </div>
