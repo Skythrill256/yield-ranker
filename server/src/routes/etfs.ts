@@ -1112,6 +1112,11 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     });
 
     // Detailed logging for debugging
+    const navSymbolRecords = allData.filter((item: any) => {
+      const ticker = item.ticker || '';
+      const navSymbol = item.nav_symbol || '';
+      return ticker === navSymbol && navSymbol !== '';
+    }).length;
     const navProxySymbols = allData.filter((item: any) => {
       const ticker = item.ticker || '';
       return ticker.length >= 4 && ticker.startsWith('X') && ticker.endsWith('X');
@@ -1132,6 +1137,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     logger.info('Routes', `  - Records without nav_symbol: ${withoutNavSymbol}`);
     logger.info('Routes', `  - Records with nav_symbol but no NAV: ${withNavSymbolNoNAV} (included in ETFs)`);
     logger.info('Routes', `  - Excluded CEFs (nav_symbol + NAV data): ${excludedCEFs} (shown on CEFs table)`);
+    logger.info('Routes', `  - Excluded NAV symbol records (ticker === nav_symbol): ${navSymbolRecords}`);
     logger.info('Routes', `  - Excluded NAV proxy symbols (X...X pattern): ${navProxySymbols}`);
 
     // Map to frontend format
