@@ -242,18 +242,31 @@ export const CEFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="dividendHistory"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    DIV
-                    <br />
-                    HISTO
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="dividendHistory"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          <span className="font-bold">DIV</span>
+                          <br />
+                          <span className="font-bold">HISTO</span>
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Click to see div history</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
                 <SortButton
@@ -290,18 +303,31 @@ export const CEFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="lastDividend"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    Last
-                    <br />
-                    Div
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="lastDividend"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          Last
+                          <br />
+                          <span className="font-bold">Div</span>
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Click to see div history</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
                 <SortButton
@@ -314,18 +340,31 @@ export const CEFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="yearlyDividend"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    Yrly
-                    <br />
-                    Div
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="yearlyDividend"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          Yrly
+                          <br />
+                          <span className="font-bold">Div</span>
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Click to see div history</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
                 <SortButton
@@ -534,8 +573,8 @@ export const CEFTable = ({
                 <td className="py-1 px-1.5 sm:px-2 align-middle sticky left-[28px] z-10 bg-white border-r border-slate-200 font-bold text-primary text-xs transition-all shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]">
                   <button
                     onClick={() => navigate(`/cef/${cef.symbol}`)}
-                    className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap"
-                    title={`View ${cef.symbol} details`}
+                    className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap font-bold"
+                    title="Click to see charts"
                   >
                     {cef.symbol}
                   </button>

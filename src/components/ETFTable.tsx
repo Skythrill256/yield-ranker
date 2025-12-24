@@ -271,7 +271,22 @@ export const ETFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton field="dividend" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Div</SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton field="dividend" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>
+                        <span className="font-bold">Div</span>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Click to see div history</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
                 <SortButton field="numPayments" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}># Pmt</SortButton>
@@ -363,8 +378,8 @@ export const ETFTable = ({
                 >
                   <button
                     onClick={() => navigate(`/etf/${etf.symbol}`)}
-                    className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap"
-                    title={`View ${etf.symbol} details and charts`}
+                    className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap font-bold"
+                    title="Click to see charts"
                   >
                     {etf.symbol}
                   </button>
