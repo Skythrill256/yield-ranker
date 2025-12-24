@@ -93,6 +93,16 @@ export const Header = () => {
               {docsButton.label}
             </Button>
 
+            {/* My Focus */}
+            <Button
+              variant="ghost"
+              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
+              onClick={() => go("/focus")}
+            >
+              <Star className="w-4 h-4 mr-1.5" />
+              My Focus
+            </Button>
+
             {/* Resources - Content adjusts based on selected category */}
             <Button
               variant="ghost"
