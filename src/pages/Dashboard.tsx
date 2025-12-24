@@ -18,9 +18,12 @@ import {
   clearCEFCache,
 } from "@/services/cefData";
 import { rankETFs } from "@/utils/ranking";
+import { rankCEFs } from "@/utils/cefRanking";
 import { RankingWeights } from "@/types/etf";
+import { RankingWeights as CEFRankingWeights } from "@/types/cef";
 import { ETF } from "@/types/etf";
 import { CEF } from "@/types/cef";
+import { CEFTable } from "@/components/CEFTable";
 import {
   LogOut,
   Home,
@@ -94,6 +97,11 @@ import {
   deleteRankingPreset,
   RankingPreset,
   saveChartSettings,
+  loadCEFRankingWeights,
+  saveCEFRankingWeights,
+  loadCEFRankingPresets,
+  saveCEFRankingPreset,
+  deleteCEFRankingPreset,
 } from "@/services/preferences";
 import { supabase } from "@/lib/supabase";
 import {
@@ -182,10 +190,10 @@ export default function Dashboard() {
       console.log("[Dashboard] Fetched CEF data:", result.cefs?.length || 0, "CEFs");
       const seen = new Set<string>();
       const deduplicated = result.cefs.filter((cef) => {
-        if (seen.has(cef.ticker)) {
+        if (seen.has(cef.symbol)) {
           return false;
         }
-        seen.add(cef.ticker);
+        seen.add(cef.symbol);
         return true;
       });
       console.log("[Dashboard] Deduplicated CEFs:", deduplicated.length);
@@ -296,6 +304,31 @@ export default function Dashboard() {
       loadCEFData();
     }
   }, [selectedCategory]);
+
+  // Load CEF ranking weights from profile (CEF-specific)
+  useEffect(() => {
+    const loadCEFWeights = async () => {
+      if (user?.id && isPremium && selectedCategory === "cef") {
+        try {
+          const savedWeights = await loadCEFRankingWeights(user.id);
+          if (savedWeights) {
+            setCefWeights(savedWeights);
+            setCefYieldWeight(savedWeights.yield);
+            setCefVolatilityWeight(savedWeights.volatility ?? 33);
+            setCefTotalReturnWeight(savedWeights.totalReturn);
+            setCefTotalReturnTimeframe(savedWeights.timeframe || "12mo");
+          }
+          const presets = await loadCEFRankingPresets(user.id);
+          if (presets) {
+            setCefRankingPresets(presets);
+          }
+        } catch (error) {
+          console.error("[Dashboard] Failed to load CEF ranking weights:", error);
+        }
+      }
+    };
+    loadCEFWeights();
+  }, [user?.id, isPremium, selectedCategory]);
 
   // Clean up favorites when data changes
   useEffect(() => {
@@ -597,6 +630,21 @@ export default function Dashboard() {
   const [totalReturnTimeframe, setTotalReturnTimeframe] = useState<
     "3mo" | "6mo" | "12mo"
   >("12mo");
+
+  // CEF Ranking weights (separate from ETF weights)
+  const [cefWeights, setCefWeights] = useState<CEFRankingWeights>({
+    yield: 34,
+    volatility: 33,
+    totalReturn: 33,
+    timeframe: "12mo",
+  });
+  const [cefYieldWeight, setCefYieldWeight] = useState(34);
+  const [cefVolatilityWeight, setCefVolatilityWeight] = useState(33);
+  const [cefTotalReturnWeight, setCefTotalReturnWeight] = useState(33);
+  const [cefTotalReturnTimeframe, setCefTotalReturnTimeframe] = useState<
+    "3mo" | "6mo" | "12mo"
+  >("12mo");
+  const [cefRankingPresets, setCefRankingPresets] = useState<RankingPreset[]>([]);
 
   const totalWeight = (yieldWeight ?? 0) + (volatilityWeight ?? 0) + (totalReturnWeight ?? 0);
   const isValid = !isNaN(totalWeight) && totalWeight === 100;
@@ -1025,16 +1073,18 @@ export default function Dashboard() {
     return rankETFs(etfData, weights);
   }, [etfData, weights, selectedCategory]);
 
-  // Process CEF data - CEFs already have weightedRank from backend
+  // Process CEF data - use rankCEFs like CEFIndex
   const rankedCEFs = useMemo(() => {
     if (selectedCategory !== "cef") return [];
-    // CEFs come pre-ranked from backend, just sort by weightedRank
-    return [...cefData].sort((a, b) => {
-      const aRank = a.weightedRank ?? Infinity;
-      const bRank = b.weightedRank ?? Infinity;
-      return aRank - bRank;
-    });
-  }, [cefData, selectedCategory]);
+    if (!cefData || cefData.length === 0) return [];
+    if (isGuest) return cefData;
+    try {
+      return rankCEFs(cefData, cefWeights);
+    } catch (error) {
+      console.error("[Dashboard] Error ranking CEFs:", error);
+      return cefData;
+    }
+  }, [cefData, cefWeights, selectedCategory, isGuest]);
 
   const filteredETFs = rankedETFs.filter((etf) => {
     if (searchQuery.trim() === "") return true;
@@ -1045,14 +1095,28 @@ export default function Dashboard() {
     );
   });
 
-  const filteredCEFs = rankedCEFs.filter((cef) => {
-    if (searchQuery.trim() === "") return true;
-    return (
-      cef.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cef.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cef.issuer?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
+  const filteredCEFs = useMemo(() => {
+    const dataToFilter = isGuest ? cefData : rankedCEFs;
+    let filtered = dataToFilter;
+    
+    // Apply favorites filter if enabled
+    if (showFavoritesOnly && isPremium) {
+      filtered = filtered.filter(cef => favorites.has(cef.symbol));
+    }
+    
+    // Apply search query filter
+    if (searchQuery.trim() !== "") {
+      filtered = filtered.filter((cef) => {
+        return (
+          cef.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          cef.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          cef.issuer?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      });
+    }
+    
+    return filtered;
+  }, [isGuest, cefData, rankedCEFs, showFavoritesOnly, isPremium, favorites, searchQuery]);
 
   // Sort data - preserve ranking order by default, allow manual sorting
   // Use stable sort to prevent chart from re-rendering unnecessarily
@@ -1129,79 +1193,20 @@ export default function Dashboard() {
     return sorted;
   }, [filteredETFs, sortField, sortDirection, selectedCategory]);
 
-  // Sort CEFs similarly
-  const sortedCEFs = useMemo(() => {
-    if (selectedCategory !== "cef") return [];
-    if (!sortField) return filteredCEFs;
-
-    const sorted = [...filteredCEFs].sort((a, b) => {
-      const aValue = (a as any)[sortField];
-      const bValue = (b as any)[sortField];
-
-      if (aValue === undefined || aValue === null) {
-        if (bValue === undefined || bValue === null) {
-          return a.symbol.localeCompare(b.symbol);
-        }
-        return 1;
-      }
-      if (bValue === undefined || bValue === null) return -1;
-
-      const parseNumeric = (val: any): number | null => {
-        if (typeof val === 'number') {
-          return isNaN(val) ? null : val;
-        }
-        if (typeof val === 'string') {
-          const clean = val.replace(/[$,%\s]/g, '');
-          if (clean === '') return null;
-          const num = Number(clean);
-          return isNaN(num) ? null : num;
-        }
-        return null;
-      };
-
-      const aNum = parseNumeric(aValue);
-      const bNum = parseNumeric(bValue);
-      const bothNumeric = aNum !== null && bNum !== null;
-      const textFields: string[] = ['symbol', 'issuer', 'description', 'dataSource'];
-      const forceString = textFields.includes(sortField);
-
-      let comparison: number = 0;
-      if (bothNumeric && !forceString) {
-        comparison = aNum - bNum;
-      } else {
-        const aStr = String(aValue).toLowerCase();
-        const bStr = String(bValue).toLowerCase();
-        comparison = aStr.localeCompare(bStr);
-      }
-
-      if (comparison !== 0) {
-        return sortDirection === "asc" ? comparison : -comparison;
-      }
-      return a.symbol.localeCompare(b.symbol);
-    });
-
-    return sorted;
-  }, [filteredCEFs, sortField, sortDirection, selectedCategory]);
+  // CEFTable handles its own sorting, so we just pass filteredCEFs
+  const sortedCEFs = filteredCEFs;
 
   const favoritesFilteredETFs = showFavoritesOnly
     ? sortedETFs.filter((etf) => favorites.has(etf.symbol))
     : sortedETFs;
 
-  const favoritesFilteredCEFs = showFavoritesOnly
-    ? sortedCEFs.filter((cef) => favorites.has(cef.symbol))
-    : sortedCEFs;
-
   const uniqueSymbolETFs = favoritesFilteredETFs.filter((etf, index, self) => {
     return self.findIndex((e) => e.symbol === etf.symbol) === index;
   });
 
-  const uniqueSymbolCEFs = favoritesFilteredCEFs.filter((cef, index, self) => {
-    return self.findIndex((c) => c.symbol === cef.symbol) === index;
-  });
-
   // Use appropriate data based on selected category
   const displayedETFs = selectedCategory === "cc" ? uniqueSymbolETFs : [];
-  const displayedCEFs = selectedCategory === "cef" ? uniqueSymbolCEFs : [];
+  // CEFs are handled by CEFTable component, no need for displayedCEFs
 
   const handleSort = (field: keyof ETF) => {
     console.log('[Dashboard] handleSort called with field:', field, 'current sortField:', sortField, 'current direction:', sortDirection);
@@ -3443,145 +3448,41 @@ export default function Dashboard() {
                                 Closed End Funds
                               </h2>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {isLoadingCEFData ? "Loading..." : `${displayedCEFs.length} CEFs`}
+                                {isLoadingCEFData ? "Loading..." : `${filteredCEFs.length} CEFs`}
                                 {lastCEFDataUpdate && ` • Last updated: ${lastCEFDataUpdate}`}
                               </p>
                             </div>
                           </div>
 
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-sm">
-                              <thead className="bg-slate-50 sticky top-0 z-20">
-                                <tr>
-                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase sticky left-0 z-30 bg-slate-50 border-r border-slate-200">
-                                    ★
-                                  </th>
-                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase sticky left-[40px] z-30 bg-slate-50 border-r border-slate-200">
-                                    Symbol
-                                  </th>
-                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase">
-                                    Name
-                                  </th>
-                                  <th className="py-2 px-2 text-left text-xs font-semibold text-muted-foreground uppercase">
-                                    Issuer
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    Market Price
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    NAV
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    Prem/Disc
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    Z-Score
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    Last Div
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    # Pmt
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    Yearly Div
-                                  </th>
-                                  <th className="py-2 px-2 text-center text-xs font-semibold text-muted-foreground uppercase">
-                                    Forward Yield
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="[&_tr:last-child]:border-0">
-                                {displayedCEFs.map((cef, idx) => (
-                                  <tr
-                                    key={`${cef.symbol}-${idx}`}
-                                    className="border-b border-slate-200 transition-colors hover:bg-slate-100 group"
-                                  >
-                                    <td
-                                      className="py-0.5 px-1 align-middle text-center sticky left-0 z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200 cursor-pointer"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleFavorite(cef.symbol);
-                                      }}
-                                      title="Click to add to Favorites"
-                                    >
-                                      <Star
-                                        className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(cef.symbol)
-                                          ? "fill-yellow-400 text-yellow-400"
-                                          : "text-slate-500 hover:text-yellow-500 hover:scale-110"
-                                          }`}
-                                      />
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle sticky left-[40px] z-10 bg-white group-hover:bg-slate-100 border-r border-slate-200">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navigate(`/cef/${cef.symbol}`);
-                                        }}
-                                        className="font-bold text-primary text-xs hover:underline cursor-pointer transition-colors"
-                                        title={`View ${cef.symbol} details`}
-                                      >
-                                        {cef.symbol}
-                                      </button>
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground max-w-[200px] truncate">
-                                      {cef.name}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-xs text-muted-foreground uppercase font-medium">
-                                      {cef.issuer}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-foreground">
-                                      {cef.marketPrice != null ? `$${cef.marketPrice.toFixed(2)}` : 'N/A'}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-muted-foreground">
-                                      {cef.nav != null ? `$${cef.nav.toFixed(2)}` : 'N/A'}
-                                    </td>
-                                    <td className={`py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium ${cef.premiumDiscount != null && cef.premiumDiscount < 0 ? 'text-green-600' : cef.premiumDiscount != null && cef.premiumDiscount > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                                      {cef.premiumDiscount != null ? `${cef.premiumDiscount >= 0 ? '+' : ''}${cef.premiumDiscount.toFixed(2)}%` : 'N/A'}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs font-medium text-muted-foreground">
-                                      {cef.fiveYearZScore != null ? cef.fiveYearZScore.toFixed(2) : 'N/A'}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center font-bold tabular-nums text-primary text-xs">
-                                      {cef.forwardYield != null ? `${cef.forwardYield.toFixed(1)}%` : 'N/A'}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDividendModalSymbol(cef.symbol);
-                                          setShowDividendModal(true);
-                                        }}
-                                        className="tabular-nums text-xs text-primary font-medium hover:underline cursor-pointer transition-colors"
-                                        title="Click to view dividend history"
-                                      >
-                                        {cef.lastDividend != null ? cef.lastDividend.toFixed(4) : 'N/A'}
-                                      </button>
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                      {cef.numPayments}
-                                    </td>
-                                    <td className="py-0.5 px-1 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                                      {cef.yearlyDividend != null ? `$${cef.yearlyDividend.toFixed(2)}` : 'N/A'}
-                                    </td>
-                                  </tr>
-                                ))}
-                                {displayedCEFs.length === 0 && !isLoadingCEFData && (
-                                  <tr>
-                                    <td colSpan={12} className="py-8 text-center text-muted-foreground">
-                                      No CEFs found
-                                    </td>
-                                  </tr>
-                                )}
-                                {isLoadingCEFData && (
-                                  <tr>
-                                    <td colSpan={12} className="py-8 text-center text-muted-foreground">
-                                      Loading CEFs...
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
+                          <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+                            {isLoadingCEFData ? (
+                              <div className="min-h-[60vh] flex flex-col items-center justify-center py-20 px-4">
+                                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                                <h3 className="text-xl font-bold text-foreground mb-2">
+                                  Loading CEF Data
+                                </h3>
+                                <p className="text-sm text-muted-foreground text-center max-w-md">
+                                  Fetching the latest data. Please wait.
+                                </p>
+                              </div>
+                            ) : filteredCEFs.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-20 px-4">
+                                <div className="text-6xl mb-4">⚠️</div>
+                                <h3 className="text-xl font-bold text-foreground mb-2">
+                                  No Data Available
+                                </h3>
+                                <p className="text-sm text-muted-foreground text-center max-w-md">
+                                  Unable to fetch live CEF data. Please check your connection
+                                  and try again.
+                                </p>
+                              </div>
+                            ) : (
+                              <CEFTable
+                                cefs={filteredCEFs}
+                                favorites={favorites}
+                                onToggleFavorite={toggleFavorite}
+                              />
+                            )}
                           </div>
                         </div>
                       </Card>
