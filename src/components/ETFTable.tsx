@@ -246,10 +246,10 @@ export const ETFTable = ({
               <th className="h-7 px-1.5 sm:px-2 text-left sticky left-[28px] z-30 bg-slate-50 border-r border-slate-200 text-xs shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]">
                 <SortButton field="symbol" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Symbol</SortButton>
               </th>
-              <th className="h-7 px-1.5 text-left bg-slate-50 text-xs">
+              <th className="h-7 px-1.5 text-left bg-slate-50 text-xs min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px]">
                 <SortButton field="issuer" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Issuer</SortButton>
               </th>
-              <th className="h-7 px-1.5 text-left bg-slate-50 text-xs">
+              <th className="h-7 px-1.5 text-left bg-slate-50 text-xs min-w-[180px] sm:min-w-[220px] max-w-[250px] sm:max-w-[300px]">
                 <SortButton field="description" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Description</SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
@@ -369,10 +369,10 @@ export const ETFTable = ({
                     {etf.symbol}
                   </button>
                 </td>
-                <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[80px] sm:min-w-[100px]">
+                <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px] truncate">
                   {etf.issuer}
                 </td>
-                <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[120px] sm:max-w-[150px] truncate text-xs text-muted-foreground min-w-[100px] sm:min-w-[120px]">
+                <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[250px] sm:max-w-[300px] truncate text-xs text-muted-foreground min-w-[180px] sm:min-w-[220px]">
                   {etf.description}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center text-xs text-muted-foreground">
