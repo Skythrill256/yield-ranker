@@ -7,37 +7,102 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { setupGlobalErrorHandlers } from "@/utils/errorHandler";
+
+// Setup global error handlers on app initialization
+setupGlobalErrorHandlers();
 
 // Eagerly loaded (critical path)
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 
-// Lazy loaded pages (code splitting)
-const CEFIndex = lazy(() => import("./pages/CEFIndex"));
-const ETFDetail = lazy(() => import("./pages/ETFDetail"));
-const CEFDetail = lazy(() => import("./pages/CEFDetail"));
-const DividendHistoryPage = lazy(() => import("./pages/DividendHistoryPage"));
-const CEFDividendHistoryPage = lazy(() => import("./pages/CEFDividendHistoryPage"));
-const OurFocus = lazy(() => import("./pages/OurFocus"));
-const Focus = lazy(() => import("./pages/Focus"));
-const CoveredCallETFs = lazy(() => import("./pages/CoveredCallETFs"));
-const ClosedEndFunds = lazy(() => import("./pages/ClosedEndFunds"));
-const Plans = lazy(() => import("./pages/Plans"));
-const Resources = lazy(() => import("./pages/Resources"));
-const Contact = lazy(() => import("./pages/Contact"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AdminPanel = lazy(() => import("./pages/AdminPanel"));
-const Settings = lazy(() => import("./pages/Settings"));
-const Favorites = lazy(() => import("./pages/Favorites"));
-const Profile = lazy(() => import("./pages/Profile"));
-const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
-const DoNotSell = lazy(() => import("./pages/DoNotSell"));
+// Retry function for failed module imports
+const retryLazyImport = (
+  importFn: () => Promise<any>,
+  retries = 3,
+  delay = 1000
+): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const attempt = (remaining: number) => {
+      importFn()
+        .then(resolve)
+        .catch((error) => {
+          if (remaining > 0) {
+            console.warn(
+              `[Lazy Import] Failed to load module, retrying... (${remaining} attempts left)`
+            );
+            setTimeout(() => attempt(remaining - 1), delay);
+          } else {
+            console.error("[Lazy Import] Failed to load module after retries:", error);
+            // Return a fallback component instead of crashing
+            resolve({
+              default: () => (
+                <div className="min-h-screen bg-background flex items-center justify-center p-4">
+                  <div className="max-w-md w-full bg-card border border-destructive rounded-lg p-6 space-y-4">
+                    <h2 className="text-xl font-semibold text-foreground">
+                      Failed to Load Page
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      The page could not be loaded. Please try refreshing the page.
+                    </p>
+                    <button
+                      onClick={() => window.location.reload()}
+                      className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    >
+                      Reload Page
+                    </button>
+                  </div>
+                </div>
+              ),
+            });
+          }
+        });
+    };
+    attempt(retries);
+  });
+};
+
+// Lazy loaded pages (code splitting) with retry logic
+const CEFIndex = lazy(() => retryLazyImport(() => import("./pages/CEFIndex")));
+const ETFDetail = lazy(() => retryLazyImport(() => import("./pages/ETFDetail")));
+const CEFDetail = lazy(() => retryLazyImport(() => import("./pages/CEFDetail")));
+const DividendHistoryPage = lazy(() =>
+  retryLazyImport(() => import("./pages/DividendHistoryPage"))
+);
+const CEFDividendHistoryPage = lazy(() =>
+  retryLazyImport(() => import("./pages/CEFDividendHistoryPage"))
+);
+const OurFocus = lazy(() => retryLazyImport(() => import("./pages/OurFocus")));
+const Focus = lazy(() => retryLazyImport(() => import("./pages/Focus")));
+const CoveredCallETFs = lazy(() =>
+  retryLazyImport(() => import("./pages/CoveredCallETFs"))
+);
+const ClosedEndFunds = lazy(() =>
+  retryLazyImport(() => import("./pages/ClosedEndFunds"))
+);
+const Plans = lazy(() => retryLazyImport(() => import("./pages/Plans")));
+const Resources = lazy(() => retryLazyImport(() => import("./pages/Resources")));
+const Contact = lazy(() => retryLazyImport(() => import("./pages/Contact")));
+const Dashboard = lazy(() => retryLazyImport(() => import("./pages/Dashboard")));
+const AdminPanel = lazy(() => retryLazyImport(() => import("./pages/AdminPanel")));
+const Settings = lazy(() => retryLazyImport(() => import("./pages/Settings")));
+const Favorites = lazy(() => retryLazyImport(() => import("./pages/Favorites")));
+const Profile = lazy(() => retryLazyImport(() => import("./pages/Profile")));
+const TermsOfService = lazy(() =>
+  retryLazyImport(() => import("./pages/TermsOfService"))
+);
+const PrivacyPolicy = lazy(() =>
+  retryLazyImport(() => import("./pages/PrivacyPolicy"))
+);
+const DoNotSell = lazy(() => retryLazyImport(() => import("./pages/DoNotSell")));
 
 // Lazy loaded heavy component
 const DisclaimerModal = lazy(() =>
-  import("./components/DisclaimerModal").then(m => ({ default: m.DisclaimerModal }))
+  retryLazyImport(() =>
+    import("./components/DisclaimerModal").then(m => ({ default: m.DisclaimerModal }))
+  )
 );
 
 const queryClient = new QueryClient();
@@ -170,21 +235,25 @@ const AppRoutes = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider delayDuration={200}>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <AuthProvider>
-          <Suspense fallback={null}>
-            <DisclaimerModal />
-          </Suspense>
-          <AppRoutes />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider delayDuration={200}>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ScrollToTop />
+          <AuthProvider>
+            <ErrorBoundary>
+              <Suspense fallback={null}>
+                <DisclaimerModal />
+              </Suspense>
+              <AppRoutes />
+            </ErrorBoundary>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
