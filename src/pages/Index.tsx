@@ -439,26 +439,13 @@ const Index = () => {
           <section className="w-full relative z-0">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
               <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
-                    Covered Call Option ETFs
-                  </h3>
-                </div>
-                <div className="text-xs text-muted-foreground leading-tight">
-                  {lastDataUpdate ? (
-                    <div className="flex items-center gap-1 mb-1">
-                      <Clock className="h-3 w-3" />
-                      <span>Last updated: {lastDataUpdate}</span>
-                      <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                    </div>
-                  ) : (
-                    <div className="mb-1">
-                      <span>Last updated: {lastDataUpdate || 'N/A'}</span>
-                      <span className="ml-2 text-primary font-medium">Source: Tiingo</span>
-                    </div>
-                  )}
-                  <div className="mt-1">Records: {filteredETFs.length}</div>
-                </div>
+                <h2 className="text-2xl font-bold text-foreground">
+                  Covered Call Option ETFs
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {filteredETFs.length} ETFs
+                  {lastDataUpdate && ` • Last updated: ${lastDataUpdate}`}
+                </p>
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">

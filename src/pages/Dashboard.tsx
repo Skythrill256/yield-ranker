@@ -3034,6 +3034,32 @@ export default function Dashboard() {
                                     Customize Rankings
                                   </Button>
                                 </div>
+                                {/* Total Return / Price Return Toggle */}
+                                <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
+                                  <div
+                                    className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
+                                      }`}
+                                    style={{ zIndex: 0 }}
+                                  />
+                                  <button
+                                    onClick={() => setShowTotalReturns(true)}
+                                    className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${showTotalReturns
+                                      ? "text-white"
+                                      : "text-slate-600 hover:text-slate-900"
+                                      }`}
+                                  >
+                                    Total Returns
+                                  </button>
+                                  <button
+                                    onClick={() => setShowTotalReturns(false)}
+                                    className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${!showTotalReturns
+                                      ? "text-white"
+                                      : "text-slate-600 hover:text-slate-900"
+                                      }`}
+                                  >
+                                    Price Returns
+                                  </button>
+                                </div>
                                 {isPremium && (
                                   <button
                                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
