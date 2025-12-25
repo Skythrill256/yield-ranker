@@ -1990,7 +1990,6 @@ const AdminPanel = () => {
                               onBlur={(e) => setNotebookContent(e.currentTarget.innerHTML)}
                               onInput={(e) => setNotebookContent(e.currentTarget.innerHTML)}
                               className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={notebookContent ? { __html: notebookContent } : undefined}
                             >
                             </div>
                           )}
