@@ -379,7 +379,6 @@ const AdminPanel = () => {
         await saveNotebook(content, profile?.id ?? null);
       }
       setNotebookContent(content);
-  <div class="bg-white rounded-lg border-2 border-slate-200 p-6 space-y-4">
     <div>
       <h3 class="text-lg font-bold text-foreground mb-2">1. Adjusted vs Unadjusted Price Reference</h3>
       <p class="text-sm text-muted-foreground mb-4">
@@ -2074,7 +2073,8 @@ const AdminPanel = () => {
                           !s.key.startsWith("guest_message_") && 
                           !s.key.startsWith("premium_message_") &&
                           s.key !== "guest_message" &&
-                          s.key !== "premium_message"
+                          s.key !== "premium_message" &&
+                          s.key !== "admin_notebook"
                         )
                         .map((setting) => (
                           <div key={setting.key} className="space-y-2">
