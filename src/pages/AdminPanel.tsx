@@ -327,7 +327,58 @@ const AdminPanel = () => {
       let content = await getNotebook();
       // If notebook is empty, initialize with default price reference content with HTML table
       if (!content || content.trim() === "") {
-        content = `<div class="space-y-8">
+        content = `<div class="overflow-x-auto">
+  <table class="w-full text-sm border-collapse">
+    <thead>
+      <tr class="bg-slate-100">
+        <th class="border border-slate-300 px-3 py-2 text-left font-semibold">Metric</th>
+        <th class="border border-slate-300 px-3 py-2 text-left font-semibold">Type</th>
+        <th class="border border-slate-300 px-3 py-2 text-left font-semibold">Price Field</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="border border-slate-300 px-3 py-2">MARKET PRICE (HOME PAGE TABLE)</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+      </tr>
+      <tr class="bg-slate-50">
+        <td class="border border-slate-300 px-3 py-2">NAV (HOME PAGE)</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+      </tr>
+      <tr>
+        <td class="border border-slate-300 px-3 py-2">PRICE (CHART)</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+      </tr>
+      <tr class="bg-slate-50">
+        <td class="border border-slate-300 px-3 py-2">NAV (CHART)</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">close</td>
+      </tr>
+      <tr>
+        <td class="border border-slate-300 px-3 py-2">TOTAL RETURNS</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">adj_close</td>
+      </tr>
+      <tr class="bg-slate-50">
+        <td class="border border-slate-300 px-3 py-2">6 MO NAV TREND</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">adj_close</td>
+      </tr>
+      <tr>
+        <td class="border border-slate-300 px-3 py-2">12 MO NAV TREND</td>
+        <td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
+        <td class="border border-slate-300 px-3 py-2 font-mono text-xs">adj_close</td>
+      </tr>
+    </tbody>
+  </table>
+</div>`;
+        // Save the default content
+        await saveNotebook(content, profile?.id ?? null);
+      }
+      setNotebookContent(content);
   <div class="bg-white rounded-lg border-2 border-slate-200 p-6 space-y-4">
     <div>
       <h3 class="text-lg font-bold text-foreground mb-2">1. Adjusted vs Unadjusted Price Reference</h3>
@@ -2073,7 +2124,7 @@ const AdminPanel = () => {
 
             {activeTab === "price-reference" && (
               <Card className="border-2 border-slate-200">
-                <div className="p-6 space-y-8">
+                <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2">
@@ -2081,7 +2132,7 @@ const AdminPanel = () => {
                         Adjusted vs Unadjusted Price Reference
                       </h2>
                       <p className="text-sm text-muted-foreground mb-4">
-                        This reference document defines which metrics use ADJUSTED (adj_close) vs UNADJUSTED (close) prices as specified by the CEO. All content is editable.
+                        This reference document defines which metrics use ADJUSTED (adj_close) vs UNADJUSTED (close) prices as specified by the CEO.
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -2116,14 +2167,78 @@ const AdminPanel = () => {
                       <span className="ml-2 text-muted-foreground">Loading...</span>
                     </div>
                   ) : (
-                    <div 
-                      ref={contentEditableRef}
-                      contentEditable 
-                      suppressContentEditableWarning
-                      onBlur={(e) => setNotebookContent(e.currentTarget.innerHTML)}
-                      onInput={(e) => setNotebookContent(e.currentTarget.innerHTML)}
-                      className="prose prose-sm max-w-none focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg p-4 min-h-[600px] border-2 border-slate-200"
-                    />
+                    <div className="space-y-6">
+                      {/* Summary Table - Fully Editable */}
+                      <div className="bg-white rounded-lg border-2 border-slate-200 p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-foreground">Summary Table</h3>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (contentEditableRef.current) {
+                                  const table = contentEditableRef.current.querySelector('table');
+                                  if (table) {
+                                    const headerRow = table.querySelector('thead tr');
+                                    if (headerRow) {
+                                      const newHeader = document.createElement('th');
+                                      newHeader.className = 'border border-slate-300 px-3 py-2 text-left font-semibold';
+                                      newHeader.contentEditable = true;
+                                      newHeader.textContent = 'New Column';
+                                      headerRow.appendChild(newHeader);
+                                    }
+                                    const rows = table.querySelectorAll('tbody tr');
+                                    rows.forEach(row => {
+                                      const newCell = document.createElement('td');
+                                      newCell.className = 'border border-slate-300 px-3 py-2';
+                                      newCell.contentEditable = true;
+                                      row.appendChild(newCell);
+                                    });
+                                    setNotebookContent(contentEditableRef.current.innerHTML);
+                                  }
+                                }
+                              }}
+                            >
+                              + Add Column
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                if (contentEditableRef.current) {
+                                  const table = contentEditableRef.current.querySelector('table tbody');
+                                  if (table) {
+                                    const headerRow = contentEditableRef.current.querySelector('table thead tr');
+                                    const colCount = headerRow?.querySelectorAll('th').length || 3;
+                                    const newRow = document.createElement('tr');
+                                    for (let i = 0; i < colCount; i++) {
+                                      const cell = document.createElement('td');
+                                      cell.className = 'border border-slate-300 px-3 py-2';
+                                      cell.contentEditable = true;
+                                      newRow.appendChild(cell);
+                                    }
+                                    table.appendChild(newRow);
+                                    setNotebookContent(contentEditableRef.current.innerHTML);
+                                  }
+                                }
+                              }}
+                            >
+                              + Add Row
+                            </Button>
+                          </div>
+                        </div>
+                        <div 
+                          ref={contentEditableRef}
+                          contentEditable 
+                          suppressContentEditableWarning
+                          onBlur={(e) => setNotebookContent(e.currentTarget.innerHTML)}
+                          onInput={(e) => setNotebookContent(e.currentTarget.innerHTML)}
+                          className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
+                        >
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               </Card>
