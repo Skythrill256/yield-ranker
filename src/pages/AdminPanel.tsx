@@ -330,8 +330,7 @@ const AdminPanel = () => {
         // Use string concatenation to avoid template literal parsing issues in build
         content = [
           '<h1>Adjusted vs Unadjusted Price Reference</h1>',
-          '<p><strong>Last Updated:</strong> 12/24/2025<br>',
-          '<strong>Purpose:</strong> This reference document defines which metrics use ADJUSTED (adj_close) vs UNADJUSTED (close) prices as specified by the CEO.</p>',
+          '<p>This reference document defines which metrics use ADJUSTED (adj_close) or UNADJUSTED (close) prices as specified by the CTO.</p>',
           '',
           '<h2>Summary Table</h2>',
           '<div class="overflow-x-auto">',
