@@ -583,7 +583,7 @@ export const CEFTable = ({
                 <td className="py-1 px-1.5 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap">
                   {cef.navSymbol || "N/A"}
                 </td>
-                <td className="py-1 px-1.5 align-middle max-w-[120px] sm:max-w-[150px] truncate text-xs text-muted-foreground">
+                <td className="py-1 px-1.5 align-middle max-w-[100px] sm:max-w-[120px] truncate text-xs text-muted-foreground">
                   {cef.description || "N/A"}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center text-xs text-muted-foreground">
@@ -744,7 +744,7 @@ export const CEFTable = ({
                   return (
                     <td
                       key={`${cef.symbol}-${String(col.key)}`}
-                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[60px] sm:min-w-[70px] ${colIndex === returnColumns.length - 1
+                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[65px] sm:min-w-[75px] ${colIndex === returnColumns.length - 1
                           ? "border-r-2 border-slate-300"
                           : ""
                         }`}

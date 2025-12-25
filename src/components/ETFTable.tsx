@@ -411,7 +411,7 @@ export const ETFTable = ({
                 <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px] truncate">
                   {etf.issuer}
                 </td>
-                <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[250px] sm:max-w-[300px] truncate text-xs text-muted-foreground min-w-[180px] sm:min-w-[220px]">
+                <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[150px] sm:max-w-[180px] truncate text-xs text-muted-foreground min-w-[120px] sm:min-w-[140px]">
                   {etf.description}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center text-xs text-muted-foreground">
@@ -497,7 +497,7 @@ export const ETFTable = ({
                   return (
                     <td
                       key={`${etf.symbol}-${String(col.key)}`}
-                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[60px] sm:min-w-[70px] ${colIndex === returnColumns.length - 1
+                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[65px] sm:min-w-[75px] ${colIndex === returnColumns.length - 1
                         ? "border-r-2 border-slate-300"
                         : ""
                         }`}
