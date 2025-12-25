@@ -223,10 +223,17 @@ const AdminPanel = () => {
     if (isAdmin) {
       fetchProfiles();
       fetchSiteSettings();
-      loadNotebook();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
+
+  // Load notebook when price-reference tab becomes active
+  useEffect(() => {
+    if (isAdmin && activeTab === "price-reference" && !notebookLoading) {
+      loadNotebook();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAdmin]);
 
   // Set content in contentEditable when it loads or when tab becomes active
   useEffect(() => {
