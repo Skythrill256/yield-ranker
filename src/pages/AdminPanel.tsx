@@ -327,168 +327,171 @@ const AdminPanel = () => {
       let content = await getNotebook();
       // If notebook is empty, initialize with default price reference content
       if (!content || content.trim() === "") {
-        content = `<h1>Adjusted vs Unadjusted Price Reference</h1>
-<p><strong>Last Updated:</strong> 12/24/2025<br>
-<strong>Purpose:</strong> This document defines which metrics use ADJUSTED (adj_close) vs UNADJUSTED (close) prices as specified by the CEO.</p>
-
-<h2>Summary Table</h2>
-<div class="overflow-x-auto">
-<table class="w-full text-sm border-collapse">
-<thead>
-<tr class="bg-slate-100">
-<th class="border border-slate-300 px-3 py-2 text-left font-semibold">Metric</th>
-<th class="border border-slate-300 px-3 py-2 text-left font-semibold">Type</th>
-<th class="border border-slate-300 px-3 py-2 text-left font-semibold">Price Field</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="border border-slate-300 px-3 py-2">MARKET PRICE (HOME PAGE TABLE)</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`close\`</td>
-</tr>
-<tr class="bg-slate-50">
-<td class="border border-slate-300 px-3 py-2">NAV (HOME PAGE)</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`close\`</td>
-</tr>
-<tr>
-<td class="border border-slate-300 px-3 py-2">PRICE (CHART)</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`close\`</td>
-</tr>
-<tr class="bg-slate-50">
-<td class="border border-slate-300 px-3 py-2">NAV (CHART)</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`close\`</td>
-</tr>
-<tr>
-<td class="border border-slate-300 px-3 py-2">TOTAL RETURNS</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`adj_close\`</td>
-</tr>
-<tr class="bg-slate-50">
-<td class="border border-slate-300 px-3 py-2">6 MO NAV TREND</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`adj_close\`</td>
-</tr>
-<tr>
-<td class="border border-slate-300 px-3 py-2">12 MO NAV TREND</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`adj_close\`</td>
-</tr>
-<tr class="bg-slate-50">
-<td class="border border-slate-300 px-3 py-2">5-YEAR Z-SCORE</td>
-<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>
-<td class="border border-slate-300 px-3 py-2 font-mono text-xs">\`adj_close\`</td>
-</tr>
-</tbody>
-</table>
-</div>
-
-<hr>
-
-<h2>1. Total Returns Calculation</h2>
-<p><strong>Used for all return periods</strong> (3Y, 5Y, 10Y, 15Y, 12M, 6M, 3M, 1M, 1W).</p>
-<p><strong>Formula:</strong></p>
-<pre><code>Total Return = ((end_adj_close / start_adj_close) - 1) × 100</code></pre>
-<p><strong>Price Source:</strong> \`adj_close\` (adjusted)<br>
-<strong>Purpose:</strong> Accounts for dividends and distributions (total return with DRIP)</p>
-
-<hr>
-
-<h2>2. Premium/Discount Calculation</h2>
-<p><strong>Formula:</strong></p>
-<pre><code>Premium/Discount = ((Market Price / NAV) - 1) × 100</code></pre>
-<p><strong>Price Source:</strong> \`close\` (unadjusted)<br>
-<strong>Example:</strong> If MP=$50, NAV=$45: ((50/45) - 1) × 100 = +11.11% (premium)</p>
-
-<hr>
-
-<h2>3. 5-Year Z-Score Calculation</h2>
-<p>Measures how current premium/discount compares to historical average.</p>
-<p><strong>Step 1: Calculate Daily Discounts</strong></p>
-<pre><code>Daily Discount = (Price_adj_close / NAV_adj_close) - 1</code></pre>
-<p>Uses \`adj_close\` for both price and NAV</p>
-<p><strong>Step 2: Calculate Statistics</strong></p>
-<ul>
-<li>Mean Discount = Average of all discounts</li>
-<li>Variance = Σ((Discount - Mean)²) / n</li>
-<li>Std Dev = √Variance</li>
-</ul>
-<p><strong>Step 3: Calculate Z-Score</strong></p>
-<pre><code>Z-Score = (Current Discount - Mean Discount) / Standard Deviation</code></pre>
-<p><strong>Lookback Period:</strong> Up to 5 years (1,260 trading days max, 504 days minimum)<br>
-Returns null if less than 2 years of data available</p>
-
-<hr>
-
-<h2>4. NAV Trend Calculations</h2>
-<h3>6-Month NAV Trend</h3>
-<p><strong>Formula:</strong></p>
-<pre><code>((Current NAV - NAV 6 months ago) / NAV 6 months ago) × 100</code></pre>
-<p><strong>Period:</strong> Exactly 6 calendar months (not trading days)<br>
-<strong>Price Source:</strong> \`adj_close\` (adjusted) - accounts for distributions</p>
-<h3>12-Month NAV Trend</h3>
-<p><strong>Formula:</strong></p>
-<pre><code>((Current NAV - NAV 12 months ago) / NAV 12 months ago) × 100</code></pre>
-<p><strong>Period:</strong> Exactly 12 calendar months (not trading days)<br>
-<strong>Price Source:</strong> \`adj_close\` (adjusted) - accounts for distributions</p>
-
-<hr>
-
-<h2>5. Dividend Split Adjustment</h2>
-<p>Adjusts historical dividends for stock splits to maintain comparability.</p>
-<p><strong>Formula:</strong><br>
-For each split that occurred AFTER dividend date:</p>
-<pre><code>adjustmentFactor = adjustmentFactor × (1 / splitFactor)
-adjAmount = amount × adjustmentFactor</code></pre>
-<p><strong>Examples:</strong></p>
-<p><strong>Forward split (2-for-1, splitFactor=2.0):</strong></p>
-<ul>
-<li>Original: $0.30 → Adjusted: $0.30 × (1/2) = $0.15</li>
-</ul>
-<p><strong>Reverse split (10-for-1, splitFactor=0.1):</strong></p>
-<ul>
-<li>Original: $0.0594 → Adjusted: $0.0594 × (1/0.1) = $0.594</li>
-</ul>
-<p><strong>Important:</strong> Both forward and reverse splits use the same formula: multiply by (1/splitFactor)</p>
-
-<hr>
-
-<h2>6. Annual Dividend Total</h2>
-<p><strong>Formula:</strong></p>
-<pre><code>Year Total = Σ(adjAmount) for all dividends in that year</code></pre>
-<p>Uses \`adjAmount\` (split-adjusted), includes all dividend types (Regular + Special)</p>
-
-<hr>
-
-<h2>⚠️ Common Mistakes to Avoid</h2>
-<p>❌ <strong>WRONG:</strong> \`close ?? adj_close\` for NAV trends (prioritizes unadjusted)<br>
-✅ <strong>CORRECT:</strong> \`adj_close ?? close\` for NAV trends (prioritizes adjusted)</p>
-<p>❌ <strong>WRONG:</strong> \`adj_close\` for market price display<br>
-✅ <strong>CORRECT:</strong> \`close\` for market price display</p>
-<p>❌ <strong>WRONG:</strong> \`close\` for total return calculations<br>
-✅ <strong>CORRECT:</strong> \`adj_close\` for total return calculations</p>
-<p>❌ <strong>WRONG:</strong> Reverse split adjustment: \`amount × splitFactor\`<br>
-✅ <strong>CORRECT:</strong> Reverse split adjustment: \`amount × (1/splitFactor)\`</p>
-
-<hr>
-
-<h2>📍 Key Code Locations</h2>
-<ul>
-<li><strong>Market Price & NAV (Unadjusted):</strong> server/scripts/refresh_cef.ts, server/src/routes/cefs.ts</li>
-<li><strong>Total Returns (Adjusted):</strong> server/src/services/metrics.ts → calculateTotalReturnDrip()</li>
-<li><strong>Z-Score (Adjusted):</strong> server/src/routes/cefs.ts → calculateCEFZScore()</li>
-<li><strong>NAV Trends (Adjusted):</strong> server/src/routes/cefs.ts → calculateNAVTrend6M(), calculateNAVTrend12M()</li>
-<li><strong>Dividend Split Adjustment:</strong> server/src/services/tiingo.ts → fetchDividendHistory()</li>
-<li><strong>Premium/Discount:</strong> server/src/routes/cefs.ts → ((marketPrice / currentNav) - 1) × 100</li>
-</ul>
-
-<hr>
-
-<h2>Additional Notes</h2>
-<p>Use this space to add any additional formulas, calculations, or notes you need to keep track of.</p>`;
+        // Use string concatenation to avoid template literal parsing issues in build
+        content = [
+          '<h1>Adjusted vs Unadjusted Price Reference</h1>',
+          '<p><strong>Last Updated:</strong> 12/24/2025<br>',
+          '<strong>Purpose:</strong> This document defines which metrics use ADJUSTED (adj_close) vs UNADJUSTED (close) prices as specified by the CEO.</p>',
+          '',
+          '<h2>Summary Table</h2>',
+          '<div class="overflow-x-auto">',
+          '<table class="w-full text-sm border-collapse">',
+          '<thead>',
+          '<tr class="bg-slate-100">',
+          '<th class="border border-slate-300 px-3 py-2 text-left font-semibold">Metric</th>',
+          '<th class="border border-slate-300 px-3 py-2 text-left font-semibold">Type</th>',
+          '<th class="border border-slate-300 px-3 py-2 text-left font-semibold">Price Field</th>',
+          '</tr>',
+          '</thead>',
+          '<tbody>',
+          '<tr>',
+          '<td class="border border-slate-300 px-3 py-2">MARKET PRICE (HOME PAGE TABLE)</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`close`</td>',
+          '</tr>',
+          '<tr class="bg-slate-50">',
+          '<td class="border border-slate-300 px-3 py-2">NAV (HOME PAGE)</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`close`</td>',
+          '</tr>',
+          '<tr>',
+          '<td class="border border-slate-300 px-3 py-2">PRICE (CHART)</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`close`</td>',
+          '</tr>',
+          '<tr class="bg-slate-50">',
+          '<td class="border border-slate-300 px-3 py-2">NAV (CHART)</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">UNADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`close`</td>',
+          '</tr>',
+          '<tr>',
+          '<td class="border border-slate-300 px-3 py-2">TOTAL RETURNS</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`adj_close`</td>',
+          '</tr>',
+          '<tr class="bg-slate-50">',
+          '<td class="border border-slate-300 px-3 py-2">6 MO NAV TREND</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`adj_close`</td>',
+          '</tr>',
+          '<tr>',
+          '<td class="border border-slate-300 px-3 py-2">12 MO NAV TREND</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`adj_close`</td>',
+          '</tr>',
+          '<tr class="bg-slate-50">',
+          '<td class="border border-slate-300 px-3 py-2">5-YEAR Z-SCORE</td>',
+          '<td class="border border-slate-300 px-3 py-2"><span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">ADJUSTED</span></td>',
+          '<td class="border border-slate-300 px-3 py-2 font-mono text-xs">`adj_close`</td>',
+          '</tr>',
+          '</tbody>',
+          '</table>',
+          '</div>',
+          '',
+          '<hr>',
+          '',
+          '<h2>1. Total Returns Calculation</h2>',
+          '<p><strong>Used for all return periods</strong> (3Y, 5Y, 10Y, 15Y, 12M, 6M, 3M, 1M, 1W).</p>',
+          '<p><strong>Formula:</strong></p>',
+          '<pre><code>Total Return = ((end_adj_close / start_adj_close) - 1) × 100</code></pre>',
+          '<p><strong>Price Source:</strong> `adj_close` (adjusted)<br>',
+          '<strong>Purpose:</strong> Accounts for dividends and distributions (total return with DRIP)</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>2. Premium/Discount Calculation</h2>',
+          '<p><strong>Formula:</strong></p>',
+          '<pre><code>Premium/Discount = ((Market Price / NAV) - 1) × 100</code></pre>',
+          '<p><strong>Price Source:</strong> `close` (unadjusted)<br>',
+          '<strong>Example:</strong> If MP=$50, NAV=$45: ((50/45) - 1) × 100 = +11.11% (premium)</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>3. 5-Year Z-Score Calculation</h2>',
+          '<p>Measures how current premium/discount compares to historical average.</p>',
+          '<p><strong>Step 1: Calculate Daily Discounts</strong></p>',
+          '<pre><code>Daily Discount = (Price_adj_close / NAV_adj_close) - 1</code></pre>',
+          '<p>Uses `adj_close` for both price and NAV</p>',
+          '<p><strong>Step 2: Calculate Statistics</strong></p>',
+          '<ul>',
+          '<li>Mean Discount = Average of all discounts</li>',
+          '<li>Variance = Σ((Discount - Mean)²) / n</li>',
+          '<li>Std Dev = √Variance</li>',
+          '</ul>',
+          '<p><strong>Step 3: Calculate Z-Score</strong></p>',
+          '<pre><code>Z-Score = (Current Discount - Mean Discount) / Standard Deviation</code></pre>',
+          '<p><strong>Lookback Period:</strong> Up to 5 years (1,260 trading days max, 504 days minimum)<br>',
+          'Returns null if less than 2 years of data available</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>4. NAV Trend Calculations</h2>',
+          '<h3>6-Month NAV Trend</h3>',
+          '<p><strong>Formula:</strong></p>',
+          '<pre><code>((Current NAV - NAV 6 months ago) / NAV 6 months ago) × 100</code></pre>',
+          '<p><strong>Period:</strong> Exactly 6 calendar months (not trading days)<br>',
+          '<strong>Price Source:</strong> `adj_close` (adjusted) - accounts for distributions</p>',
+          '<h3>12-Month NAV Trend</h3>',
+          '<p><strong>Formula:</strong></p>',
+          '<pre><code>((Current NAV - NAV 12 months ago) / NAV 12 months ago) × 100</code></pre>',
+          '<p><strong>Period:</strong> Exactly 12 calendar months (not trading days)<br>',
+          '<strong>Price Source:</strong> `adj_close` (adjusted) - accounts for distributions</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>5. Dividend Split Adjustment</h2>',
+          '<p>Adjusts historical dividends for stock splits to maintain comparability.</p>',
+          '<p><strong>Formula:</strong><br>',
+          'For each split that occurred AFTER dividend date:</p>',
+          '<pre><code>adjustmentFactor = adjustmentFactor × (1 / splitFactor)',
+          'adjAmount = amount × adjustmentFactor</code></pre>',
+          '<p><strong>Examples:</strong></p>',
+          '<p><strong>Forward split (2-for-1, splitFactor=2.0):</strong></p>',
+          '<ul>',
+          '<li>Original: $0.30 → Adjusted: $0.30 × (1/2) = $0.15</li>',
+          '</ul>',
+          '<p><strong>Reverse split (10-for-1, splitFactor=0.1):</strong></p>',
+          '<ul>',
+          '<li>Original: $0.0594 → Adjusted: $0.0594 × (1/0.1) = $0.594</li>',
+          '</ul>',
+          '<p><strong>Important:</strong> Both forward and reverse splits use the same formula: multiply by (1/splitFactor)</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>6. Annual Dividend Total</h2>',
+          '<p><strong>Formula:</strong></p>',
+          '<pre><code>Year Total = Σ(adjAmount) for all dividends in that year</code></pre>',
+          '<p>Uses `adjAmount` (split-adjusted), includes all dividend types (Regular + Special)</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>⚠️ Common Mistakes to Avoid</h2>',
+          '<p>❌ <strong>WRONG:</strong> `close ?? adj_close` for NAV trends (prioritizes unadjusted)<br>',
+          '✅ <strong>CORRECT:</strong> `adj_close ?? close` for NAV trends (prioritizes adjusted)</p>',
+          '<p>❌ <strong>WRONG:</strong> `adj_close` for market price display<br>',
+          '✅ <strong>CORRECT:</strong> `close` for market price display</p>',
+          '<p>❌ <strong>WRONG:</strong> `close` for total return calculations<br>',
+          '✅ <strong>CORRECT:</strong> `adj_close` for total return calculations</p>',
+          '<p>❌ <strong>WRONG:</strong> Reverse split adjustment: `amount × splitFactor`<br>',
+          '✅ <strong>CORRECT:</strong> Reverse split adjustment: `amount × (1/splitFactor)`</p>',
+          '',
+          '<hr>',
+          '',
+          '<h2>📍 Key Code Locations</h2>',
+          '<ul>',
+          '<li><strong>Market Price & NAV (Unadjusted):</strong> server/scripts/refresh_cef.ts, server/src/routes/cefs.ts</li>',
+          '<li><strong>Total Returns (Adjusted):</strong> server/src/services/metrics.ts → calculateTotalReturnDrip()</li>',
+          '<li><strong>Z-Score (Adjusted):</strong> server/src/routes/cefs.ts → calculateCEFZScore()</li>',
+          '<li><strong>NAV Trends (Adjusted):</strong> server/src/routes/cefs.ts → calculateNAVTrend6M(), calculateNAVTrend12M()</li>',
+          '<li><strong>Dividend Split Adjustment:</strong> server/src/services/tiingo.ts → fetchDividendHistory()</li>',
+          '<li><strong>Premium/Discount:</strong> server/src/routes/cefs.ts → ((marketPrice / currentNav) - 1) × 100</li>',
+          '</ul>',
+          '',
+          '<hr>',
+          '',
+          '<h2>Additional Notes</h2>',
+          '<p>Use this space to add any additional formulas, calculations, or notes you need to keep track of.</p>'
+        ].join('\n');
         // Save the default content
         await saveNotebook(content, profile?.id ?? null);
       }
