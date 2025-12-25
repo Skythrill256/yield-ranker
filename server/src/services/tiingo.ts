@@ -319,10 +319,9 @@ export async function fetchDividendHistory(
                 // Apply split adjustment:
                 // Tiingo's splitFactor represents the ratio of new shares to old shares
                 // - For forward splits (2-for-1): splitFactor = 2, adjustment = 1/2 = 0.5
-                // - For reverse splits (1-for-10): splitFactor = 0.1, adjustment = 0.1
+                // - For reverse splits (10-for-1): splitFactor = 0.1, adjustment = 1/0.1 = 10
                 // To adjust historical dividends to current share basis:
-                // - Forward splits (splitFactor > 1): multiply by 1/splitFactor
-                // - Reverse splits (splitFactor < 1): multiply by splitFactor
+                // - Both forward and reverse splits: multiply by (1 / splitFactor)
                 // - Dividends BEFORE split date: apply adjustment
                 // - Dividends ON or AFTER split date: use raw (already adjusted by Tiingo)
                 let adjDividend = divCash; // Default: no adjustment (post-split or no split)
