@@ -67,21 +67,22 @@ export async function calculateCEFZScore(
     if (priceData.length === 0 || navData.length === 0) return null;
 
     // Create maps by date for efficient lookup
-    // Use adjusted close (adj_close) for Z-Score calculation to account for distributions
+    // Use UNADJUSTED close for Z-Score calculation
+    // Premium/Discount analysis should use raw prices to avoid distortion from historical dividend adjustments
     const priceMap = new Map<string, number>();
     priceData.forEach((p: PriceRecord) => {
-      // Z-Score uses adjusted prices to account for dividends and distributions
-      const price = p.adj_close ?? p.close ?? null;
+      // Z-Score uses UNADJUSTED prices - adjusted prices distort historical discount calculations
+      const price = p.close ?? p.adj_close ?? null;
       if (price !== null && price > 0) {
         priceMap.set(p.date, price);
       }
     });
 
-    // Use adjusted close for NAV as well (accounts for distributions)
+    // Use UNADJUSTED close for NAV as well
     const navMap = new Map<string, number>();
     navData.forEach((p: PriceRecord) => {
-      // Z-Score uses adjusted NAV to account for distributions
-      const nav = p.adj_close ?? p.close ?? null;
+      // Z-Score uses UNADJUSTED NAV - adjusted prices distort historical data
+      const nav = p.close ?? p.adj_close ?? null;
       if (nav !== null && nav > 0) {
         navMap.set(p.date, nav);
       }
@@ -202,8 +203,8 @@ export async function calculateNAVTrend6M(
     if (!past6MRecord) {
       // If no record on/after target date, use the last record before it
       const sixMonthsRecords = navData.filter(r => r.date <= sixMonthsAgoStr);
-      past6MRecord = sixMonthsRecords.length > 0 
-        ? sixMonthsRecords[sixMonthsRecords.length - 1] 
+      past6MRecord = sixMonthsRecords.length > 0
+        ? sixMonthsRecords[sixMonthsRecords.length - 1]
         : undefined;
     }
 
@@ -299,8 +300,8 @@ export async function calculateNAVReturn12M(
     if (!past12MRecord) {
       // If no record on/after target date, use the last record before it
       const twelveMonthsRecords = navData.filter(r => r.date <= twelveMonthsAgoStr);
-      past12MRecord = twelveMonthsRecords.length > 0 
-        ? twelveMonthsRecords[twelveMonthsRecords.length - 1] 
+      past12MRecord = twelveMonthsRecords.length > 0
+        ? twelveMonthsRecords[twelveMonthsRecords.length - 1]
         : undefined;
     }
 
