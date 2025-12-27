@@ -179,7 +179,10 @@ export async function calculateNAVTrend6M(
     );
 
     if (navData.length < 2) {
-      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 2 records)`);
+      logger.info(
+        "CEF Metrics",
+        `6M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 2 records)`
+      );
       return null;
     }
 
@@ -192,33 +195,46 @@ export async function calculateNAVTrend6M(
 
     // Use the current record's date (not today) to calculate 6 months ago
     // This ensures we use the actual last available data date
-    const currentDate = new Date(currentRecord.date + 'T00:00:00');
+    const currentDate = new Date(currentRecord.date + "T00:00:00");
     const sixMonthsAgo = new Date(currentDate);
     sixMonthsAgo.setMonth(currentDate.getMonth() - 6);
     const sixMonthsAgoStr = formatDate(sixMonthsAgo);
 
     // Find NAV record closest to 6 months ago (get closest available date)
     // Prefer records on or after the target date, but take closest if none available
-    let past6MRecord: typeof navData[0] | undefined = navData.find(r => r.date >= sixMonthsAgoStr);
+    let past6MRecord: (typeof navData)[0] | undefined = navData.find(
+      (r) => r.date >= sixMonthsAgoStr
+    );
     if (!past6MRecord) {
       // If no record on/after target date, use the last record before it
-      const sixMonthsRecords = navData.filter(r => r.date <= sixMonthsAgoStr);
-      past6MRecord = sixMonthsRecords.length > 0
-        ? sixMonthsRecords[sixMonthsRecords.length - 1]
-        : undefined;
+      const sixMonthsRecords = navData.filter((r) => r.date <= sixMonthsAgoStr);
+      past6MRecord =
+        sixMonthsRecords.length > 0
+          ? sixMonthsRecords[sixMonthsRecords.length - 1]
+          : undefined;
     }
 
     if (!past6MRecord) {
-      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: no data available for 6 months ago (${sixMonthsAgoStr})`);
+      logger.info(
+        "CEF Metrics",
+        `6M NAV Trend N/A for ${navSymbol}: no data available for 6 months ago (${sixMonthsAgoStr})`
+      );
       return null;
     }
 
     // CRITICAL: Validate that we have data close enough to 6 months ago
     // If the selected record is more than 7.5 months away, the data is insufficient
-    const past6MDate = new Date(past6MRecord.date + 'T00:00:00');
-    const monthsDiff = (currentDate.getTime() - past6MDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44); // Average days per month
+    const past6MDate = new Date(past6MRecord.date + "T00:00:00");
+    const monthsDiff =
+      (currentDate.getTime() - past6MDate.getTime()) /
+      (1000 * 60 * 60 * 24 * 30.44); // Average days per month
     if (monthsDiff < 5 || monthsDiff > 7.5) {
-      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: insufficient historical data (selected record is ${monthsDiff.toFixed(1)} months ago, need ~6 months)`);
+      logger.info(
+        "CEF Metrics",
+        `6M NAV Trend N/A for ${navSymbol}: insufficient historical data (selected record is ${monthsDiff.toFixed(
+          1
+        )} months ago, need ~6 months)`
+      );
       return null;
     }
 
@@ -227,7 +243,10 @@ export async function calculateNAVTrend6M(
     const past6MNav = past6MRecord.adj_close ?? past6MRecord.close;
 
     if (!currentNav || !past6MNav || past6MNav <= 0) {
-      logger.info("CEF Metrics", `6M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past6M=${past6MNav})`);
+      logger.info(
+        "CEF Metrics",
+        `6M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past6M=${past6MNav})`
+      );
       return null;
     }
 
@@ -276,7 +295,10 @@ export async function calculateNAVReturn12M(
     );
 
     if (navData.length < 2) {
-      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 2 records)`);
+      logger.info(
+        "CEF Metrics",
+        `12M NAV Trend N/A for ${navSymbol}: insufficient data (${navData.length} < 2 records)`
+      );
       return null;
     }
 
@@ -289,33 +311,48 @@ export async function calculateNAVReturn12M(
 
     // Use the current record's date (not today) to calculate 12 months ago
     // This ensures we use the actual last available data date
-    const currentDate = new Date(currentRecord.date + 'T00:00:00');
+    const currentDate = new Date(currentRecord.date + "T00:00:00");
     const twelveMonthsAgo = new Date(currentDate);
     twelveMonthsAgo.setMonth(currentDate.getMonth() - 12);
     const twelveMonthsAgoStr = formatDate(twelveMonthsAgo);
 
     // Find NAV record closest to 12 months ago (get closest available date)
     // Prefer records on or after the target date, but take closest if none available
-    let past12MRecord: typeof navData[0] | undefined = navData.find(r => r.date >= twelveMonthsAgoStr);
+    let past12MRecord: (typeof navData)[0] | undefined = navData.find(
+      (r) => r.date >= twelveMonthsAgoStr
+    );
     if (!past12MRecord) {
       // If no record on/after target date, use the last record before it
-      const twelveMonthsRecords = navData.filter(r => r.date <= twelveMonthsAgoStr);
-      past12MRecord = twelveMonthsRecords.length > 0
-        ? twelveMonthsRecords[twelveMonthsRecords.length - 1]
-        : undefined;
+      const twelveMonthsRecords = navData.filter(
+        (r) => r.date <= twelveMonthsAgoStr
+      );
+      past12MRecord =
+        twelveMonthsRecords.length > 0
+          ? twelveMonthsRecords[twelveMonthsRecords.length - 1]
+          : undefined;
     }
 
     if (!past12MRecord) {
-      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: no data available for 12 months ago (${twelveMonthsAgoStr})`);
+      logger.info(
+        "CEF Metrics",
+        `12M NAV Trend N/A for ${navSymbol}: no data available for 12 months ago (${twelveMonthsAgoStr})`
+      );
       return null;
     }
 
     // CRITICAL: Validate that we have data close enough to 12 months ago
     // If the selected record is more than 14 months away, the data is insufficient
-    const past12MDate = new Date(past12MRecord.date + 'T00:00:00');
-    const monthsDiff = (currentDate.getTime() - past12MDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44); // Average days per month
+    const past12MDate = new Date(past12MRecord.date + "T00:00:00");
+    const monthsDiff =
+      (currentDate.getTime() - past12MDate.getTime()) /
+      (1000 * 60 * 60 * 24 * 30.44); // Average days per month
     if (monthsDiff < 10 || monthsDiff > 14) {
-      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: insufficient historical data (selected record is ${monthsDiff.toFixed(1)} months ago, need ~12 months)`);
+      logger.info(
+        "CEF Metrics",
+        `12M NAV Trend N/A for ${navSymbol}: insufficient historical data (selected record is ${monthsDiff.toFixed(
+          1
+        )} months ago, need ~12 months)`
+      );
       return null;
     }
 
@@ -324,7 +361,10 @@ export async function calculateNAVReturn12M(
     const past12MNav = past12MRecord.adj_close ?? past12MRecord.close;
 
     if (!currentNav || !past12MNav || past12MNav <= 0) {
-      logger.info("CEF Metrics", `12M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past12M=${past12MNav})`);
+      logger.info(
+        "CEF Metrics",
+        `12M NAV Trend N/A for ${navSymbol}: missing close data (current=${currentNav}, past12M=${past12MNav})`
+      );
       return null;
     }
 
@@ -347,21 +387,21 @@ export async function calculateNAVReturn12M(
 
 /**
  * Calculate TOTAL RETURNS for CEFs (3Y, 5Y, 10Y, 15Y) using NAV data
- * 
+ *
  * For CEFs, Total Returns are calculated using NAV (Net Asset Value) instead of market price
  * because NAV represents the underlying asset value, while price can trade at premium/discount.
- * 
+ *
  * Uses adjusted close (adj_close) which accounts for distributions/dividends,
  * giving true total return with DRIP (Dividend Reinvestment Plan).
- * 
+ *
  * Formula: ((NAV_adj_end / NAV_adj_start) - 1) * 100
- * 
+ *
  * This is equivalent to calculateTotalReturnDrip but uses NAV data instead of price data.
  * These values are displayed as "TOTAL RETURNS" in the CEF table.
  */
 export async function calculateNAVReturns(
   navSymbol: string | null,
-  period: '3Y' | '5Y' | '10Y' | '15Y'
+  period: "3Y" | "5Y" | "10Y" | "15Y"
 ): Promise<number | null> {
   if (!navSymbol) return null;
 
@@ -378,7 +418,10 @@ export async function calculateNAVReturns(
     );
 
     if (latestNav.length === 0) {
-      logger.info("CEF Metrics", `No NAV data found for ${navSymbol} (checked database and Tiingo)`);
+      logger.info(
+        "CEF Metrics",
+        `No NAV data found for ${navSymbol} (checked database and Tiingo)`
+      );
       return null;
     }
 
@@ -391,16 +434,16 @@ export async function calculateNAVReturns(
     // Calculate start date based on the end date (not today)
     // This ensures we're measuring exactly 3/5/10/15 years from the last trading day
     switch (period) {
-      case '3Y':
+      case "3Y":
         startDateObj.setFullYear(endDateObj.getFullYear() - 3);
         break;
-      case '5Y':
+      case "5Y":
         startDateObj.setFullYear(endDateObj.getFullYear() - 5);
         break;
-      case '10Y':
+      case "10Y":
         startDateObj.setFullYear(endDateObj.getFullYear() - 10);
         break;
-      case '15Y':
+      case "15Y":
         startDateObj.setFullYear(endDateObj.getFullYear() - 15);
         break;
     }
@@ -410,25 +453,38 @@ export async function calculateNAVReturns(
     // Fetch NAV data with a buffer to ensure we find the nearest trading day
     // For longer periods, we need more buffer to account for weekends/holidays
     // 15Y needs ~60 days buffer (to cover ~42 trading days), 10Y needs ~45, 5Y needs ~30, 3Y needs ~20
-    const bufferDays = period === '15Y' ? 60 : period === '10Y' ? 45 : period === '5Y' ? 30 : 20;
+    const bufferDays =
+      period === "15Y" ? 60 : period === "10Y" ? 45 : period === "5Y" ? 30 : 20;
     const bufferDate = new Date(startDateObj);
     bufferDate.setDate(bufferDate.getDate() - bufferDays);
     const fetchStartDate = formatDate(bufferDate);
 
-    logger.info("CEF Metrics", `Fetching ${period} NAV data for ${navSymbol}: ${fetchStartDate} to ${endDate} (buffer: ${bufferDays} days)`);
+    logger.info(
+      "CEF Metrics",
+      `Fetching ${period} NAV data for ${navSymbol}: ${fetchStartDate} to ${endDate} (buffer: ${bufferDays} days)`
+    );
 
     // Use same NAV fetching method as chart endpoint
-    logger.info("CEF Metrics", `Fetching ${period} NAV data for ${navSymbol}: ${fetchStartDate} to ${endDate}`);
+    logger.info(
+      "CEF Metrics",
+      `Fetching ${period} NAV data for ${navSymbol}: ${fetchStartDate} to ${endDate}`
+    );
     const navData = await getPriceHistory(
       navSymbol.toUpperCase(),
       fetchStartDate,
       endDate
     );
 
-    logger.info("CEF Metrics", `Received ${navData.length} NAV records for ${navSymbol} (requested ${period})`);
+    logger.info(
+      "CEF Metrics",
+      `Received ${navData.length} NAV records for ${navSymbol} (requested ${period})`
+    );
 
     if (navData.length < 2) {
-      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: insufficient data (${navData.length} < 2 records)`);
+      logger.info(
+        "CEF Metrics",
+        `${period} Return N/A for ${navSymbol}: insufficient data (${navData.length} < 2 records)`
+      );
       return null;
     }
 
@@ -439,32 +495,46 @@ export async function calculateNAVReturns(
       const lastDate = navData[navData.length - 1].date;
       const firstDateObj = new Date(firstDate);
       const lastDateObj = new Date(lastDate);
-      const actualYears = (lastDateObj.getTime() - firstDateObj.getTime()) / (1000 * 60 * 60 * 24 * 365);
-      logger.info("CEF Metrics", `Actual date range for ${navSymbol} ${period}: ${firstDate} to ${lastDate} (${actualYears.toFixed(1)} years, ${navData.length} records)`);
+      const actualYears =
+        (lastDateObj.getTime() - firstDateObj.getTime()) /
+        (1000 * 60 * 60 * 24 * 365);
+      logger.info(
+        "CEF Metrics",
+        `Actual date range for ${navSymbol} ${period}: ${firstDate} to ${lastDate} (${actualYears.toFixed(
+          1
+        )} years, ${navData.length} records)`
+      );
     }
 
     // Convert period to approximate days for validation
     const periodDaysMap: Record<string, number> = {
-      '3Y': 1095,
-      '5Y': 1825,
-      '10Y': 3650,
-      '15Y': 5475,
+      "3Y": 1095,
+      "5Y": 1825,
+      "10Y": 3650,
+      "15Y": 5475,
     };
     const requestedDays = periodDaysMap[period];
 
     // Find start and end prices using same logic as calculateTotalReturnDrip
     // Find first NAV on/after start date
-    const startRecord = navData.find(p => p.date >= startDate);
+    const startRecord = navData.find((p) => p.date >= startDate);
     if (!startRecord) {
-      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: no data on/after start date ${startDate}`);
+      logger.info(
+        "CEF Metrics",
+        `${period} Return N/A for ${navSymbol}: no data on/after start date ${startDate}`
+      );
       return null;
     }
 
     // Find last NAV on/before end date
-    const validEndNav = navData.filter(p => p.date <= endDate);
-    const endRecord = validEndNav.length > 0 ? validEndNav[validEndNav.length - 1] : null;
+    const validEndNav = navData.filter((p) => p.date <= endDate);
+    const endRecord =
+      validEndNav.length > 0 ? validEndNav[validEndNav.length - 1] : null;
     if (!endRecord) {
-      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: no data on/before end date ${endDate}`);
+      logger.info(
+        "CEF Metrics",
+        `${period} Return N/A for ${navSymbol}: no data on/before end date ${endDate}`
+      );
       return null;
     }
 
@@ -473,38 +543,59 @@ export async function calculateNAVReturns(
     const endNav = endRecord.adj_close ?? endRecord.close;
 
     if (!startNav || !endNav || startNav <= 0 || endNav <= 0) {
-      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: invalid prices (start=${startNav}, end=${endNav})`);
+      logger.info(
+        "CEF Metrics",
+        `${period} Return N/A for ${navSymbol}: invalid prices (start=${startNav}, end=${endNav})`
+      );
       return null;
     }
 
     // Ensure dates are valid
     if (startRecord.date > endRecord.date) {
-      logger.info("CEF Metrics", `${period} Return N/A for ${navSymbol}: invalid date range (${startRecord.date} > ${endRecord.date})`);
+      logger.info(
+        "CEF Metrics",
+        `${period} Return N/A for ${navSymbol}: invalid date range (${startRecord.date} > ${endRecord.date})`
+      );
       return null;
     }
 
     // Calculate total return: ((End / Start) - 1) * 100
-    const totalReturn = ((endNav / startNav) - 1) * 100;
+    const totalReturn = (endNav / startNav - 1) * 100;
 
     // Annualize the return based on the period
     // Formula: Annualized Return = ((1 + Total Return/100)^(1/years) - 1) * 100
-    const years = period === '3Y' ? 3 : period === '5Y' ? 5 : period === '10Y' ? 10 : 15;
+    const years =
+      period === "3Y" ? 3 : period === "5Y" ? 5 : period === "10Y" ? 10 : 15;
     let annualizedReturn: number;
 
     if (totalReturn <= -100) {
       // Can't annualize a -100% or worse return
       annualizedReturn = -100;
     } else {
-      annualizedReturn = ((Math.pow(1 + totalReturn / 100, 1 / years)) - 1) * 100;
+      annualizedReturn = (Math.pow(1 + totalReturn / 100, 1 / years) - 1) * 100;
     }
 
     // Sanity check: returns should be reasonable
-    if (!isFinite(annualizedReturn) || annualizedReturn < -100 || annualizedReturn > 1000) {
-      logger.warn("CEF Metrics", `Unreasonable ${period} annualized return calculated: ${annualizedReturn}% for ${navSymbol} (total: ${totalReturn}%)`);
+    if (
+      !isFinite(annualizedReturn) ||
+      annualizedReturn < -100 ||
+      annualizedReturn > 1000
+    ) {
+      logger.warn(
+        "CEF Metrics",
+        `Unreasonable ${period} annualized return calculated: ${annualizedReturn}% for ${navSymbol} (total: ${totalReturn}%)`
+      );
       return null;
     }
 
-    logger.info("CEF Metrics", `✅ Calculated ${period} Annualized NAV return for ${navSymbol}: ${annualizedReturn.toFixed(2)}% (total: ${totalReturn.toFixed(2)}% over ${years} years, ${navData.length} records)`);
+    logger.info(
+      "CEF Metrics",
+      `✅ Calculated ${period} Annualized NAV return for ${navSymbol}: ${annualizedReturn.toFixed(
+        2
+      )}% (total: ${totalReturn.toFixed(2)}% over ${years} years, ${
+        navData.length
+      } records)`
+    );
     return annualizedReturn;
   } catch (error) {
     logger.warn(
@@ -519,7 +610,7 @@ export async function calculateNAVReturns(
  * Calculate Signal Rating (Column Q)
  * Purpose: The "Brain" - combines Z-Score with NAV trends to give a sortable action rank from -2 to +3
  * Constraint: Returns null (N/A) if fund history is < 2 years (504 trading days)
- * 
+ *
  * Score Rating Logic:
  * +3: Optimal - Z < -1.5 AND 6M Trend > 0 AND 12M Trend > 0
  * +2: Good Value - Z < -1.5 AND 6M Trend > 0
@@ -536,8 +627,16 @@ export async function calculateSignal(
   navTrend12M: number | null
 ): Promise<number | null> {
   // If we don't have required inputs, return null
-  if (!navSymbol || zScore === null || navTrend6M === null || navTrend12M === null) {
-    logger.info("CEF Metrics", `Signal N/A for ${ticker}: missing inputs (zScore=${zScore}, navTrend6M=${navTrend6M}, navTrend12M=${navTrend12M})`);
+  if (
+    !navSymbol ||
+    zScore === null ||
+    navTrend6M === null ||
+    navTrend12M === null
+  ) {
+    logger.info(
+      "CEF Metrics",
+      `Signal N/A for ${ticker}: missing inputs (zScore=${zScore}, navTrend6M=${navTrend6M}, navTrend12M=${navTrend12M})`
+    );
     return null;
   }
 
@@ -559,7 +658,10 @@ export async function calculateSignal(
 
     // Need at least 504 trading days of history (matches Python: if len(df) < 504: return "N/A")
     if (navData.length < 504) {
-      logger.info("CEF Metrics", `Signal N/A for ${ticker}: insufficient history (${navData.length} < 504 trading days)`);
+      logger.info(
+        "CEF Metrics",
+        `Signal N/A for ${ticker}: insufficient history (${navData.length} < 504 trading days)`
+      );
       return null; // N/A - insufficient history
     }
 
@@ -570,32 +672,60 @@ export async function calculateSignal(
     // Logic Gate Scoring (matches Python exactly)
     // +3: Optimal (Cheap + 6mo Health + 12mo Health)
     if (z < -1.5 && t6 > 0 && t12 > 0) {
-      logger.info("CEF Metrics", `Signal +3 (Optimal) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%, t12=${t12.toFixed(2)}%`);
+      logger.info(
+        "CEF Metrics",
+        `Signal +3 (Optimal) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(
+          2
+        )}%, t12=${t12.toFixed(2)}%`
+      );
       return 3;
     }
     // +2: Good Value (Cheap + 6mo Health)
     else if (z < -1.5 && t6 > 0) {
-      logger.info("CEF Metrics", `Signal +2 (Good Value) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info(
+        "CEF Metrics",
+        `Signal +2 (Good Value) for ${ticker}: z=${z.toFixed(
+          2
+        )}, t6=${t6.toFixed(2)}%`
+      );
       return 2;
     }
     // +1: Healthy (Not cheap, but growing assets)
     else if (z > -1.5 && t6 > 0) {
-      logger.info("CEF Metrics", `Signal +1 (Healthy) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info(
+        "CEF Metrics",
+        `Signal +1 (Healthy) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(
+          2
+        )}%`
+      );
       return 1;
     }
     // -1: Value Trap (Looks cheap, but assets are shrinking)
     else if (z < -1.5 && t6 < 0) {
-      logger.info("CEF Metrics", `Signal -1 (Value Trap) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info(
+        "CEF Metrics",
+        `Signal -1 (Value Trap) for ${ticker}: z=${z.toFixed(
+          2
+        )}, t6=${t6.toFixed(2)}%`
+      );
       return -1;
     }
     // -2: Overvalued (Statistically expensive)
     else if (z > 1.5) {
-      logger.info("CEF Metrics", `Signal -2 (Overvalued) for ${ticker}: z=${z.toFixed(2)}`);
+      logger.info(
+        "CEF Metrics",
+        `Signal -2 (Overvalued) for ${ticker}: z=${z.toFixed(2)}`
+      );
       return -2;
     }
     // 0: Neutral
     else {
-      logger.info("CEF Metrics", `Signal 0 (Neutral) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(2)}%`);
+      logger.info(
+        "CEF Metrics",
+        `Signal 0 (Neutral) for ${ticker}: z=${z.toFixed(2)}, t6=${t6.toFixed(
+          2
+        )}%`
+      );
       return 0;
     }
   } catch (error) {
@@ -631,7 +761,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     if (
       file.mimetype ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       file.mimetype === "application/vnd.ms-excel"
     ) {
       cb(null, true);
@@ -671,7 +801,7 @@ function findColumn(
 // Date range: From 2009-01-01 through today
 // ============================================================================
 
-function calculateDividendHistory(dividends: DividendRecord[]): string {
+export function calculateDividendHistory(dividends: DividendRecord[]): string {
   if (!dividends || dividends.length < 2) {
     return dividends.length === 1 ? "1 DIV+" : "0+ 0-";
   }
@@ -734,8 +864,14 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
     const nextAmount = next.div_cash ?? 0;
 
     // Skip if any amount is invalid
-    if (!prevAmount || !currentAmount || !nextAmount || 
-        prevAmount <= 0 || currentAmount <= 0 || nextAmount <= 0) {
+    if (
+      !prevAmount ||
+      !currentAmount ||
+      !nextAmount ||
+      prevAmount <= 0 ||
+      currentAmount <= 0 ||
+      nextAmount <= 0
+    ) {
       continue;
     }
 
@@ -1112,14 +1248,23 @@ router.post(
         }
 
         // Validate category - must be CEF
-        const categoryValue = categoryCol && row[categoryCol] ? String(row[categoryCol]).trim().toUpperCase() : null;
+        const categoryValue =
+          categoryCol && row[categoryCol]
+            ? String(row[categoryCol]).trim().toUpperCase()
+            : null;
         if (!categoryValue) {
-          logger.warn('CEF Upload', `Row with ticker ${ticker} missing CATEGORY - skipping`);
+          logger.warn(
+            "CEF Upload",
+            `Row with ticker ${ticker} missing CATEGORY - skipping`
+          );
           skipped++;
           continue;
         }
-        if (categoryValue !== 'CEF') {
-          logger.warn('CEF Upload', `Row with ticker ${ticker} has invalid CATEGORY "${categoryValue}" - must be "CEF". Skipping.`);
+        if (categoryValue !== "CEF") {
+          logger.warn(
+            "CEF Upload",
+            `Row with ticker ${ticker} has invalid CATEGORY "${categoryValue}" - must be "CEF". Skipping.`
+          );
           skipped++;
           continue;
         }
@@ -1396,91 +1541,103 @@ router.post(
 // GET /test-data-range/:symbol - Test endpoint to check data ranges
 // ============================================================================
 
-router.get("/test-data-range/:symbol", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { symbol } = req.params;
-    const ticker = symbol.toUpperCase();
-    const supabase = getSupabase();
+router.get(
+  "/test-data-range/:symbol",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { symbol } = req.params;
+      const ticker = symbol.toUpperCase();
+      const supabase = getSupabase();
 
-    const { data: cef } = await supabase
-      .from("etf_static")
-      .select("ticker, nav_symbol, description")
-      .eq("ticker", ticker)
-      .maybeSingle();
+      const { data: cef } = await supabase
+        .from("etf_static")
+        .select("ticker, nav_symbol, description")
+        .eq("ticker", ticker)
+        .maybeSingle();
 
-    if (!cef || !cef.nav_symbol) {
-      res.status(404).json({ error: "CEF not found or no NAV symbol" });
-      return;
-    }
-
-    const endDate = new Date();
-    const ranges = [
-      { name: '1Y', years: 1 },
-      { name: '3Y', years: 3 },
-      { name: '5Y', years: 5 },
-      { name: '10Y', years: 10 },
-      { name: '15Y', years: 15 },
-      { name: '20Y', years: 20 },
-    ];
-
-    const results: any[] = [];
-
-    for (const range of ranges) {
-      const startDate = new Date();
-      startDate.setFullYear(endDate.getFullYear() - range.years);
-      const startDateStr = formatDate(startDate);
-      const endDateStr = formatDate(endDate);
-
-      const navData = await getPriceHistory(cef.nav_symbol, startDateStr, endDateStr);
-
-      if (navData.length > 0) {
-        navData.sort((a, b) => a.date.localeCompare(b.date));
-        const first = navData[0];
-        const last = navData[navData.length - 1];
-        const firstDate = new Date(first.date);
-        const lastDate = new Date(last.date);
-        const actualYears = (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24 * 365);
-
-        results.push({
-          period: range.name,
-          requestedYears: range.years,
-          records: navData.length,
-          firstDate: first.date,
-          lastDate: last.date,
-          actualYears: parseFloat(actualYears.toFixed(1)),
-          hasAdjClose: navData.some(d => d.adj_close !== null),
-          samplePrices: {
-            first: {
-              close: first.close,
-              adj_close: first.adj_close,
-            },
-            last: {
-              close: last.close,
-              adj_close: last.adj_close,
-            },
-          },
-        });
-      } else {
-        results.push({
-          period: range.name,
-          requestedYears: range.years,
-          records: 0,
-          error: 'No data found',
-        });
+      if (!cef || !cef.nav_symbol) {
+        res.status(404).json({ error: "CEF not found or no NAV symbol" });
+        return;
       }
-    }
 
-    res.json({
-      ticker: cef.ticker,
-      navSymbol: cef.nav_symbol,
-      description: cef.description,
-      dataRanges: results,
-    });
-  } catch (error) {
-    logger.error("Routes", `Error testing data range: ${(error as Error).message}`);
-    res.status(500).json({ error: "Internal server error" });
+      const endDate = new Date();
+      const ranges = [
+        { name: "1Y", years: 1 },
+        { name: "3Y", years: 3 },
+        { name: "5Y", years: 5 },
+        { name: "10Y", years: 10 },
+        { name: "15Y", years: 15 },
+        { name: "20Y", years: 20 },
+      ];
+
+      const results: any[] = [];
+
+      for (const range of ranges) {
+        const startDate = new Date();
+        startDate.setFullYear(endDate.getFullYear() - range.years);
+        const startDateStr = formatDate(startDate);
+        const endDateStr = formatDate(endDate);
+
+        const navData = await getPriceHistory(
+          cef.nav_symbol,
+          startDateStr,
+          endDateStr
+        );
+
+        if (navData.length > 0) {
+          navData.sort((a, b) => a.date.localeCompare(b.date));
+          const first = navData[0];
+          const last = navData[navData.length - 1];
+          const firstDate = new Date(first.date);
+          const lastDate = new Date(last.date);
+          const actualYears =
+            (lastDate.getTime() - firstDate.getTime()) /
+            (1000 * 60 * 60 * 24 * 365);
+
+          results.push({
+            period: range.name,
+            requestedYears: range.years,
+            records: navData.length,
+            firstDate: first.date,
+            lastDate: last.date,
+            actualYears: parseFloat(actualYears.toFixed(1)),
+            hasAdjClose: navData.some((d) => d.adj_close !== null),
+            samplePrices: {
+              first: {
+                close: first.close,
+                adj_close: first.adj_close,
+              },
+              last: {
+                close: last.close,
+                adj_close: last.adj_close,
+              },
+            },
+          });
+        } else {
+          results.push({
+            period: range.name,
+            requestedYears: range.years,
+            records: 0,
+            error: "No data found",
+          });
+        }
+      }
+
+      res.json({
+        ticker: cef.ticker,
+        navSymbol: cef.nav_symbol,
+        description: cef.description,
+        dataRanges: results,
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error testing data range: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
-});
+);
 
 // ============================================================================
 // GET / - List all CEFs
@@ -1507,9 +1664,15 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     if (redis) {
       try {
         await redis.del(cacheKey);
-        logger.info("Routes", "Cleared CEF list cache to ensure fresh filtered data");
+        logger.info(
+          "Routes",
+          "Cleared CEF list cache to ensure fresh filtered data"
+        );
       } catch (cacheError) {
-        logger.warn("Routes", `Failed to clear cache: ${(cacheError as Error).message}`);
+        logger.warn(
+          "Routes",
+          `Failed to clear cache: ${(cacheError as Error).message}`
+        );
       }
     }
 
@@ -1517,7 +1680,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     // Filter at database level: Only get CEFs (those with nav_symbol set)
     // nav_symbol is the definitive identifier for CEFs
-    logger.info("Routes", "Fetching CEFs from database with nav_symbol filter...");
+    logger.info(
+      "Routes",
+      "Fetching CEFs from database with nav_symbol filter..."
+    );
     const staticResult = await supabase
       .from("etf_static")
       .select("*")
@@ -1553,7 +1719,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
       // CRITICAL: Must have actual NAV data to be considered a CEF
       // If NAV is null/undefined/0, it goes to ETFs table instead
-      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
+      const hasNAVData =
+        item.nav !== null && item.nav !== undefined && item.nav !== 0;
       if (!hasNAVData) {
         return false;
       }
@@ -1562,7 +1729,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     });
 
     if (filteredData.length === 0 && staticData.length > 0) {
-      logger.warn("Routes", `No CEFs found after filtering - checking sample record`);
+      logger.warn(
+        "Routes",
+        `No CEFs found after filtering - checking sample record`
+      );
       const sample = staticData[0];
       logger.warn(
         "Routes",
@@ -1575,22 +1745,24 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
     }
 
     // Detailed logging for debugging
-    const withNAV = staticData.filter((item: any) => item.nav !== null && item.nav !== undefined && item.nav !== 0).length;
-    const withoutNAV = staticData.filter((item: any) => item.nav === null || item.nav === undefined || item.nav === 0).length;
-    const navSymbolRecords = staticData.filter((item: any) => item.ticker === item.nav_symbol).length;
+    const withNAV = staticData.filter(
+      (item: any) =>
+        item.nav !== null && item.nav !== undefined && item.nav !== 0
+    ).length;
+    const withoutNAV = staticData.filter(
+      (item: any) =>
+        item.nav === null || item.nav === undefined || item.nav === 0
+    ).length;
+    const navSymbolRecords = staticData.filter(
+      (item: any) => item.ticker === item.nav_symbol
+    ).length;
 
     logger.info(
       "Routes",
       `CEF Filter Results: ${staticData.length} total with nav_symbol → ${filteredData.length} valid CEFs`
     );
-    logger.info(
-      "Routes",
-      `  - Records with NAV data: ${withNAV}`
-    );
-    logger.info(
-      "Routes",
-      `  - Records without NAV (N/A): ${withoutNAV}`
-    );
+    logger.info("Routes", `  - Records with NAV data: ${withNAV}`);
+    logger.info("Routes", `  - Records without NAV (N/A): ${withoutNAV}`);
     logger.info(
       "Routes",
       `  - NAV symbol records (ticker === nav_symbol): ${navSymbolRecords} (excluded)`
@@ -1598,7 +1770,12 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
 
     // Log sample of filtered CEFs
     if (filteredData.length > 0) {
-      const sample = filteredData.slice(0, 5).map((cef: any) => `${cef.ticker} (nav=$${cef.nav?.toFixed(2) || 'N/A'})`).join(', ');
+      const sample = filteredData
+        .slice(0, 5)
+        .map(
+          (cef: any) => `${cef.ticker} (nav=$${cef.nav?.toFixed(2) || "N/A"})`
+        )
+        .join(", ");
       logger.info("Routes", `Sample CEFs: ${sample}`);
     }
 
@@ -1617,7 +1794,10 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           if (!dividendHistory) {
             try {
               // Get dividends from 2009-01-01 onwards for dividend history calculation
-              const dividends = await getDividendHistory(cef.ticker, "2009-01-01");
+              const dividends = await getDividendHistory(
+                cef.ticker,
+                "2009-01-01"
+              );
               dividendHistory = calculateDividendHistory(dividends);
             } catch (error) {
               logger.warn(
@@ -1631,23 +1811,46 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           // Calculate metrics if ANY database values are missing (short-term OR long-term returns)
           // Use cached metrics first, then calculate with timeout to prevent loading issues
           let metrics: any = null;
-          const hasShortTerm = (cef.tr_drip_1w !== null && cef.tr_drip_1w !== undefined) &&
-            (cef.tr_drip_1m !== null && cef.tr_drip_1m !== undefined) &&
-            (cef.tr_drip_3m !== null && cef.tr_drip_3m !== undefined) &&
-            (cef.tr_drip_6m !== null && cef.tr_drip_6m !== undefined) &&
-            (cef.tr_drip_12m !== null && cef.tr_drip_12m !== undefined);
+          const hasShortTerm =
+            cef.tr_drip_1w !== null &&
+            cef.tr_drip_1w !== undefined &&
+            cef.tr_drip_1m !== null &&
+            cef.tr_drip_1m !== undefined &&
+            cef.tr_drip_3m !== null &&
+            cef.tr_drip_3m !== undefined &&
+            cef.tr_drip_6m !== null &&
+            cef.tr_drip_6m !== undefined &&
+            cef.tr_drip_12m !== null &&
+            cef.tr_drip_12m !== undefined;
           // For long-term, check if ANY are null/undefined - if so, we need metrics for fallback
-          const hasLongTerm = (cef.return_3yr !== null && cef.return_3yr !== undefined) &&
-            (cef.return_5yr !== null && cef.return_5yr !== undefined) &&
-            (cef.return_10yr !== null && cef.return_10yr !== undefined) &&
-            (cef.return_15yr !== null && cef.return_15yr !== undefined);
+          const hasLongTerm =
+            cef.return_3yr !== null &&
+            cef.return_3yr !== undefined &&
+            cef.return_5yr !== null &&
+            cef.return_5yr !== undefined &&
+            cef.return_10yr !== null &&
+            cef.return_10yr !== undefined &&
+            cef.return_15yr !== null &&
+            cef.return_15yr !== undefined;
           const needsMetrics = !hasShortTerm || !hasLongTerm;
 
           // Read return values from database first (before NAV calculations)
-          const return3Yr: number | null = (cef.return_3yr !== undefined && cef.return_3yr !== null) ? cef.return_3yr : null;
-          const return5Yr: number | null = (cef.return_5yr !== undefined && cef.return_5yr !== null) ? cef.return_5yr : null;
-          const return10Yr: number | null = (cef.return_10yr !== undefined && cef.return_10yr !== null) ? cef.return_10yr : null;
-          const return15Yr: number | null = (cef.return_15yr !== undefined && cef.return_15yr !== null) ? cef.return_15yr : null;
+          const return3Yr: number | null =
+            cef.return_3yr !== undefined && cef.return_3yr !== null
+              ? cef.return_3yr
+              : null;
+          const return5Yr: number | null =
+            cef.return_5yr !== undefined && cef.return_5yr !== null
+              ? cef.return_5yr
+              : null;
+          const return10Yr: number | null =
+            cef.return_10yr !== undefined && cef.return_10yr !== null
+              ? cef.return_10yr
+              : null;
+          const return15Yr: number | null =
+            cef.return_15yr !== undefined && cef.return_15yr !== null
+              ? cef.return_15yr
+              : null;
 
           // NO REAL-TIME CALCULATIONS - Use database values only
           // All CEF metrics should be pre-calculated by refresh_cefs.ts script
@@ -1662,17 +1865,36 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           // Formula: ((MP / NAV - 1) * 100) as percentage
           // Example: GAB (6.18/5.56)-1 * 100 = 11.15% (displays as +11.15%)
           let premiumDiscount: number | null = null;
-          if (currentNav && currentNav !== 0 && marketPrice && marketPrice > 0) {
+          if (
+            currentNav &&
+            currentNav !== 0 &&
+            marketPrice &&
+            marketPrice > 0
+          ) {
             premiumDiscount = (marketPrice / currentNav - 1) * 100;
-          } else if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
+          } else if (
+            cef.premium_discount !== null &&
+            cef.premium_discount !== undefined
+          ) {
             premiumDiscount = cef.premium_discount;
           }
 
           // Read CEF metrics from database first
-          let fiveYearZScore: number | null = (cef.five_year_z_score !== undefined && cef.five_year_z_score !== null) ? cef.five_year_z_score : null;
-          let navTrend6M: number | null = (cef.nav_trend_6m !== undefined && cef.nav_trend_6m !== null) ? cef.nav_trend_6m : null;
-          let navTrend12M: number | null = (cef.nav_trend_12m !== undefined && cef.nav_trend_12m !== null) ? cef.nav_trend_12m : null;
-          const signal: number | null = (cef.signal !== undefined && cef.signal !== null) ? cef.signal : null;
+          let fiveYearZScore: number | null =
+            cef.five_year_z_score !== undefined &&
+            cef.five_year_z_score !== null
+              ? cef.five_year_z_score
+              : null;
+          let navTrend6M: number | null =
+            cef.nav_trend_6m !== undefined && cef.nav_trend_6m !== null
+              ? cef.nav_trend_6m
+              : null;
+          let navTrend12M: number | null =
+            cef.nav_trend_12m !== undefined && cef.nav_trend_12m !== null
+              ? cef.nav_trend_12m
+              : null;
+          const signal: number | null =
+            cef.signal !== undefined && cef.signal !== null ? cef.signal : null;
 
           // NO REAL-TIME CALCULATIONS - Use database values only
           // All CEF metrics (Z-Score, NAV Trends, Signal) should be pre-calculated by refresh_cefs.ts script
@@ -1731,10 +1953,13 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
       // Extract successful results, log failures
       const successfulResults = batchResults
         .map((result, index) => {
-          if (result.status === 'fulfilled') {
+          if (result.status === "fulfilled") {
             return result.value;
           } else {
-            logger.warn("Routes", `Failed to process CEF ${batch[index]?.ticker}: ${result.reason}`);
+            logger.warn(
+              "Routes",
+              `Failed to process CEF ${batch[index]?.ticker}: ${result.reason}`
+            );
             return null;
           }
         })
@@ -1850,14 +2075,20 @@ router.get(
       }
 
       // Log the date range for debugging
-      logger.info("Routes", `Price/NAV chart: period=${period}, startDate=${startDate.toISOString().split("T")[0]}, endDate=${endDate.toISOString().split("T")[0]}`);
+      logger.info(
+        "Routes",
+        `Price/NAV chart: period=${period}, startDate=${
+          startDate.toISOString().split("T")[0]
+        }, endDate=${endDate.toISOString().split("T")[0]}`
+      );
 
       const startDateStr = startDate.toISOString().split("T")[0];
       // For MAX, use a future date to ensure we get all data up to today
       // For other periods, use today
-      const endDateStr = period === "MAX"
-        ? new Date(Date.now() + 86400000).toISOString().split("T")[0] // Tomorrow to ensure we get today's data
-        : endDate.toISOString().split("T")[0];
+      const endDateStr =
+        period === "MAX"
+          ? new Date(Date.now() + 86400000).toISOString().split("T")[0] // Tomorrow to ensure we get today's data
+          : endDate.toISOString().split("T")[0];
 
       // Fetch price data (with Tiingo fallback)
       let priceData = await getPriceHistory(ticker, startDateStr, endDateStr);
@@ -1870,30 +2101,60 @@ router.get(
         const requestedEnd = new Date(endDateStr);
 
         // If data doesn't cover the full range, fetch from Tiingo
-        const daysMissingAtStart = (firstDate.getTime() - requestedStart.getTime()) / (1000 * 60 * 60 * 24);
-        const daysMissingAtEnd = (requestedEnd.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+        const daysMissingAtStart =
+          (firstDate.getTime() - requestedStart.getTime()) /
+          (1000 * 60 * 60 * 24);
+        const daysMissingAtEnd =
+          (requestedEnd.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
 
         if (daysMissingAtStart > 30 || daysMissingAtEnd > 30) {
-          logger.info("Routes", `Price data incomplete for ${ticker}, fetching from Tiingo API`);
+          logger.info(
+            "Routes",
+            `Price data incomplete for ${ticker}, fetching from Tiingo API`
+          );
           try {
-            const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
-            const tiingoData = await getPriceHistoryFromAPI(ticker, startDateStr, endDateStr);
+            const { getPriceHistoryFromAPI } = await import(
+              "../services/tiingo.js"
+            );
+            const tiingoData = await getPriceHistoryFromAPI(
+              ticker,
+              startDateStr,
+              endDateStr
+            );
             if (tiingoData.length > priceData.length) {
-              logger.info("Routes", `Tiingo provided ${tiingoData.length} records vs ${priceData.length} from DB`);
+              logger.info(
+                "Routes",
+                `Tiingo provided ${tiingoData.length} records vs ${priceData.length} from DB`
+              );
               priceData = tiingoData;
             }
           } catch (tiingoError) {
-            logger.warn("Routes", `Tiingo fallback failed: ${(tiingoError as Error).message}`);
+            logger.warn(
+              "Routes",
+              `Tiingo fallback failed: ${(tiingoError as Error).message}`
+            );
           }
         }
       } else {
         // No data in DB, try Tiingo
-        logger.info("Routes", `No price data in DB for ${ticker}, fetching from Tiingo API`);
+        logger.info(
+          "Routes",
+          `No price data in DB for ${ticker}, fetching from Tiingo API`
+        );
         try {
-          const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
-          priceData = await getPriceHistoryFromAPI(ticker, startDateStr, endDateStr);
+          const { getPriceHistoryFromAPI } = await import(
+            "../services/tiingo.js"
+          );
+          priceData = await getPriceHistoryFromAPI(
+            ticker,
+            startDateStr,
+            endDateStr
+          );
         } catch (tiingoError) {
-          logger.warn("Routes", `Tiingo API failed: ${(tiingoError as Error).message}`);
+          logger.warn(
+            "Routes",
+            `Tiingo API failed: ${(tiingoError as Error).message}`
+          );
         }
       }
 
@@ -1919,30 +2180,63 @@ router.get(
             const requestedStart = new Date(startDateStr);
             const requestedEnd = new Date(endDateStr);
 
-            const daysMissingAtStart = (firstNavDate.getTime() - requestedStart.getTime()) / (1000 * 60 * 60 * 24);
-            const daysMissingAtEnd = (requestedEnd.getTime() - lastNavDate.getTime()) / (1000 * 60 * 60 * 24);
+            const daysMissingAtStart =
+              (firstNavDate.getTime() - requestedStart.getTime()) /
+              (1000 * 60 * 60 * 24);
+            const daysMissingAtEnd =
+              (requestedEnd.getTime() - lastNavDate.getTime()) /
+              (1000 * 60 * 60 * 24);
 
             if (daysMissingAtStart > 30 || daysMissingAtEnd > 30) {
-              logger.info("Routes", `NAV data incomplete for ${navSymbol}, fetching from Tiingo API`);
+              logger.info(
+                "Routes",
+                `NAV data incomplete for ${navSymbol}, fetching from Tiingo API`
+              );
               try {
-                const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
-                const tiingoNavData = await getPriceHistoryFromAPI(navSymbol.toUpperCase(), startDateStr, endDateStr);
+                const { getPriceHistoryFromAPI } = await import(
+                  "../services/tiingo.js"
+                );
+                const tiingoNavData = await getPriceHistoryFromAPI(
+                  navSymbol.toUpperCase(),
+                  startDateStr,
+                  endDateStr
+                );
                 if (tiingoNavData.length > navData.length) {
-                  logger.info("Routes", `Tiingo provided ${tiingoNavData.length} NAV records vs ${navData.length} from DB`);
+                  logger.info(
+                    "Routes",
+                    `Tiingo provided ${tiingoNavData.length} NAV records vs ${navData.length} from DB`
+                  );
                   navData = tiingoNavData;
                 }
               } catch (tiingoError) {
-                logger.warn("Routes", `Tiingo NAV fallback failed: ${(tiingoError as Error).message}`);
+                logger.warn(
+                  "Routes",
+                  `Tiingo NAV fallback failed: ${
+                    (tiingoError as Error).message
+                  }`
+                );
               }
             }
           } else {
             // No NAV data in DB, try Tiingo
-            logger.info("Routes", `No NAV data in DB for ${navSymbol}, fetching from Tiingo API`);
+            logger.info(
+              "Routes",
+              `No NAV data in DB for ${navSymbol}, fetching from Tiingo API`
+            );
             try {
-              const { getPriceHistoryFromAPI } = await import('../services/tiingo.js');
-              navData = await getPriceHistoryFromAPI(navSymbol.toUpperCase(), startDateStr, endDateStr);
+              const { getPriceHistoryFromAPI } = await import(
+                "../services/tiingo.js"
+              );
+              navData = await getPriceHistoryFromAPI(
+                navSymbol.toUpperCase(),
+                startDateStr,
+                endDateStr
+              );
             } catch (tiingoError) {
-              logger.warn("Routes", `Tiingo NAV API failed: ${(tiingoError as Error).message}`);
+              logger.warn(
+                "Routes",
+                `Tiingo NAV API failed: ${(tiingoError as Error).message}`
+              );
             }
           }
 
@@ -2011,7 +2305,7 @@ router.get(
       const combinedData = sortedDates
         .map((date) => {
           // Normalize date format to YYYY-MM-DD for consistent alignment
-          const normalizedDate = date.includes('T') ? date.split('T')[0] : date;
+          const normalizedDate = date.includes("T") ? date.split("T")[0] : date;
           const priceEntry = priceMap.get(date);
           const navEntry = navMap.get(date);
 
@@ -2032,7 +2326,8 @@ router.get(
     } catch (error) {
       logger.error(
         "Routes",
-        `Error fetching price/NAV data for ${req.params.symbol}: ${(error as Error).message
+        `Error fetching price/NAV data for ${req.params.symbol}: ${
+          (error as Error).message
         }`
       );
       res.status(500).json({ error: "Internal server error" });
@@ -2093,7 +2388,10 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
     if (currentNav && currentNav !== 0 && marketPrice && marketPrice > 0) {
       // Formula: ((MP / NAV - 1) * 100) as percentage
       premiumDiscount = (marketPrice / currentNav - 1) * 100;
-    } else if (cef.premium_discount !== null && cef.premium_discount !== undefined) {
+    } else if (
+      cef.premium_discount !== null &&
+      cef.premium_discount !== undefined
+    ) {
       // Use stored value if we can't calculate
       premiumDiscount = cef.premium_discount;
     }

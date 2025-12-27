@@ -6,6 +6,7 @@
  * - 6M NAV Trend (exactly 6 calendar months, using close price)
  * - 12M NAV Return (exactly 12 calendar months, using close price)
  * - Signal rating
+ * - Dividend History (X+ Y- format) - Uses Verified Date rule, unadjusted dividends from 2009-01-01
  * - DVI (Dividend Volatility Index)
  * - Total Returns (3Y, 5Y, 10Y, 15Y) - NAV-based
  * - NAV, Market Price, and Premium/Discount
@@ -454,8 +455,12 @@ async function refreshCEF(ticker: string): Promise<void> {
     }
 
     // Import CEF calculation functions
-    const { calculateCEFZScore, calculateSignal, calculateNAVReturns } =
-      await import("../src/routes/cefs.js");
+    const {
+      calculateCEFZScore,
+      calculateSignal,
+      calculateNAVReturns,
+      calculateDividendHistory,
+    } = await import("../src/routes/cefs.js");
 
     const updateData: any = {};
 
@@ -558,7 +563,35 @@ async function refreshCEF(ticker: string): Promise<void> {
       );
     }
 
-    // 5. Calculate DVI (Dividend Volatility Index)
+    // 5. Calculate Dividend History (X+ Y- format)
+    console.log(`  📊 Calculating Dividend History (X+ Y- format)...`);
+    let dividendHistory: string | null = null;
+    try {
+      // Get dividends from 2009-01-01 onwards for dividend history calculation
+      const dividends = await getDividendHistory(
+        ticker.toUpperCase(),
+        "2009-01-01"
+      );
+      if (dividends && dividends.length > 0) {
+        dividendHistory = calculateDividendHistory(dividends);
+        updateData.dividend_history = dividendHistory;
+        console.log(`    ✓ Dividend History: ${dividendHistory}`);
+      } else {
+        console.log(
+          `    ⚠ Dividend History: N/A (no dividend data from 2009-01-01) - clearing old value`
+        );
+        updateData.dividend_history = null;
+      }
+    } catch (error) {
+      updateData.dividend_history = null;
+      console.warn(
+        `    ⚠ Failed to calculate Dividend History: ${
+          (error as Error).message
+        } - clearing old value`
+      );
+    }
+
+    // 6. Calculate DVI (Dividend Volatility Index)
     console.log(`  📊 Calculating DVI (Dividend Volatility Index)...`);
     let dviResult: any = null;
     try {
@@ -602,7 +635,7 @@ async function refreshCEF(ticker: string): Promise<void> {
       updateData.dividend_volatility_index = null;
     }
 
-    // 6. Calculate TOTAL RETURNS (3Y, 5Y, 10Y, 15Y) - NAV-based annualized returns
+    // 7. Calculate TOTAL RETURNS (3Y, 5Y, 10Y, 15Y) - NAV-based annualized returns
     console.log(
       `  📊 Calculating NAV-based total returns (3Y, 5Y, 10Y, 15Y)...`
     );
@@ -634,7 +667,7 @@ async function refreshCEF(ticker: string): Promise<void> {
       }`
     );
 
-    // 7. Update NAV, Market Price, and Premium/Discount from latest prices
+    // 8. Update NAV, Market Price, and Premium/Discount from latest prices
     console.log(`  📊 Updating NAV, Market Price, and Premium/Discount...`);
     let currentNav: number | null = cef.nav ?? null;
     let marketPrice: number | null = cef.price ?? null;
@@ -734,7 +767,7 @@ async function refreshCEF(ticker: string): Promise<void> {
     const { data: verify } = await supabase
       .from("etf_static")
       .select(
-        "return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal, premium_discount, nav, price, last_updated"
+        "return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal, premium_discount, nav, price, dividend_history, last_updated"
       )
       .eq("ticker", ticker.toUpperCase())
       .maybeSingle();
@@ -764,6 +797,9 @@ async function refreshCEF(ticker: string): Promise<void> {
               "%"
             : "NULL"
         } (MP=$${verify.price ?? "NULL"}, NAV=$${verify.nav ?? "NULL"})`
+      );
+      console.log(
+        `      - Dividend History: ${verify.dividend_history ?? "NULL"}`
       );
       console.log(`      - Last Updated: ${verify.last_updated ?? "NULL"}`);
     }
