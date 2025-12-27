@@ -274,6 +274,8 @@ export async function updateETFMetricsPreservingCEFFields(
   if ('dividend_cv_percent' in updateData) safeUpdateData.dividend_cv_percent = updateData.dividend_cv_percent;
   if ('dividend_volatility_index' in updateData) safeUpdateData.dividend_volatility_index = updateData.dividend_volatility_index;
   if ('annual_dividend' in updateData) safeUpdateData.annual_dividend = updateData.annual_dividend;
+  // Dividend history - always save (even if null) to clear stale values
+  if ('dividend_history' in updateData) safeUpdateData.dividend_history = updateData.dividend_history;
   
   // Log what we're trying to update
   if ('return_3yr' in safeUpdateData || 'return_5yr' in safeUpdateData || 'return_10yr' in safeUpdateData || 'return_15yr' in safeUpdateData) {
@@ -311,6 +313,53 @@ export async function updateETFMetricsPreservingCEFFields(
         throw new Error(`Return columns do not exist in database. Please add return_3yr, return_5yr, return_10yr, return_15yr columns.`);
       }
       
+      // Check if error is about dividend_history - Supabase schema cache issue
+      // Try updating without dividend_history first, then retry with dividend_history after a delay
+      if (error.message.includes('dividend_history')) {
+        logger.warn('Database', `⚠️ Supabase schema cache issue with dividend_history for ${ticker}. Trying workaround...`);
+        const retryDataWithoutDivHist = { ...safeUpdateData };
+        const divHistValue = retryDataWithoutDivHist.dividend_history;
+        delete retryDataWithoutDivHist.dividend_history;
+        
+        // First update without dividend_history
+        const { error: retryError1 } = await db
+          .from('etf_static')
+          .update(retryDataWithoutDivHist)
+          .eq('ticker', ticker.toUpperCase());
+        
+        if (retryError1) {
+          logger.error('Database', `Failed to update ${ticker} even without dividend_history: ${retryError1.message}`);
+        } else {
+          logger.info('Database', `✅ Updated ${ticker} successfully (without dividend_history due to schema cache)`);
+          
+          // Try to update dividend_history with retries (Supabase schema cache can take time to refresh)
+          if (divHistValue !== undefined && divHistValue !== null) {
+            let saved = false;
+            // Try up to 3 times with increasing delays
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              await new Promise(resolve => setTimeout(resolve, attempt * 2000)); // 2s, 4s, 6s delays
+              
+              const { error: divHistError } = await db
+                .from('etf_static')
+                .update({ dividend_history: divHistValue })
+                .eq('ticker', ticker.toUpperCase());
+              
+              if (!divHistError) {
+                logger.info('Database', `✅ Successfully saved dividend_history "${divHistValue}" for ${ticker} on attempt ${attempt}`);
+                saved = true;
+                break;
+              }
+              
+              if (attempt === 3) {
+                logger.warn('Database', `⚠️ Cannot save dividend_history for ${ticker} after ${attempt} attempts. Value "${divHistValue}" was calculated correctly. The Supabase schema cache needs to refresh (usually takes 1-5 minutes). The value will be saved automatically on the next script run.`);
+              }
+            }
+          }
+        }
+        // Don't throw - continue as other data was saved
+        return;
+      }
+      
       // Remove optional columns (signal) and try again
       const retryData = { ...safeUpdateData };
       optionalColumns.forEach(col => {
@@ -333,6 +382,8 @@ export async function updateETFMetricsPreservingCEFFields(
       logger.error('Database', `Failed to update metrics for ${ticker}: ${error.message}`);
       throw error;
     }
+  } else {
+    logger.info('Database', `✅ Successfully updated ${ticker} with all metrics including dividend_history`);
   }
 }
 

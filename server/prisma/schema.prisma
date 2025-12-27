@@ -587,6 +587,19 @@ model etf_static {
   week_52_high         Decimal?           @db.Decimal(12, 4)
   week_52_low          Decimal?           @db.Decimal(12, 4)
   
+  // CEF-specific fields
+  nav                   Decimal?           @db.Decimal(12, 4)   // Net Asset Value
+  premium_discount      Decimal?           @db.Decimal(12, 6)   // Premium/Discount percentage
+  five_year_z_score     Decimal?           @db.Decimal(12, 6)   // 5-year Z-Score
+  nav_trend_6m          Decimal?           @db.Decimal(12, 6)   // 6-month NAV Trend %
+  nav_trend_12m         Decimal?           @db.Decimal(12, 6)   // 12-month NAV Trend %
+  signal                Int?               // Signal rating (-2 to +3)
+  return_3yr            Decimal?           @db.Decimal(12, 6)   // 3-year annualized return
+  return_5yr            Decimal?           @db.Decimal(12, 6)   // 5-year annualized return
+  return_10yr           Decimal?           @db.Decimal(12, 6)   // 10-year annualized return
+  return_15yr           Decimal?           @db.Decimal(12, 6)   // 15-year annualized return
+  dividend_history      String?            @db.VarChar(50)      // Dividend history format: "X+ Y-"
+  
   // Metadata
   last_updated         DateTime?          @default(now()) @db.Timestamptz(6)
   data_source          String?            @default("Tiingo") @db.VarChar(50)
