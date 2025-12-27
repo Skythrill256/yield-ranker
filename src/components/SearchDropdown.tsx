@@ -89,6 +89,15 @@ export const SearchDropdown = () => {
   const handleETFSelect = (symbol: string) => {
     const isHomePage = location.pathname === "/";
     const isDashboard = location.pathname === "/dashboard";
+    const isDividendHistoryPage = location.pathname.includes("/dividends");
+    
+    // If on dividend history page, stay on dividend history page with new symbol
+    if (isDividendHistoryPage) {
+      navigate(`/etf/${symbol}/dividends`);
+      setQuery("");
+      setIsOpen(false);
+      return;
+    }
     
     if (isHomePage || isDashboard) {
       const etfRow = document.getElementById(`etf-row-${symbol}`);
@@ -126,6 +135,15 @@ export const SearchDropdown = () => {
 
   const handleCEFSelect = (symbol: string) => {
     const isCEFPage = location.pathname === "/cef";
+    const isDividendHistoryPage = location.pathname.includes("/dividends");
+    
+    // If on dividend history page, stay on dividend history page with new symbol
+    if (isDividendHistoryPage) {
+      navigate(`/cef/${symbol}/dividends`);
+      setQuery("");
+      setIsOpen(false);
+      return;
+    }
     
     if (isCEFPage) {
       // Try to find the CEF row in the table
