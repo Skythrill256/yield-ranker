@@ -48,7 +48,11 @@ type DividendData = { date: string; dividend: number; adjDividend: number; scale
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const LOOKBACK_DAYS = 60; // Days to look back when forcing or first run (needs to be enough to capture dividends)
+// CRITICAL: Must be at least 5 years (1825 days) for CEF Z-score calculations
+// Using 15 years (5475 days) to match refresh scripts and ensure we have enough data for all metrics
+const LOOKBACK_DAYS = 5475; // 15 years = 15 * 365 = 5475 days
+// Minimum days needed for 5-year Z-score: 1260 trading days ≈ 1825 calendar days
+const MIN_DAYS_FOR_ZSCORE = 1825; // ~5 years (ensures ~1260 trading days)
 const BATCH_SIZE = 100;
 
 // ============================================================================
@@ -91,7 +95,7 @@ Usage: npx tsx scripts/daily_update.ts [options]
 
 Options:
   --ticker SYMBOL   Update only a specific ticker
-  --force           Force resync from last ${LOOKBACK_DAYS} days
+  --force           Force resync from last ${LOOKBACK_DAYS} days (15 years)
   --dry-run         Show what would be done without making changes
   --help            Show this help message
         `);
@@ -199,6 +203,45 @@ async function getLastPriceDate(ticker: string): Promise<string | null> {
   }
 
   return data.date;
+}
+
+/**
+ * Check if ticker is a CEF and get NAV symbol
+ */
+async function getCEFInfo(ticker: string): Promise<{ isCEF: boolean; navSymbol: string | null }> {
+  const { data, error } = await supabase
+    .from('etf_static')
+    .select('nav_symbol')
+    .eq('ticker', ticker.toUpperCase())
+    .maybeSingle();
+
+  if (error || !data || !data.nav_symbol) {
+    return { isCEF: false, navSymbol: null };
+  }
+
+  return { isCEF: true, navSymbol: data.nav_symbol };
+}
+
+/**
+ * Check if we have at least MIN_DAYS_FOR_ZSCORE days of data for a ticker
+ */
+async function hasMinimumData(ticker: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('prices_daily')
+    .select('date')
+    .eq('ticker', ticker)
+    .order('date', { ascending: true })
+    .limit(1);
+
+  if (error || !data || data.length === 0) {
+    return false;
+  }
+
+  const firstDate = new Date(data[0].date);
+  const today = new Date();
+  const daysDiff = Math.round((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  return daysDiff >= MIN_DAYS_FOR_ZSCORE;
 }
 
 /**
@@ -483,6 +526,12 @@ async function updateTicker(
   console.log(`\n[Update] ${ticker}`);
 
   try {
+    // Check if this is a CEF
+    const { isCEF, navSymbol } = await getCEFInfo(ticker);
+    if (isCEF && navSymbol) {
+      console.log(`  CEF detected - NAV symbol: ${navSymbol}`);
+    }
+
     // Determine start date for price fetch
     let priceStartDate: string;
 
@@ -497,6 +546,16 @@ async function updateTicker(
         lastDate.setDate(lastDate.getDate() + 1);
         priceStartDate = formatDate(lastDate);
         console.log(`  Incremental: fetching from ${priceStartDate} (last: ${lastPriceDate})`);
+        
+        // For CEFs, ensure we have at least 5 years of data for Z-score calculations
+        if (isCEF && !(await hasMinimumData(ticker))) {
+          const minStartDate = getDateDaysAgo(MIN_DAYS_FOR_ZSCORE);
+          if (priceStartDate > minStartDate) {
+            console.log(`  ⚠ CEF requires at least ${MIN_DAYS_FOR_ZSCORE} days of data for Z-score`);
+            console.log(`  Extending fetch period to ${minStartDate}`);
+            priceStartDate = minStartDate;
+          }
+        }
       } else {
         // No existing data, fetch last LOOKBACK_DAYS
         priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
@@ -516,9 +575,18 @@ async function updateTicker(
       };
     }
 
-    // Fetch and upsert prices
+    // Fetch and upsert prices for main ticker
     const prices = await fetchPriceHistory(ticker, priceStartDate);
     const pricesAdded = await upsertPrices(ticker, prices, dryRun);
+    
+    // For CEFs, also fetch and store NAV symbol data
+    let navPricesAdded = 0;
+    if (isCEF && navSymbol && navSymbol !== ticker) {
+      console.log(`  Fetching NAV prices for ${navSymbol}...`);
+      const navPrices = await fetchPriceHistory(navSymbol, priceStartDate);
+      navPricesAdded = await upsertPrices(navSymbol, navPrices, dryRun);
+      console.log(`  ✓ Added/updated ${navPricesAdded} NAV price records for ${navSymbol}`);
+    }
 
     const lastPriceRecordDate = prices.length > 0
       ? prices[prices.length - 1].date.split('T')[0]
