@@ -894,13 +894,33 @@ async function refreshCEF(ticker: string): Promise<void> {
 
     // Verify save - CRITICAL: Always verify last_updated was saved
     console.log(`  🔍 Verifying database update...`);
-    const { data: verify, error: verifyError } = await supabase
+    // Try with dividend_history first, but if it fails due to schema cache, retry without it
+    let verify: any = null;
+    let verifyError: any = null;
+    
+    const { data: verifyData, error: verifyErr } = await supabase
       .from("etf_static")
       .select(
         "return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal, premium_discount, nav, price, dividend_history, last_updated"
       )
       .eq("ticker", ticker.toUpperCase())
       .maybeSingle();
+
+    if (verifyErr && verifyErr.message.includes('dividend_history')) {
+      // Retry without dividend_history if schema cache issue
+      const { data: verifyData2, error: verifyErr2 } = await supabase
+        .from("etf_static")
+        .select(
+          "return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal, premium_discount, nav, price, last_updated"
+        )
+        .eq("ticker", ticker.toUpperCase())
+        .maybeSingle();
+      verify = verifyData2;
+      verifyError = verifyErr2;
+    } else {
+      verify = verifyData;
+      verifyError = verifyErr;
+    }
 
     if (verifyError) {
       console.warn(`    ⚠ Verification query error: ${verifyError.message}`);
