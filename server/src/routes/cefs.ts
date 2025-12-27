@@ -666,6 +666,9 @@ function findColumn(
 
 // ============================================================================
 // Helper: Calculate Dividend History (X+ Y- format)
+// Uses "Verified Date" rule: Only count changes confirmed by the next payment
+// Uses UNADJUSTED dividends (div_cash) from Tiingo data
+// Date range: From 2009-01-01 through today
 // ============================================================================
 
 function calculateDividendHistory(dividends: DividendRecord[]): string {
@@ -673,6 +676,7 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
     return dividends.length === 1 ? "1 DIV+" : "0+ 0-";
   }
 
+  // Step 1: Filter to regular dividends only (exclude special dividends)
   const regularDivs = dividends
     .filter((d) => {
       if (!d.div_type) return true;
@@ -697,23 +701,53 @@ function calculateDividendHistory(dividends: DividendRecord[]): string {
     return regularDivs.length === 1 ? "1 DIV+" : "0+ 0-";
   }
 
+  // Step 2: Sort to chronological order (oldest first)
   const chronological = [...regularDivs].reverse();
 
+  // Step 3: Filter to only dividends from 2009-01-01 onwards
+  const cutoffDate = new Date("2009-01-01");
+  const filteredChronological = chronological.filter((d) => {
+    const exDate = new Date(d.ex_date);
+    return exDate >= cutoffDate;
+  });
+
+  if (filteredChronological.length < 2) {
+    return filteredChronological.length === 1 ? "1 DIV+" : "0+ 0-";
+  }
+
+  // Step 4: Use "Verified Date" rule to count increases/decreases
+  // IMPORTANT: Use UNADJUSTED dividends (div_cash) only - not adj_amount
+  // Logic: A change is only counted if the NEXT payment verifies it
+  // - Increase: if prev < current AND next >= current (verified)
+  // - Decrease: if prev > current AND next <= current (verified)
   let increases = 0;
   let decreases = 0;
 
-  for (let i = 1; i < chronological.length; i++) {
-    const current = chronological[i];
-    const previous = chronological[i - 1];
+  for (let i = 1; i < filteredChronological.length - 1; i++) {
+    const previous = filteredChronological[i - 1];
+    const current = filteredChronological[i];
+    const next = filteredChronological[i + 1];
 
-    const currentAmount = current.adj_amount ?? current.div_cash;
-    const previousAmount = previous.adj_amount ?? previous.div_cash;
+    // Use UNADJUSTED div_cash only (from Tiingo table data)
+    const prevAmount = previous.div_cash ?? 0;
+    const currentAmount = current.div_cash ?? 0;
+    const nextAmount = next.div_cash ?? 0;
 
-    if (currentAmount > previousAmount) {
+    // Skip if any amount is invalid
+    if (!prevAmount || !currentAmount || !nextAmount || 
+        prevAmount <= 0 || currentAmount <= 0 || nextAmount <= 0) {
+      continue;
+    }
+
+    // Check for increase: previous < current AND next >= current (verified by next payment)
+    if (prevAmount < currentAmount && nextAmount >= currentAmount) {
       increases++;
-    } else if (currentAmount < previousAmount) {
+    }
+    // Check for decrease: previous > current AND next <= current (verified by next payment)
+    else if (prevAmount > currentAmount && nextAmount <= currentAmount) {
       decreases++;
     }
+    // If amounts are equal or change is not verified, don't count
   }
 
   return `${increases}+ ${decreases}-`;
@@ -1582,7 +1616,8 @@ router.get("/", async (_req: Request, res: Response): Promise<void> => {
           let dividendHistory = cef.dividend_history || null;
           if (!dividendHistory) {
             try {
-              const dividends = await getDividendHistory(cef.ticker);
+              // Get dividends from 2009-01-01 onwards for dividend history calculation
+              const dividends = await getDividendHistory(cef.ticker, "2009-01-01");
               dividendHistory = calculateDividendHistory(dividends);
             } catch (error) {
               logger.warn(
@@ -2035,7 +2070,8 @@ router.get("/:symbol", async (req: Request, res: Response): Promise<void> => {
     let dividendHistory = cef.dividend_history || null;
     if (!dividendHistory) {
       try {
-        const dividends = await getDividendHistory(ticker);
+        // Get dividends from 2009-01-01 onwards for dividend history calculation
+        const dividends = await getDividendHistory(ticker, "2009-01-01");
         dividendHistory = calculateDividendHistory(dividends);
       } catch (error) {
         logger.warn(
