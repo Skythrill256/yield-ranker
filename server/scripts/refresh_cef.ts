@@ -892,14 +892,19 @@ async function refreshCEF(ticker: string): Promise<void> {
       },
     ]);
 
-    // Verify save
-    const { data: verify } = await supabase
+    // Verify save - CRITICAL: Always verify last_updated was saved
+    console.log(`  🔍 Verifying database update...`);
+    const { data: verify, error: verifyError } = await supabase
       .from("etf_static")
       .select(
         "return_3yr, return_5yr, return_10yr, return_15yr, five_year_z_score, nav_trend_6m, nav_trend_12m, signal, premium_discount, nav, price, dividend_history, last_updated"
       )
       .eq("ticker", ticker.toUpperCase())
       .maybeSingle();
+
+    if (verifyError) {
+      console.warn(`    ⚠ Verification query error: ${verifyError.message}`);
+    }
 
     if (verify) {
       console.log(`    ✓ Verified saved values:`);
@@ -930,7 +935,14 @@ async function refreshCEF(ticker: string): Promise<void> {
       console.log(
         `      - Dividend History: ${verify.dividend_history ?? "NULL"}`
       );
-      console.log(`      - Last Updated: ${verify.last_updated ?? "NULL"}`);
+      // CRITICAL: Always show last_updated to verify it was saved
+      if (verify.last_updated) {
+        console.log(`      - Last Updated: ${verify.last_updated} ✅`);
+      } else {
+        console.warn(`      - Last Updated: NULL ⚠️ NOT SAVED!`);
+      }
+    } else {
+      console.warn(`    ⚠ Could not verify saved values (no data returned)`);
     }
 
     console.log(`  ✅ ${ticker} complete`);
