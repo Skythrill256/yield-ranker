@@ -73,7 +73,7 @@ const CEFDetail = () => {
 
       const formattedData = sortedData
         .map(d => {
-          const dateStr = typeof d.date === 'string' ? d.date : d.date.toString();
+          const dateStr = d.date;
           const priceValue = d.price !== null && d.price !== undefined ? Number(d.price) : null;
           const navValue = d.nav !== null && d.nav !== undefined ? Number(d.nav) : null;
 
