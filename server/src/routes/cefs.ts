@@ -51,11 +51,12 @@ export async function calculateCEFZScore(
   const DAYS_1Y = 1 * 252; // Min threshold (252 trading days)
 
   try {
+    // Get the most recent date with both price and NAV data to determine actual end date
     // Fetch 4 years of data to ensure we cover 3Y window fully
     const endDate = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 4);
-    const startDateStr = formatDate(startDate);
+    const startDateForFetch = new Date();
+    startDateForFetch.setFullYear(endDate.getFullYear() - 4);
+    const startDateStr = formatDate(startDateForFetch);
     const endDateStr = formatDate(endDate);
 
     // Get price data for main ticker and NAV symbol
@@ -159,7 +160,30 @@ export async function calculateCEFZScore(
     const allDates = new Set([...priceMap.keys(), ...navMap.keys()]);
     const sortedDates = Array.from(allDates).sort();
 
+    // Find the most recent date with both price and NAV to determine actual end date
+    let actualEndDate: Date | null = null;
+    for (const date of sortedDates.slice().reverse()) {
+      const price = priceMap.get(date);
+      const nav = navMap.get(date);
+      if (price && nav && nav > 0) {
+        actualEndDate = new Date(date);
+        break;
+      }
+    }
+
+    if (!actualEndDate) return null;
+
+    // Calculate the 3-year lookback date from the actual end date (exactly 3 years back)
+    const threeYearStartDate = new Date(actualEndDate);
+    threeYearStartDate.setFullYear(actualEndDate.getFullYear() - 3);
+    const threeYearStartDateStr = formatDate(threeYearStartDate);
+    const actualEndDateStr = formatDate(actualEndDate);
+
+    // Filter to dates within the 3-year range (from 3 years ago to actual end date)
     for (const date of sortedDates) {
+      if (date < threeYearStartDateStr || date > actualEndDateStr) {
+        continue; // Skip dates outside the 3-year window
+      }
       const price = priceMap.get(date);
       const nav = navMap.get(date);
       if (price && nav && nav > 0) {
@@ -171,9 +195,8 @@ export async function calculateCEFZScore(
       return null; // Not enough data (less than 1 year)
     }
 
-    // Use up to 3 years of data (most recent) for historical stats
-    const lookbackPeriod = Math.min(discounts.length, DAYS_3Y);
-    const history = discounts.slice(-lookbackPeriod);
+    // Use all discounts in the 3-year range (already filtered above)
+    const history = discounts;
 
     if (history.length === 0) return null;
 
