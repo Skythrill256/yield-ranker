@@ -26,6 +26,7 @@ import {
   X,
   Trash2,
   Globe,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,12 +82,12 @@ export default function Settings() {
     appMetadata.role === "admin";
 
   const roleDisplay = profile?.role === 'admin' ? 'Admin' : 'Premium';
-  const joinDate = profile?.created_at 
+  const joinDate = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
     : 'N/A';
 
   const logout = async () => {
@@ -116,7 +117,7 @@ export default function Settings() {
         title: "Profile updated",
         description: "Your profile has been successfully updated.",
       });
-      
+
       setIsEditing(false);
       window.location.reload();
     } catch (error) {
@@ -145,16 +146,13 @@ export default function Settings() {
       )}
 
       <aside
-        className={`${
-          sidebarCollapsed ? "w-16" : "w-64"
-        } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${
-          mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
-        }`}
+        className={`${sidebarCollapsed ? "w-16" : "w-64"
+          } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
+          }`}
       >
         <div
-          className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${
-            sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
-          }`}
+          className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
+            }`}
         >
           {!sidebarCollapsed && <Logo simple />}
           <button
@@ -177,17 +175,15 @@ export default function Settings() {
         </div>
 
         <nav
-          className={`flex-1 overflow-y-auto ${
-            sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
-          }`}
+          className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
+            }`}
         >
           <button
             onClick={() => navigate("/")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
+            className={`w-full flex items-center ${sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+              } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
             title={sidebarCollapsed ? "Home" : ""}
           >
             <Home className="w-5 h-5" />
@@ -195,11 +191,10 @@ export default function Settings() {
           </button>
           <button
             onClick={() => navigate("/dashboard")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
+            className={`w-full flex items-center ${sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+              } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
             title={sidebarCollapsed ? "Dashboard" : ""}
           >
             <BarChart3 className="w-5 h-5" />
@@ -207,11 +202,10 @@ export default function Settings() {
           </button>
           <button
             onClick={() => navigate("/dashboard")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
+            className={`w-full flex items-center ${sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+              } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
             title={sidebarCollapsed ? "Favorites" : ""}
           >
             <Star className="w-5 h-5" />
@@ -230,11 +224,10 @@ export default function Settings() {
             <>
               <button
                 onClick={() => navigate("/admin/users")}
-                className={`w-full flex items-center ${
-                  sidebarCollapsed
+                className={`w-full flex items-center ${sidebarCollapsed
                     ? "justify-center px-0 py-2.5"
                     : "gap-3 px-4 py-3"
-                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
                 title={sidebarCollapsed ? "Users" : ""}
               >
                 <Users className="w-5 h-5" />
@@ -242,11 +235,10 @@ export default function Settings() {
               </button>
               <button
                 onClick={() => navigate("/admin/upload")}
-                className={`w-full flex items-center ${
-                  sidebarCollapsed
+                className={`w-full flex items-center ${sidebarCollapsed
                     ? "justify-center px-0 py-2.5"
                     : "gap-3 px-4 py-3"
-                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
                 title={sidebarCollapsed ? "Upload" : ""}
               >
                 <Upload className="w-5 h-5" />
@@ -254,11 +246,10 @@ export default function Settings() {
               </button>
               <button
                 onClick={() => navigate("/admin/delete")}
-                className={`w-full flex items-center ${
-                  sidebarCollapsed
+                className={`w-full flex items-center ${sidebarCollapsed
                     ? "justify-center px-0 py-2.5"
                     : "gap-3 px-4 py-3"
-                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
                 title={sidebarCollapsed ? "Delete" : ""}
               >
                 <Trash2 className="w-5 h-5" />
@@ -266,11 +257,10 @@ export default function Settings() {
               </button>
               <button
                 onClick={() => navigate("/admin/favorites")}
-                className={`w-full flex items-center ${
-                  sidebarCollapsed
+                className={`w-full flex items-center ${sidebarCollapsed
                     ? "justify-center px-0 py-2.5"
                     : "gap-3 px-4 py-3"
-                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
                 title={sidebarCollapsed ? "Admin Favorites" : ""}
               >
                 <Star className="w-5 h-5" />
@@ -278,25 +268,34 @@ export default function Settings() {
               </button>
               <button
                 onClick={() => navigate("/admin/settings")}
-                className={`w-full flex items-center ${
-                  sidebarCollapsed
+                className={`w-full flex items-center ${sidebarCollapsed
                     ? "justify-center px-0 py-2.5"
                     : "gap-3 px-4 py-3"
-                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
                 title={sidebarCollapsed ? "Site Settings" : ""}
               >
                 <Shield className="w-5 h-5" />
                 {!sidebarCollapsed && "Site Settings"}
               </button>
+              <button
+                onClick={() => navigate("/admin/notebook")}
+                className={`w-full flex items-center ${sidebarCollapsed
+                    ? "justify-center px-0 py-2.5"
+                    : "gap-3 px-4 py-3"
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                title={sidebarCollapsed ? "Notebook" : ""}
+              >
+                <BookOpen className="w-5 h-5" />
+                {!sidebarCollapsed && "Notebook"}
+              </button>
             </>
           )}
           <button
             onClick={() => navigate("/settings")}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
+            className={`w-full flex items-center ${sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium bg-primary text-white`}
+              } rounded-lg text-sm font-medium bg-primary text-white`}
             title={sidebarCollapsed ? "Settings" : ""}
           >
             <SettingsIcon className="w-5 h-5" />
@@ -305,17 +304,15 @@ export default function Settings() {
         </nav>
 
         <div
-          className={`border-t border-slate-200 flex-shrink-0 ${
-            sidebarCollapsed ? "p-2" : "p-4"
-          }`}
+          className={`border-t border-slate-200 flex-shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"
+            }`}
         >
           <button
             onClick={logout}
-            className={`w-full flex items-center ${
-              sidebarCollapsed
+            className={`w-full flex items-center ${sidebarCollapsed
                 ? "justify-center px-0 py-2.5"
                 : "gap-3 px-4 py-3"
-            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
             title={sidebarCollapsed ? "Logout" : ""}
           >
             <LogOut className="w-5 h-5" />
