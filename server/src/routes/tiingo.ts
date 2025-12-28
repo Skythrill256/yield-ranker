@@ -21,6 +21,85 @@ import type { ChartPeriod, RankingWeights, DividendRecord } from '../types/index
 const router: Router = Router();
 
 // ============================================================================
+// Normalized Dividend Calculation Utilities
+// ============================================================================
+
+/**
+ * Detect payment frequency based on days between payments
+ * Days <= 15: Weekly (52)
+ * Days > 15 and <= 45: Monthly (12)
+ * Days > 45 and <= 110: Quarterly (4)
+ * Days > 110: Annual (1)
+ */
+function detectDivFrequency(days: number | null): number {
+  if (days === null || days <= 0) return 12; // Default to monthly
+  if (days <= 15) return 52;  // Weekly
+  if (days <= 45) return 12;  // Monthly
+  if (days <= 110) return 4;  // Quarterly
+  return 1;                    // Annual
+}
+
+/**
+ * Calculate normalized dividend values for a list of dividend records
+ * Sorts by date ascending, calculates days between payments, frequency, and normalized amounts
+ * Returns records with new fields: days_since_prev, div_frequency, annualized_amount, normalized_amount
+ */
+function calculateNormalizedDividends(records: DividendRecord[]): DividendRecord[] {
+  if (records.length === 0) return [];
+
+  // Sort by date ascending (oldest first) for proper calculation
+  const sorted = [...records].sort((a, b) =>
+    new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+  );
+
+  // First pass: calculate days_since_prev and div_frequency for each dividend
+  const withFrequency = sorted.map((record, idx) => {
+    let days_since_prev: number | null = null;
+
+    if (idx > 0) {
+      const prevDate = new Date(sorted[idx - 1].ex_date);
+      const currDate = new Date(record.ex_date);
+      days_since_prev = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    const div_frequency = detectDivFrequency(days_since_prev);
+    const adjAmount = record.adj_amount ?? record.div_cash;
+    const annualized_amount = adjAmount * div_frequency;
+
+    return {
+      ...record,
+      days_since_prev,
+      div_frequency,
+      annualized_amount,
+      normalized_amount: null as number | null, // Will calculate in second pass
+    };
+  });
+
+  // Determine the "last frequency" (most recent payment's frequency) for normalization baseline
+  const lastFrequency = withFrequency.length > 0
+    ? withFrequency[withFrequency.length - 1].div_frequency
+    : 12;
+
+  // Second pass: calculate normalized_amount based on last frequency
+  // normalized = annualized / lastFrequency
+  const normalized = withFrequency.map(record => {
+    const normalized_amount = record.annualized_amount !== null
+      ? record.annualized_amount / lastFrequency
+      : null;
+
+    return {
+      ...record,
+      normalized_amount,
+    };
+  });
+
+  // Sort back to descending (newest first) for API response
+  return normalized.sort((a, b) =>
+    new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
+  );
+}
+
+// ============================================================================
 // Date Estimation Utilities
 // ============================================================================
 
@@ -180,7 +259,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         isLiveData = true;
 
         const existingDividends = await getDividendHistory(ticker, startDate);
-        const manualDividends = existingDividends.filter(d => 
+        const manualDividends = existingDividends.filter(d =>
           d.description?.includes('Manual upload') || d.description?.includes('Early announcement')
         );
 
@@ -326,6 +405,9 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       return `${actualPaymentsPerYear}x/Yr`;
     };
 
+    // Calculate normalized dividends with days, frequency, annualized, and normalized values
+    const normalizedDividends = calculateNormalizedDividends(dividends);
+
     res.json({
       ticker: ticker.toUpperCase(),
       paymentsPerYear: actualPaymentsPerYear,
@@ -333,7 +415,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       annualizedDividend: lastDividend ? lastDividend * actualPaymentsPerYear : null,
       dividendGrowth,
       isLiveData,
-      dividends: dividends.map((d, idx) => {
+      dividends: normalizedDividends.map((d, idx) => {
         // Estimate record/pay dates if missing
         let recordDate = d.record_date;
         let payDate = d.pay_date;
@@ -353,9 +435,14 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
           adjAmount: d.adj_amount ?? d.div_cash,
           scaledAmount: d.scaled_amount ?? d.div_cash,
           type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
-          frequency: d.frequency ?? detectFrequencyFromDates(dividends, idx),
+          frequency: d.frequency ?? detectFrequencyFromDates(normalizedDividends, idx),
           description: d.description,
           currency: d.currency ?? 'USD',
+          // NEW: Normalized dividend calculation fields
+          daysSincePrev: d.days_since_prev,
+          divFrequency: d.div_frequency,
+          annualizedAmount: d.annualized_amount,
+          normalizedAmount: d.normalized_amount,
         };
       }),
     });

@@ -34,6 +34,7 @@ for (const envPath of envPaths) {
 
 import { getDividendHistory } from "../src/services/database.js";
 import { calculateDividendHistory } from "../src/routes/cefs.js";
+import type { DividendRecord } from "../src/types/index.js";
 
 function calculateDividendHistoryDetailed(dividends: DividendRecord[]): any {
   if (!dividends || dividends.length < 2) {
@@ -112,8 +113,8 @@ function calculateDividendHistoryDetailed(dividends: DividendRecord[]): any {
     const nextAmount = next.div_cash ?? 0;
 
     // Skip if any amount is invalid
-    if (!prevAmount || !currentAmount || !nextAmount || 
-        prevAmount <= 0 || currentAmount <= 0 || nextAmount <= 0) {
+    if (!prevAmount || !currentAmount || !nextAmount ||
+      prevAmount <= 0 || currentAmount <= 0 || nextAmount <= 0) {
       continue;
     }
 
@@ -150,18 +151,18 @@ async function testDividendHistory(ticker: string) {
   try {
     // Get dividends from 2009-01-01 onwards
     const dividends = await getDividendHistory(ticker, "2009-01-01");
-    
+
     if (!dividends || dividends.length === 0) {
       console.log(`❌ No dividends found for ${ticker} from 2009-01-01 onwards`);
       return;
     }
 
     console.log(`Found ${dividends.length} dividend records from database`);
-    
+
     const result = calculateDividendHistory(dividends);
-    
+
     console.log(`\n✅ Dividend History: ${result}`);
-    
+
   } catch (error) {
     console.error(`❌ Error: ${(error as Error).message}`);
     process.exit(1);

@@ -47,8 +47,8 @@ function calculateDividendHistory(dividends: DividendRecord[]): { result: string
     if (aManual !== bManual) {
       return bManual - aManual;
     }
-    const aDate = a.ex_date instanceof Date ? a.ex_date : new Date(a.ex_date);
-    const bDate = b.ex_date instanceof Date ? b.ex_date : new Date(b.ex_date);
+    const aDate = new Date(a.ex_date);
+    const bDate = new Date(b.ex_date);
     return bDate.getTime() - aDate.getTime();
   });
 
@@ -82,7 +82,7 @@ function calculateDividendHistory(dividends: DividendRecord[]): { result: string
 
 async function getAllCEFTickers(): Promise<string[]> {
   const db = getSupabase();
-  
+
   const { data, error } = await db
     .from('etf_static')
     .select('ticker, nav_symbol, nav')
@@ -104,7 +104,7 @@ async function compareDividendHistory(): Promise<void> {
   console.log('Fetching all CEF tickers and dividend_history from database...');
   const tickers = await getAllCEFTickers();
   const db = getSupabase();
-  
+
   const results: Array<{
     ticker: string;
     dbValue: string | null;
@@ -175,7 +175,7 @@ async function compareDividendHistory(): Promise<void> {
   console.log('Decreases');
   console.log('Total Dividends');
   console.log('Regular Dividends');
-  
+
   for (const r of results) {
     console.log(r.ticker);
     console.log(r.calculatedValue);

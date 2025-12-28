@@ -7,23 +7,23 @@ import type { DividendRecord } from '../src/types/index.js';
 
 async function debugTicker(ticker: string) {
   console.log(`\n=== DEBUGGING ${ticker} ===\n`);
-  
+
   const dividends = await getDividendHistory(ticker);
   console.log(`Total dividends fetched: ${dividends.length}`);
-  
+
   // Show first and last 5 dividends
   console.log('\nFirst 5 dividends (newest):');
   dividends.slice(0, 5).forEach((d, i) => {
-    const date = d.ex_date instanceof Date ? d.ex_date.toISOString().split('T')[0] : new Date(d.ex_date).toISOString().split('T')[0];
+    const date = new Date(d.ex_date).toISOString().split('T')[0];
     console.log(`  ${i + 1}. ${date}: div_cash=$${d.div_cash}, adj_amount=${d.adj_amount !== null ? '$' + d.adj_amount : 'null'}, type=${d.div_type || 'null'}`);
   });
-  
+
   console.log('\nLast 5 dividends (oldest):');
   dividends.slice(-5).forEach((d, i) => {
-    const date = d.ex_date instanceof Date ? d.ex_date.toISOString().split('T')[0] : new Date(d.ex_date).toISOString().split('T')[0];
+    const date = new Date(d.ex_date).toISOString().split('T')[0];
     console.log(`  ${i + 1}. ${date}: div_cash=$${d.div_cash}, adj_amount=${d.adj_amount !== null ? '$' + d.adj_amount : 'null'}, type=${d.div_type || 'null'}`);
   });
-  
+
   // Filter regular dividends
   const regularDivs = dividends.filter((d) => {
     if (!d.div_type) return true;
@@ -35,16 +35,16 @@ async function debugTicker(ticker: string) {
       !dtype.includes("special")
     );
   });
-  
+
   console.log(`\nRegular dividends: ${regularDivs.length}`);
   console.log(`Special dividends excluded: ${dividends.length - regularDivs.length}`);
-  
+
   // Show date range
   if (regularDivs.length > 0) {
     const dates = regularDivs.map(d => {
-      return d.ex_date instanceof Date ? d.ex_date : new Date(d.ex_date);
+      return new Date(d.ex_date);
     }).sort((a, b) => a.getTime() - b.getTime());
-    
+
     const oldest = dates[0];
     const newest = dates[dates.length - 1];
     console.log(`\nDate range: ${oldest.toISOString().split('T')[0]} to ${newest.toISOString().split('T')[0]}`);

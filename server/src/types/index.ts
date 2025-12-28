@@ -102,6 +102,11 @@ export interface DividendRecord {
   description: string | null;     // Dividend description
   currency: string | null;
   is_manual?: boolean | null | undefined;     // Flag for manually uploaded dividends
+  // Normalized dividend calculation fields
+  days_since_prev?: number | null;      // Days from previous dividend to current
+  div_frequency?: number | null;        // Payment frequency: 52 (weekly), 12 (monthly), 4 (quarterly), 1 (annual)
+  annualized_amount?: number | null;    // adj_amount × div_frequency
+  normalized_amount?: number | null;    // Normalized to last frequency for comparison
   created_at?: string;
 }
 

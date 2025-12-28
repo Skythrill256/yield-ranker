@@ -50,6 +50,11 @@ export interface DividendRecord {
   frequency: string;         // Mo, Qtr, Week, Annual, etc.
   description: string | null;
   currency: string;
+  // Normalized dividend calculation fields
+  daysSincePrev?: number | null;       // Days from previous dividend to current
+  divFrequency?: number | null;        // Payment frequency: 52 (weekly), 12 (monthly), 4 (quarterly), 1 (annual)
+  annualizedAmount?: number | null;    // adjAmount × divFrequency
+  normalizedAmount?: number | null;    // Normalized to last frequency for comparison
 }
 
 export interface DividendData {
@@ -73,22 +78,22 @@ export interface ETFMetrics {
   priceChangePercent: number | null;
   week52High: number | null;
   week52Low: number | null;
-  
+
   // Dividend data
   lastDividend: number | null;
   annualizedDividend: number | null;  // Rolling 365-day sum
   paymentsPerYear: number;
   forwardYield: number | null;        // annual_dividend / price
-  
+
   // Volatility metrics (frequency-proof)
   dividendSD: number | null;          // SD of rolling 365D annualized series
   dividendCV: number | null;          // CV as decimal (e.g., 0.18)
   dividendCVPercent: number | null;   // CV as percentage (e.g., 18.0)
   dividendVolatilityIndex: string | null;
-  
+
   // Weighted ranking
   weightedRank: number | null;
-  
+
   // Total Return WITH DRIP (using adjClose ratio)
   totalReturnDrip: {
     '1W': number | null;
@@ -98,7 +103,7 @@ export interface ETFMetrics {
     '1Y': number | null;
     '3Y': number | null;
   };
-  
+
   // Price Return (non-DRIP, using unadjusted close)
   priceReturn: {
     '1W': number | null;
@@ -108,7 +113,7 @@ export interface ETFMetrics {
     '1Y': number | null;
     '3Y': number | null;
   };
-  
+
   // Total Return WITHOUT DRIP (optional)
   totalReturnNoDrip: {
     '1W': number | null;
@@ -118,7 +123,7 @@ export interface ETFMetrics {
     '1Y': number | null;
     '3Y': number | null;
   } | null;
-  
+
   // Legacy combined returns for backward compatibility
   returns: {
     '1W': { price: number | null; total: number | null };
@@ -128,7 +133,7 @@ export interface ETFMetrics {
     '1Y': { price: number | null; total: number | null };
     '3Y': { price: number | null; total: number | null };
   };
-  
+
   calculatedAt: string;
   dataSource: string;
 }
@@ -241,11 +246,11 @@ export async function fetchTiingoPrices(
   const response = await fetch(
     `${API_BASE_URL}/api/tiingo/prices/${ticker}?period=${period}`
   );
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch prices for ${ticker}`);
   }
-  
+
   const json = await response.json();
   return json.data || [];
 }
@@ -255,11 +260,11 @@ export async function fetchTiingoPrices(
  */
 export async function fetchLatestPrice(ticker: string): Promise<LatestPrice> {
   const response = await fetch(`${API_BASE_URL}/api/tiingo/latest/${ticker}`);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch latest price for ${ticker}`);
   }
-  
+
   return response.json();
 }
 
@@ -273,11 +278,11 @@ export async function fetchDividends(
   const response = await fetch(
     `${API_BASE_URL}/api/tiingo/dividends/${ticker}?years=${years}`
   );
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch dividends for ${ticker}`);
   }
-  
+
   return response.json();
 }
 
@@ -286,11 +291,11 @@ export async function fetchDividends(
  */
 export async function fetchMetrics(ticker: string): Promise<ETFMetrics> {
   const response = await fetch(`${API_BASE_URL}/api/tiingo/metrics/${ticker}`);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch metrics for ${ticker}`);
   }
-  
+
   return response.json();
 }
 
@@ -307,11 +312,11 @@ export async function fetchComparison(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tickers, period, type }),
   });
-  
+
   if (!response.ok) {
     throw new Error('Failed to fetch comparison data');
   }
-  
+
   return response.json();
 }
 
@@ -328,11 +333,11 @@ export async function fetchRankings(weights?: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ weights }),
   });
-  
+
   if (!response.ok) {
     throw new Error('Failed to fetch rankings');
   }
-  
+
   return response.json();
 }
 
@@ -341,11 +346,11 @@ export async function fetchRankings(weights?: {
  */
 export async function fetchSyncStatus(): Promise<SyncStatus> {
   const response = await fetch(`${API_BASE_URL}/api/tiingo/sync-status`);
-  
+
   if (!response.ok) {
     throw new Error('Failed to fetch sync status');
   }
-  
+
   return response.json();
 }
 
@@ -356,16 +361,16 @@ export async function fetchDividendDates(
   ticker: string,
   limit?: number
 ): Promise<DividendDatesResponse> {
-  const url = limit 
+  const url = limit
     ? `${API_BASE_URL}/api/etfs/${ticker}/dividend-dates?limit=${limit}`
     : `${API_BASE_URL}/api/etfs/${ticker}/dividend-dates`;
-    
+
   const response = await fetch(url);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch dividend dates for ${ticker}`);
   }
-  
+
   return response.json();
 }
 
@@ -376,12 +381,12 @@ export async function fetchDividendDates(
 export async function fetchRealtimeReturns(ticker: string): Promise<RealtimeReturns | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/tiingo/realtime-returns/${ticker}`);
-    
+
     if (!response.ok) {
       console.warn(`Failed to fetch realtime returns for ${ticker}`);
       return null;
     }
-    
+
     const json = await response.json();
     return json.data || null;
   } catch (error) {
@@ -401,12 +406,12 @@ export async function fetchRealtimeReturnsBatch(tickers: string[]): Promise<Reco
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tickers }),
     });
-    
+
     if (!response.ok) {
       console.warn('Failed to fetch batch realtime returns');
       return {};
     }
-    
+
     const json = await response.json();
     return json.data || {};
   } catch (error) {
@@ -421,24 +426,24 @@ export async function fetchRealtimeReturnsBatch(tickers: string[]): Promise<Reco
 export function generateComparisonChartData(
   comparison: ComparisonData,
   useReturns: boolean = true
-): Array<{ time: string; [key: string]: number | string }> {
+): Array<{ time: string;[key: string]: number | string }> {
   const tickers = comparison.tickers;
   if (tickers.length === 0) return [];
-  
+
   const primaryTicker = tickers[0];
   const primaryData = comparison.data[primaryTicker];
   if (!primaryData || primaryData.timestamps.length === 0) return [];
-  
-  const result: Array<{ time: string; [key: string]: number | string }> = [];
-  
+
+  const result: Array<{ time: string;[key: string]: number | string }> = [];
+
   for (let i = 0; i < primaryData.timestamps.length; i++) {
     const timestamp = primaryData.timestamps[i];
     const date = new Date(timestamp * 1000);
-    
-    const point: { time: string; [key: string]: number | string } = {
+
+    const point: { time: string;[key: string]: number | string } = {
       time: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     };
-    
+
     for (const ticker of tickers) {
       const tickerData = comparison.data[ticker];
       if (tickerData && tickerData.timestamps[i] !== undefined) {
@@ -451,10 +456,10 @@ export function generateComparisonChartData(
         }
       }
     }
-    
+
     result.push(point);
   }
-  
+
   return result;
 }
 
@@ -469,31 +474,31 @@ export function metricsToETF(metrics: ETFMetrics, isFavorite: boolean = false): 
     description: metrics.name || '',
     ipoPrice: metrics.ipoPrice,
     payDay: metrics.payDay,
-    
+
     // Live price data
     price: metrics.currentPrice || 0,
     priceChange: metrics.priceChange,
     priceChangePercent: metrics.priceChangePercent,
-    
+
     // Dividend data
     dividend: metrics.lastDividend,
     numPayments: metrics.paymentsPerYear,
     annualDividend: metrics.annualizedDividend,
     forwardYield: metrics.forwardYield,
-    
+
     // Volatility metrics (frequency-proof)
     dividendSD: metrics.dividendSD,
     dividendCV: metrics.dividendCV,
     dividendCVPercent: metrics.dividendCVPercent,
     dividendVolatilityIndex: metrics.dividendVolatilityIndex,
-    
+
     // Ranking
     weightedRank: metrics.weightedRank,
-    
+
     // 52-week range
     week52Low: metrics.week52Low,
     week52High: metrics.week52High,
-    
+
     // Total Return WITH DRIP
     trDrip3Yr: metrics.totalReturnDrip['3Y'],
     trDrip12Mo: metrics.totalReturnDrip['1Y'],
@@ -501,7 +506,7 @@ export function metricsToETF(metrics: ETFMetrics, isFavorite: boolean = false): 
     trDrip3Mo: metrics.totalReturnDrip['3M'],
     trDrip1Mo: metrics.totalReturnDrip['1M'],
     trDrip1Wk: metrics.totalReturnDrip['1W'],
-    
+
     // Price Return
     priceReturn3Yr: metrics.priceReturn['3Y'],
     priceReturn12Mo: metrics.priceReturn['1Y'],
@@ -509,7 +514,7 @@ export function metricsToETF(metrics: ETFMetrics, isFavorite: boolean = false): 
     priceReturn3Mo: metrics.priceReturn['3M'],
     priceReturn1Mo: metrics.priceReturn['1M'],
     priceReturn1Wk: metrics.priceReturn['1W'],
-    
+
     // Legacy fields for backward compatibility
     standardDeviation: metrics.dividendCVPercent ?? 0,
     totalReturn3Yr: metrics.totalReturnDrip['3Y'],
@@ -518,7 +523,7 @@ export function metricsToETF(metrics: ETFMetrics, isFavorite: boolean = false): 
     totalReturn3Mo: metrics.totalReturnDrip['3M'],
     totalReturn1Mo: metrics.totalReturnDrip['1M'],
     totalReturn1Wk: metrics.totalReturnDrip['1W'],
-    
+
     // Metadata
     isFavorite,
     lastUpdated: metrics.calculatedAt,

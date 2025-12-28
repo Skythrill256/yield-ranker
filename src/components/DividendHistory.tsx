@@ -182,75 +182,25 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       frequencyChanged = uniqueFrequencies.size > 1;
     }
 
-    // Calculate normalized rate when frequency changed to show comparison line
-    // Use actual payment frequency (numPayments) when available, otherwise detect from intervals
-    const chartData = dividends.map((div, index, array) => {
-      let normalizedRate: number | null = null;
-
+    // Use backend-calculated normalized amounts for the line chart
+    // The backend calculates: days_since_prev, div_frequency, annualized_amount, normalized_amount
+    // normalized_amount uses the most recent payment frequency as baseline for proper comparison
+    const chartData = dividends.map((div) => {
       // Always use adjAmount for dividend history charts (no fallback to amount)
-      // This ensures accuracy and consistency with split-adjusted amounts
       const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
         ? div.adjAmount
         : 0;
 
-      // Calculate normalized rate when frequency changed to show comparison
-      if (frequencyChanged && amount > 0) {
-        // Determine payment frequency:
-        // 1. Use numPayments if provided (for CEFs)
-        // 2. Otherwise detect from days between payments
-        let paymentsPerYear: number | null = null;
-        
-        if (numPayments && numPayments > 0) {
-          // Use provided numPayments (e.g., 12 for monthly, 4 for quarterly, etc.)
-          paymentsPerYear = numPayments;
-        } else {
-          // Detect frequency from days between payments
-          let daysBetween: number | null = null;
-          
-          if (index < array.length - 1) {
-            const currentDate = new Date(div.exDate);
-            const nextDate = new Date(array[index + 1].exDate);
-            daysBetween = (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
-          } else if (index > 0) {
-            const currentDate = new Date(div.exDate);
-            const prevDate = new Date(array[index - 1].exDate);
-            daysBetween = (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-          }
-          
-          if (daysBetween) {
-            // Convert days between payments to payments per year
-            if (daysBetween <= 10) {
-              paymentsPerYear = 52; // Weekly
-            } else if (daysBetween <= 35) {
-              paymentsPerYear = 12; // Monthly
-            } else if (daysBetween <= 95) {
-              paymentsPerYear = 4; // Quarterly
-            } else if (daysBetween <= 185) {
-              paymentsPerYear = 2; // Semi-annual
-            } else {
-              paymentsPerYear = 1; // Annual
-            }
-          }
-        }
-        
-        // Calculate normalized rate based on actual payment frequency
-        // Normalize to the actual payment period, not always weekly
-        if (paymentsPerYear) {
-          // Calculate annualized dividend from this payment
-          const annualizedFromPayment = amount * paymentsPerYear;
-          // Normalize to the payment frequency (not weekly)
-          // For monthly (12 payments/year): normalized = annualized / 12
-          // For quarterly (4 payments/year): normalized = annualized / 4
-          // etc.
-          normalizedRate = annualizedFromPayment / paymentsPerYear;
-        }
-      }
+      // Use backend-calculated normalized amount if available
+      const normalizedRate = (typeof div.normalizedAmount === 'number' && !isNaN(div.normalizedAmount) && isFinite(div.normalizedAmount) && div.normalizedAmount > 0)
+        ? div.normalizedAmount
+        : null;
 
       // Ensure amount is a valid number
       const validAmount = typeof amount === 'number' && !isNaN(amount) && isFinite(amount) && amount > 0
         ? Number(amount.toFixed(4))
         : 0;
-      
+
       // Ensure normalizedRate is a valid number or null
       const validNormalizedRate = normalizedRate !== null && typeof normalizedRate === 'number' && !isNaN(normalizedRate) && isFinite(normalizedRate)
         ? Number(normalizedRate.toFixed(4))
@@ -269,14 +219,18 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         description: div.description,
         currency: div.currency,
         normalizedRate: validNormalizedRate,
+        // Include the new backend fields for debugging/display if needed
+        daysSincePrev: div.daysSincePrev,
+        divFrequency: div.divFrequency,
+        annualizedAmount: div.annualizedAmount,
       };
     }).filter(item => {
       // Filter out items with invalid amounts or NaN values
-      return item.amount > 0 && 
-             typeof item.amount === 'number' && 
-             !isNaN(item.amount) && 
-             isFinite(item.amount) &&
-             (item.normalizedRate === null || (typeof item.normalizedRate === 'number' && !isNaN(item.normalizedRate) && isFinite(item.normalizedRate)));
+      return item.amount > 0 &&
+        typeof item.amount === 'number' &&
+        !isNaN(item.amount) &&
+        isFinite(item.amount) &&
+        (item.normalizedRate === null || (typeof item.normalizedRate === 'number' && !isNaN(item.normalizedRate) && isFinite(item.normalizedRate)));
     });
 
     return { chartData, frequencyChanged };
@@ -287,7 +241,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
     // Show 20 years if available, otherwise 10 years, otherwise all available
     const totalYears = yearlyDividends.length;
     const yearsToShow = totalYears >= 20 ? 20 : totalYears >= 10 ? 10 : totalYears;
-    
+
     // Get the last N years (most recent) and display oldest to newest (left to right)
     return yearlyDividends
       .slice(-yearsToShow)
@@ -348,10 +302,10 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
   // Detect if there are weekly dividends
   const hasWeeklyDividends = useMemo(() => {
     if (!dividendData?.dividends || dividendData.dividends.length < 2) return false;
-    
+
     // Check numPayments prop (52 = weekly)
     if (numPayments === 52) return true;
-    
+
     // Check frequency field in recent dividends
     const recentDividends = dividendData.dividends.slice(0, Math.min(10, dividendData.dividends.length));
     const hasWeeklyFrequency = recentDividends.some(div => {
@@ -359,7 +313,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       return freq.includes('week') || freq === 'weekly' || freq === 'wk' || freq === 'w';
     });
     if (hasWeeklyFrequency) return true;
-    
+
     // Check actual payment intervals (if <= 10 days between payments, it's weekly)
     for (let i = 0; i < recentDividends.length - 1; i++) {
       const currentDate = new Date(recentDividends[i].exDate);
@@ -367,7 +321,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       const daysBetween = Math.abs((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
       if (daysBetween <= 10) return true;
     }
-    
+
     return false;
   }, [dividendData, numPayments]);
 
@@ -529,19 +483,19 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                   <RechartsTooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload || !payload.length) return null;
-                      
+
                       const data = payload[0]?.payload;
                       if (!data) return null;
-                      
+
                       const date = new Date(label);
                       const exDateStr = `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })},${date.getFullYear()}`;
-                      
+
                       const amount = payload.find(p => p.dataKey === 'amount')?.value;
                       const normalizedRate = payload.find(p => p.dataKey === 'normalizedRate')?.value;
-                      
+
                       const amountValue = typeof amount === 'number' ? amount : parseFloat(String(amount || 0));
                       const normalizedValue = typeof normalizedRate === 'number' ? normalizedRate : parseFloat(String(normalizedRate || 0));
-                      
+
                       return (
                         <div
                           style={{
@@ -570,10 +524,10 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                     }}
                   />
                   <Bar dataKey="amount" fill="#93c5fd" radius={[2, 2, 0, 0]} name="Individual Payment Amount" minPointSize={3} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="normalizedRate" 
-                    stroke="#ef4444" 
+                  <Line
+                    type="monotone"
+                    dataKey="normalizedRate"
+                    stroke="#ef4444"
                     strokeWidth={2}
                     dot={false}
                     name="Normalized Rate"
@@ -619,16 +573,16 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                   <RechartsTooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload || !payload.length) return null;
-                      
+
                       const data = payload[0]?.payload;
                       if (!data) return null;
-                      
+
                       const date = new Date(label);
                       const exDateStr = `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })},${date.getFullYear()}`;
-                      
+
                       const amount = payload.find(p => p.dataKey === 'amount')?.value;
                       const amountValue = typeof amount === 'number' ? amount : parseFloat(String(amount || 0));
-                      
+
                       return (
                         <div
                           style={{
