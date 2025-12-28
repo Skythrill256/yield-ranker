@@ -177,8 +177,8 @@ export async function calculateCEFZScore(
 
     if (history.length === 0) return null;
 
-    // Calculate current discount from most recent price and NAV (not from history array)
-    // Get the most recent date that has both price and NAV
+    // Calculate current discount from most recent date with both price and NAV
+    // This ensures we use the actual most recent available data point
     const sortedDatesArray = Array.from(sortedDates).sort().reverse();
     let currentDiscount: number | null = null;
     for (const date of sortedDatesArray) {
@@ -195,16 +195,20 @@ export async function calculateCEFZScore(
       currentDiscount = history[history.length - 1];
     }
 
-    // Calculate stats from history (excluding current if it's in history)
+    // Calculate stats from history using STDEV.P (population standard deviation)
+    // The history array contains the most recent 5 years of discounts, INCLUDING the current value
+    // This matches Excel's STDEV.P function which uses all values in the range
     const avgDiscount = history.reduce((sum, d) => sum + d, 0) / history.length;
+    // Population variance: Σ(x - mean)² / n (matches Excel STDEV.P, not STDEV.S which uses n-1)
     const variance =
       history.reduce((sum, d) => sum + Math.pow(d - avgDiscount, 2), 0) /
       history.length;
-    const stdDev = Math.sqrt(variance);
+    const stdDev = Math.sqrt(variance); // STDEV.P (population standard deviation)
 
     if (stdDev === 0) return 0.0;
 
     // Z-Score Formula: (Current - Mean) / StdDev
+    // This matches Excel: (Current P/D - Average) / STDEV.P
     const zScore = (currentDiscount - avgDiscount) / stdDev;
 
     return zScore;
