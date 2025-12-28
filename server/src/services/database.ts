@@ -214,7 +214,7 @@ export async function updateETFMetricsPreservingCEFFields(
     'open_date',
     'ipo_price',
     'description',
-    'dividend_history',
+    // NOTE: dividend_history is NOT in preserve list - it should be updated by refresh script
     'average_premium_discount',
   ];
 
