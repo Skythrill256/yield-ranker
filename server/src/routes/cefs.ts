@@ -1098,9 +1098,9 @@ export function calculateDividendHistory(dividends: DividendRecord[]): string {
       base = p1; // Update base to the confirmed new level (p1)
     }
     // DECREASE LOGIC: Both payments in the pair must be lower than base
-    // p1 < base AND p2 < base
+    // p1 < base AND p2 < base AND p2 <= p1 (second payment must not be higher to confirm decrease)
     // Note: No threshold for decreases (both just need to be below base)
-    else if (p1 < base && p2 < base) {
+    else if (p1 < base && p2 < base && p2 <= p1) {
       decreases++;
       base = p1; // Update base to the confirmed new level (p1)
     }
