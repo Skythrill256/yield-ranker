@@ -819,7 +819,6 @@ export async function calculateSignal(
  */
 export async function calculateCEFRankings(): Promise<Map<string, number>> {
   try {
-    const { getSupabase } = await import("../services/database.js");
     const db = getSupabase();
 
     // Get all CEFs (those with nav_symbol)
