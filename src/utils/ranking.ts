@@ -25,15 +25,24 @@ export const calculateWeightedRank = (
     ? "trDrip6Mo" 
     : "trDrip12Mo";
   
-  // Filter valid values for each metric
-  const validETFs = allETFs.filter(e => 
-    (e.forwardYield !== null && !isNaN(e.forwardYield) && e.forwardYield > 0) ||
-    (e.dividendCVPercent !== null && !isNaN(e.dividendCVPercent)) ||
-    (e.standardDeviation !== null && !isNaN(e.standardDeviation)) ||
-    (returnField === "trDrip3Mo" && (e.trDrip3Mo !== null || e.totalReturn3Mo !== null)) ||
-    (returnField === "trDrip6Mo" && (e.trDrip6Mo !== null || e.totalReturn6Mo !== null)) ||
-    (returnField === "trDrip12Mo" && (e.trDrip12Mo !== null || e.totalReturn12Mo !== null))
-  );
+  // Filter to only include ETFs that have data for ALL metrics with non-zero weights
+  const hasYield = weights.yield > 0;
+  const hasVolatility = weights.volatility > 0;
+  const hasReturn = weights.totalReturn > 0;
+
+  const validETFs = allETFs.filter(e => {
+    if (hasYield && (e.forwardYield === null || isNaN(e.forwardYield) || e.forwardYield <= 0)) return false;
+    if (hasVolatility) {
+      const vol = e.dividendCVPercent ?? e.standardDeviation ?? null;
+      if (vol === null || isNaN(vol) || vol < 0) return false;
+    }
+    if (hasReturn) {
+      if (returnField === "trDrip3Mo" && (e.trDrip3Mo === null && e.totalReturn3Mo === null)) return false;
+      if (returnField === "trDrip6Mo" && (e.trDrip6Mo === null && e.totalReturn6Mo === null)) return false;
+      if (returnField === "trDrip12Mo" && (e.trDrip12Mo === null && e.totalReturn12Mo === null)) return false;
+    }
+    return true;
+  });
 
   if (validETFs.length === 0) {
     return 0;

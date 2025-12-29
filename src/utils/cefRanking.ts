@@ -25,14 +25,21 @@ export const calculateWeightedRank = (
     ? "return6Mo" 
     : "return12Mo";
   
-  // Filter valid values for each metric
-  const validCEFs = allCEFs.filter(c => 
-    (c.forwardYield !== null && !isNaN(c.forwardYield) && c.forwardYield > 0) ||
-    (c.fiveYearZScore !== null && !isNaN(c.fiveYearZScore)) ||
-    (returnField === "return3Mo" && c.return3Mo !== null && !isNaN(c.return3Mo)) ||
-    (returnField === "return6Mo" && c.return6Mo !== null && !isNaN(c.return6Mo)) ||
-    (returnField === "return12Mo" && c.return12Mo !== null && !isNaN(c.return12Mo))
-  );
+  // Filter to only include CEFs that have data for ALL metrics with non-zero weights
+  const hasYield = weights.yield > 0;
+  const hasZScore = weights.volatility > 0;
+  const hasReturn = weights.totalReturn > 0;
+
+  const validCEFs = allCEFs.filter(c => {
+    if (hasYield && (c.forwardYield === null || isNaN(c.forwardYield) || c.forwardYield <= 0)) return false;
+    if (hasZScore && (c.fiveYearZScore === null || isNaN(c.fiveYearZScore))) return false;
+    if (hasReturn) {
+      if (returnField === "return3Mo" && (c.return3Mo === null || isNaN(c.return3Mo))) return false;
+      if (returnField === "return6Mo" && (c.return6Mo === null || isNaN(c.return6Mo))) return false;
+      if (returnField === "return12Mo" && (c.return12Mo === null || isNaN(c.return12Mo))) return false;
+    }
+    return true;
+  });
 
   if (validCEFs.length === 0) {
     return 0;
