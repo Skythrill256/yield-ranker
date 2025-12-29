@@ -214,17 +214,17 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
           } else {
             // Fallback: calculate locally if backend didn't provide value
             // Must use adjAmount (not unadjusted amount) for normalization calculation
-            // IMPORTANT: Match backend logic - round annualized to 2 decimals first, then divide by 52
+            // IMPORTANT: Match backend logic - use UNROUNDED annualized value for normalization
             const adjAmount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
               ? div.adjAmount
               : 0;
             if (adjAmount > 0) {
               const freqNum = div.frequencyNum || numPayments || 12;
-              // Calculate weekly equivalent: round annualized to 2 decimals first, then divide by 52
+              // Calculate weekly equivalent: use unrounded annualized value
+              // Formula: normalizedDiv = (amount × frequency) / 52
               // This matches the backend calculation logic
               const annualizedRaw = adjAmount * freqNum;
-              const annualized = Number(annualizedRaw.toFixed(2));
-              normalizedRate = annualized / 52;
+              normalizedRate = annualizedRaw / 52;
             }
           }
         }

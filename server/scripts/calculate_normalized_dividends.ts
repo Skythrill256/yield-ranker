@@ -270,15 +270,17 @@ async function backfillNormalizedDividends() {
             let normalizedDiv: number | null = null;
 
             if (pmtType === 'Regular' && amount > 0) {
-                // Calculate annualized and round to 2 decimals (matches spreadsheet)
+                // Calculate annualized: Amount × Frequency
                 const annualizedRaw = amount * frequencyNum;
+                // Round annualized to 2 decimals for storage/display
                 annualized = Number(annualizedRaw.toFixed(2));
                 
                 // Normalized value: convert to weekly equivalent rate for line chart
-                // IMPORTANT: Calculate from the ROUNDED annualized value (matches spreadsheet behavior)
-                // Formula: normalizedDiv = (rounded annualized) / 52
-                // Example: 0.694 × 12 = 8.328 → round to 8.33 → 8.33 / 52 = 0.16015
-                normalizedDiv = annualized / 52;
+                // IMPORTANT: Calculate from the UNROUNDED annualized value
+                // Formula: normalizedDiv = (amount × frequency) / 52
+                // This ensures consistency: 0.694 × 12 = 8.328 → 8.328 / 52 = 0.160153846... ≈ 0.16015
+                // The spreadsheet uses the unrounded annualized value for normalization calculation
+                normalizedDiv = annualizedRaw / 52;
             }
 
             updates.push({
@@ -397,18 +399,20 @@ async function backfillSingleTicker(ticker: string) {
 
         const amount = current.adj_amount !== null ? Number(current.adj_amount) : Number(current.div_cash);
         
-        // Calculate annualized and round to 2 decimals (matches spreadsheet)
+        // Calculate annualized: Amount × Frequency
         let annualized: number | null = null;
         let normalizedDiv: number | null = null;
         
         if (pmtType === 'Regular' && amount > 0) {
             const annualizedRaw = amount * frequencyNum;
+            // Round annualized to 2 decimals for storage/display
             annualized = Number(annualizedRaw.toFixed(2));
             
             // Normalized value: convert to weekly equivalent rate for line chart
-            // IMPORTANT: Calculate from the ROUNDED annualized value (matches spreadsheet behavior)
-            // Formula: normalizedDiv = (rounded annualized) / 52
-            normalizedDiv = annualized / 52;
+            // IMPORTANT: Calculate from the UNROUNDED annualized value
+            // Formula: normalizedDiv = (amount × frequency) / 52
+            // This ensures consistency: 0.694 × 12 = 8.328 → 8.328 / 52 = 0.160153846... ≈ 0.16015
+            normalizedDiv = annualizedRaw / 52;
         }
 
         console.log(`${current.ex_date}: Days=${daysSincePrev ?? 'N/A'}, Type=${pmtType}, Freq=${frequencyNum}, Amt=${amount.toFixed(4)}, Ann=${annualized?.toFixed(4) ?? 'N/A'}, Norm=${normalizedDiv?.toFixed(4) ?? 'N/A'}`);
