@@ -372,7 +372,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SEO
-        title="Closed-End Funds - Premium/Discount Analysis"
+        title="Closed End Funds - Premium/Discount Analysis"
         description="Analyze closed-end funds with NAV trends, premium/discount metrics, and dividend analysis. Advanced CEF screening for income investors."
         keywords="closed-end funds, CEF, NAV discount, premium discount, dividend CEF, income investing, CEF analysis"
         structuredData={getWebApplicationSchema()}
@@ -390,7 +390,7 @@ const Index = () => {
               Dividends &amp; Total Returns
             </p>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
-              Closed-End{" "}
+              Closed End{" "}
               <span className="bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text text-transparent">
                 Funds
               </span>

@@ -99,12 +99,12 @@ export const getFinancialProductSchema = (symbol: string, name: string, type: 'E
     "@context": "https://schema.org",
     "@type": "FinancialProduct",
     "name": `${symbol} - ${name}`,
-    "description": `${type === 'ETF' ? 'Covered Call ETF' : 'Closed-End Fund'} analysis including dividend history, yield, and total returns.`,
+    "description": `${type === 'ETF' ? 'Covered Call ETF' : 'Closed End Fund'} analysis including dividend history, yield, and total returns.`,
     "provider": {
         "@type": "Organization",
         "name": "D&TR - Dividends & Total Returns"
     },
-    "category": type === 'ETF' ? 'Exchange Traded Fund' : 'Closed-End Fund'
+    "category": type === 'ETF' ? 'Exchange Traded Fund' : 'Closed End Fund'
 });
 
 export const getBreadcrumbSchema = (items: { name: string; url: string }[]) => ({

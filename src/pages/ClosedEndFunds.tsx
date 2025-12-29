@@ -16,7 +16,7 @@ function ClosedEndFunds() {
           <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-20 md:py-32 relative">
             <div className="max-w-4xl mx-auto text-center space-y-6">
               <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-foreground">
-                Closed-End{" "}
+                Closed End{" "}
                 <span className="bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text text-transparent">
                   Funds
                 </span>
@@ -32,7 +32,7 @@ function ClosedEndFunds() {
           <Card className="p-8 md:p-12 border-2 border-slate-200 shadow-xl">
             <div className="prose prose-lg max-w-none space-y-6 text-slate-700 leading-relaxed">
               <p>
-                A Closed-End Fund (CEF) is a type of investment company that raises capital through an initial public offering (IPO) and then trades on a stock exchange like a stock. Unlike open-end mutual funds, CEFs have a fixed number of shares and trade at prices that can be at a premium or discount to their Net Asset Value (NAV).
+                A Closed End Fund (CEF) is a type of investment company that raises capital through an initial public offering (IPO) and then trades on a stock exchange like a stock. Unlike open-end mutual funds, CEFs have a fixed number of shares and trade at prices that can be at a premium or discount to their Net Asset Value (NAV).
               </p>
 
               <p>

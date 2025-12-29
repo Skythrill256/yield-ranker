@@ -1,5 +1,5 @@
 /**
- * CEF (Closed-End Fund) Data Routes
+ * CEF (Closed End Fund) Data Routes
  *
  * Provides endpoints for CEF data operations
  */

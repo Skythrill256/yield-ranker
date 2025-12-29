@@ -733,7 +733,7 @@ async function main() {
     console.log('\n' + '='.repeat(60));
     console.log('CEF REFRESH');
     console.log('='.repeat(60));
-    console.log('Now refreshing all CEFs (Closed-End Funds)...\n');
+    console.log('Now refreshing all CEFs (Closed End Funds)...\n');
     
     try {
       // Run the CEF refresh script using npm script
