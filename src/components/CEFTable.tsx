@@ -176,7 +176,7 @@ export const CEFTable = ({
               </th>
               <th
                 colSpan={returnColumns.length}
-                className="h-8 px-1.5 text-center align-middle font-bold bg-primary/10 text-primary text-sm"
+                className="h-7 px-1.5 text-center align-middle font-bold bg-primary/10 text-primary text-sm"
               >
                 TOTAL RETURNS
               </th>
