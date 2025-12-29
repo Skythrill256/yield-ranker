@@ -177,6 +177,21 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     // Always try to fetch from Tiingo dividend API
     logger.info('Routes', `Fetching dividends from Tiingo for ${ticker}...`);
 
+    // Preserve normalized values from database for merging later
+    const dbNormalizedMap = new Map<string, any>();
+    dividends.forEach(d => {
+      const exDate = d.ex_date.split('T')[0];
+      if ((d as any).normalized_div !== null && (d as any).normalized_div !== undefined) {
+        dbNormalizedMap.set(exDate, {
+          normalized_div: (d as any).normalized_div,
+          frequency_num: (d as any).frequency_num,
+          pmt_type: (d as any).pmt_type,
+          days_since_prev: (d as any).days_since_prev,
+          annualized: (d as any).annualized,
+        });
+      }
+    });
+
     try {
       // For large year requests, fetch all available data from Tiingo
       const tiingoStartDate = years >= 50 ? undefined : startDate;
@@ -203,6 +218,9 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
             return (manual.ex_date === exDate) || (daysDiff <= 7 && amountMatch);
           });
 
+          // Merge with database normalized values if available
+          const dbNormalized = dbNormalizedMap.get(exDate);
+          
           return {
             ticker: ticker.toUpperCase(),
             ex_date: exDate,
@@ -217,6 +235,12 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
             description: matchedManual ? null : null,
             currency: 'USD',
             split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+            // Preserve normalized values from database
+            normalized_div: dbNormalized?.normalized_div ?? null,
+            frequency_num: dbNormalized?.frequency_num ?? null,
+            pmt_type: dbNormalized?.pmt_type ?? null,
+            days_since_prev: dbNormalized?.days_since_prev ?? null,
+            annualized: dbNormalized?.annualized ?? null,
           };
         }).sort((a: DividendRecord, b: DividendRecord) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
 
@@ -224,7 +248,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
           logger.warn('Routes', `Failed to persist dividends for ${ticker}: ${err.message}`)
         );
 
-        dividends = tiingoRecords;
+        dividends = tiingoRecords as any[];
       }
     } catch (error) {
       logger.warn('Routes', `Failed to fetch Tiingo dividends for ${ticker}: ${(error as Error).message}`);
