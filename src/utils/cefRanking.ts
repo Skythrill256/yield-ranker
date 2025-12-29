@@ -50,7 +50,10 @@ export const calculateWeightedRank = (
     const zScoreValue = value ?? null;
     if (zScoreValue === null || isNaN(zScoreValue)) return 0.5;
     if (maxZScore === minZScore) return 0.5;
-    return (zScoreValue - minZScore) / (maxZScore - minZScore);
+    // Invert: lower (more negative) Z-scores are better, so they should get higher normalized scores
+    // Formula: (maxZScore - zScoreValue) / (maxZScore - minZScore)
+    // This gives: minZScore (best) → 1.0, maxZScore (worst) → 0.0
+    return (maxZScore - zScoreValue) / (maxZScore - minZScore);
   };
 
   const normalizeReturn = (value: number | null) => {
