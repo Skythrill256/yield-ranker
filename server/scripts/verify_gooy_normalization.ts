@@ -27,28 +27,38 @@ const __dirname = path.dirname(__filename);
 
 // Load .env from multiple possible locations
 const envPaths = [
-    path.resolve(process.cwd(), '.env'),
-    path.resolve(process.cwd(), '../.env'),
-    path.resolve(__dirname, '../.env'),
-    path.resolve(__dirname, '../../.env'),
+    path.resolve(process.cwd(), '.env'),                    // Current working directory
+    path.resolve(process.cwd(), '../.env'),                 // Parent of current directory
+    path.resolve(__dirname, '../.env'),                      // server/.env
+    path.resolve(__dirname, '../../.env'),                  // root/.env
+    path.resolve(__dirname, '../../../yield-ranker/server/.env'), // yield-ranker/server/.env
+    path.resolve(__dirname, '../../yield-ranker/server/.env'),    // root/yield-ranker/server/.env
 ];
 
+// Try all paths - dotenv.config() doesn't throw if file doesn't exist
 let envLoaded = false;
+let loadedEnvPath = '';
 for (const envPath of envPaths) {
     try {
         const result = dotenv.config({ path: envPath });
         if (!result.error && result.parsed && Object.keys(result.parsed).length > 0) {
             console.log(`✓ Loaded .env from: ${envPath}`);
             envLoaded = true;
+            loadedEnvPath = envPath;
             break;
         }
     } catch (e) {
-        // Continue
+        // Continue to next path
     }
 }
 
+// Also try default location (current directory)
 if (!envLoaded) {
-    dotenv.config();
+    const defaultResult = dotenv.config();
+    if (!defaultResult.error && defaultResult.parsed && Object.keys(defaultResult.parsed).length > 0) {
+        console.log(`✓ Loaded .env from default location`);
+        envLoaded = true;
+    }
 }
 
 import { createClient } from '@supabase/supabase-js';
@@ -59,6 +69,14 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     console.error('ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env');
+    if (envLoaded) {
+        console.error(`   .env file was loaded from: ${loadedEnvPath || 'default location'}`);
+        console.error(`   But required variables are missing.`);
+    } else {
+        console.error(`   Could not find .env file in any of these locations:`);
+        envPaths.forEach(p => console.error(`     - ${p}`));
+        console.error(`   Please ensure .env file exists and contains SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY`);
+    }
     process.exit(1);
 }
 
