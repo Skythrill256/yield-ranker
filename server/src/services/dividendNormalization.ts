@@ -218,14 +218,14 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
 
         // Only calculate for Regular dividends with valid amounts
         if (pmtType === 'Regular' && amount > 0) {
-            annualized = amount * frequencyNum;
+            // Calculate annualized and round to 2 decimals (matches spreadsheet)
+            const annualizedRaw = amount * frequencyNum;
+            annualized = Number(annualizedRaw.toFixed(2));
             
             // Normalized value: convert to weekly equivalent rate for line chart
-            // Formula: normalizedDiv = annualized / 52 = (amount × frequency) / 52
-            // This normalizes all dividends to a weekly equivalent rate for consistent comparison
-            // Example: $0.10 weekly → ($0.10 × 52) / 52 = $0.10 (stays same)
-            // Example: $0.30 monthly → ($0.30 × 12) / 52 = $0.0692 weekly equivalent
-            // Example: $0.694 monthly → ($0.694 × 12) / 52 = $0.16015 weekly equivalent
+            // IMPORTANT: Calculate from the ROUNDED annualized value (matches spreadsheet behavior)
+            // Formula: normalizedDiv = (rounded annualized) / 52
+            // Example: 0.694 × 12 = 8.328 → round to 8.33 → 8.33 / 52 = 0.16015
             normalizedDiv = annualized / 52;
         }
 
@@ -234,7 +234,7 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
             days_since_prev: daysSincePrev,
             pmt_type: pmtType,
             frequency_num: frequencyNum,
-            annualized: annualized !== null ? Number(annualized.toFixed(6)) : null,
+            annualized: annualized !== null ? Number(annualized.toFixed(2)) : null,
             normalized_div: normalizedDiv !== null ? Number(normalizedDiv.toFixed(6)) : null,
         });
     }
@@ -351,10 +351,13 @@ export function calculateNormalizedForResponse(
         let normalizedDiv: number | null = null;
 
         if (pmtType === 'Regular' && amount > 0) {
-            annualized = amount * frequencyNum;
+            // Calculate annualized and round to 2 decimals (matches spreadsheet)
+            const annualizedRaw = amount * frequencyNum;
+            annualized = Number(annualizedRaw.toFixed(2));
+            
             // Normalized value: convert to weekly equivalent rate for line chart
-            // Formula: normalizedDiv = annualized / 52 = (amount × frequency) / 52
-            // This normalizes all dividends to a weekly equivalent rate for consistent comparison
+            // IMPORTANT: Calculate from the ROUNDED annualized value (matches spreadsheet behavior)
+            // Formula: normalizedDiv = (rounded annualized) / 52
             normalizedDiv = annualized / 52;
         }
 
@@ -362,7 +365,7 @@ export function calculateNormalizedForResponse(
             pmtType,
             frequencyNum,
             daysSincePrev,
-            annualized: annualized !== null ? Number(annualized.toFixed(6)) : null,
+            annualized: annualized !== null ? Number(annualized.toFixed(2)) : null,
             normalizedDiv: normalizedDiv !== null ? Number(normalizedDiv.toFixed(6)) : null,
         });
     }
