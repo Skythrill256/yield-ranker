@@ -287,30 +287,16 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       : null;
   }, [yearlyDividends]);
 
-  const getFilteredTableRecords = useMemo(() => {
+  // Table should always show ALL historical dividends regardless of chart time range filter
+  const getAllTableRecords = useMemo(() => {
     if (!dividendData?.dividends) return [];
-
-    const now = new Date();
-    const cutoffDate = new Date();
-
-    switch (timeRange) {
-      case '1W': cutoffDate.setDate(now.getDate() - 7); break;
-      case '1M': cutoffDate.setMonth(now.getMonth() - 1); break;
-      case '3M': cutoffDate.setMonth(now.getMonth() - 3); break;
-      case '6M': cutoffDate.setMonth(now.getMonth() - 6); break;
-      case '1Y': cutoffDate.setFullYear(now.getFullYear() - 1); break;
-      case '3Y': cutoffDate.setFullYear(now.getFullYear() - 3); break;
-      case '5Y': cutoffDate.setFullYear(now.getFullYear() - 5); break;
-      case '10Y': cutoffDate.setFullYear(now.getFullYear() - 10); break;
-      case '20Y': cutoffDate.setFullYear(now.getFullYear() - 20); break;
-    }
-
-    return dividendData.dividends.filter(d => new Date(d.exDate) >= cutoffDate);
-  }, [dividendData, timeRange]);
+    // Return ALL dividends for the table (no time range filtering)
+    return dividendData.dividends;
+  }, [dividendData]);
 
   const recordsByYear = useMemo(() => {
     const grouped = new Map<number, DividendRecord[]>();
-    getFilteredTableRecords.forEach(record => {
+    getAllTableRecords.forEach(record => {
       const year = new Date(record.exDate).getFullYear();
       if (!grouped.has(year)) {
         grouped.set(year, []);
@@ -318,9 +304,9 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       grouped.get(year)!.push(record);
     });
     return Array.from(grouped.entries())
-      .sort((a, b) => b[0] - a[0])
+      .sort((a, b) => b[0] - a[0]) // Sort descending (newest year first)
       .map(([year, records]) => ({ year, records }));
-  }, [getFilteredTableRecords]);
+  }, [getAllTableRecords]);
 
   // Detect if there are weekly dividends
   const hasWeeklyDividends = useMemo(() => {
@@ -763,10 +749,22 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                         if (!isNaN(rd.getTime())) recordDate = rd;
                       }
 
-                      const typeLabel = div.type === 'Special' ? 'Special' : 'Regular';
+                      // Use pmtType from normalized calculation (Regular/Special/Initial)
+                      // Fallback to div.type if pmtType not available
+                      const typeLabel = div.pmtType || (div.type === 'Special' ? 'Special' : 'Regular');
 
-                      // Use frequency from API, which now detects per-payment frequency
-                      const frequency = div.frequency || 'Monthly';
+                      // Convert frequencyNum to readable string, fallback to frequency field
+                      let frequency = 'Monthly'; // Default
+                      if (div.frequencyNum) {
+                        if (div.frequencyNum === 52) frequency = 'Weekly';
+                        else if (div.frequencyNum === 12) frequency = 'Monthly';
+                        else if (div.frequencyNum === 4) frequency = 'Quarterly';
+                        else if (div.frequencyNum === 2) frequency = 'Semi-Annual';
+                        else if (div.frequencyNum === 1) frequency = 'Annual';
+                        else frequency = `${div.frequencyNum}x/Yr`;
+                      } else if (div.frequency) {
+                        frequency = div.frequency;
+                      }
 
                       return (
                         <React.Fragment key={`${year}-${idx}`}>
@@ -848,7 +846,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
           </Table>
         </div>
 
-        {getFilteredTableRecords.length > recordsByYear.reduce((sum, { year, records }) => sum + (expandedYears.has(year) ? records.length : Math.min(4, records.length)), 0) && (
+        {getAllTableRecords.length > recordsByYear.reduce((sum, { year, records }) => sum + (expandedYears.has(year) ? records.length : Math.min(4, records.length)), 0) && (
           <div className="mt-4 text-center">
             <Button
               variant="outline"
@@ -864,7 +862,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
               ) : (
                 <>
                   <ChevronDown className="h-4 w-4" />
-                  Show All ({getFilteredTableRecords.length} records)
+                  Show All ({getAllTableRecords.length} records)
                 </>
               )}
             </Button>
