@@ -355,7 +355,10 @@ async function backfillSingleTicker(ticker: string) {
 
         const amount = current.adj_amount !== null ? Number(current.adj_amount) : Number(current.div_cash);
         const annualized = pmtType === 'Regular' && amount > 0 ? amount * frequencyNum : null;
-        const normalizedDiv = pmtType === 'Regular' && amount > 0 ? amount : null;
+        // Normalized value: convert to weekly equivalent rate for line chart
+        // Formula: normalizedDiv = annualized / 52 = (amount × frequency) / 52
+        // This normalizes all dividends to a weekly equivalent rate for consistent comparison
+        const normalizedDiv = annualized !== null && annualized > 0 ? annualized / 52 : null;
 
         console.log(`${current.ex_date}: Days=${daysSincePrev ?? 'N/A'}, Type=${pmtType}, Freq=${frequencyNum}, Amt=${amount.toFixed(4)}, Ann=${annualized?.toFixed(4) ?? 'N/A'}, Norm=${normalizedDiv?.toFixed(4) ?? 'N/A'}`);
 
