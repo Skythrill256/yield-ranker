@@ -120,8 +120,8 @@ interface CalculatedDividend {
  * Based on CEO specification: 7-10 days = weekly (52), 25-35 days = monthly (12)
  */
 function getFrequencyFromDays(days: number): number {
-    // Clear weekly pattern: 7-10 days
-    if (days >= 7 && days <= 10) return 52;    // Weekly
+    // Clear weekly pattern: 6-10 days (standard weekly pattern)
+    if (days >= 6 && days <= 10) return 52;    // Weekly
     
     // Clear monthly pattern: 25-35 days
     if (days >= 25 && days <= 35) return 12;   // Monthly  
@@ -135,12 +135,13 @@ function getFrequencyFromDays(days: number): number {
     // Clear annual pattern: > 200 days
     if (days > 200) return 1;                   // Annual or irregular
 
-    // Edge cases for transition periods or irregular gaps
-    // 6 days: close to weekly (7 days), treat as weekly
-    if (days === 6) return 52;                  // Weekly pattern (early payment)
+    // Edge cases for irregular gaps
+    // 11-14 days: can occur during frequency transitions (monthly to weekly)
+    // Treat as weekly when it's part of a weekly sequence
+    if (days >= 11 && days <= 14) return 52;   // Transition periods (monthly to weekly)
     
-    // 11-24 days: closer to monthly than weekly, default to monthly
-    if (days > 10 && days < 25) return 12;     // Bi-weekly/irregular, treat as monthly
+    // 15-24 days: bi-weekly/irregular, treat as monthly (between weekly and monthly)
+    if (days >= 15 && days < 25) return 12;     // Bi-weekly/irregular, treat as monthly
     
     // 36-79 days: closer to monthly than quarterly, default to monthly
     if (days > 35 && days < 80) return 12;     // Irregular monthly pattern
@@ -237,8 +238,27 @@ async function backfillNormalizedDividends() {
                 const daysToNext = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
                 
                 if (daysToNext > 5) {
-                    // Use the gap to next dividend to determine frequency of current dividend
-                    frequencyNum = getFrequencyFromDays(daysToNext);
+                    // Use the gap to next dividend to determine frequency
+                    // BUT: If we have a previous gap that's clearly monthly (25-35 days),
+                    // and the next gap indicates weekly (6-14 days), the current dividend
+                    // likely belongs to the monthly pattern (the transition happens at the NEXT dividend)
+                    if (daysSincePrev !== null && daysSincePrev >= 25 && daysSincePrev <= 35) {
+                        // Previous gap indicates monthly pattern - current dividend is monthly
+                        // unless next gap also clearly indicates monthly
+                        const freqFromNext = getFrequencyFromDays(daysToNext);
+                        const freqFromPrev = getFrequencyFromDays(daysSincePrev);
+                        
+                        // If previous clearly indicates monthly and next indicates weekly,
+                        // the transition happens at the next dividend, so current is still monthly
+                        if (freqFromPrev === 12 && freqFromNext === 52 && daysToNext >= 6 && daysToNext <= 14) {
+                            frequencyNum = 12; // Stay with monthly pattern
+                        } else {
+                            frequencyNum = freqFromNext;
+                        }
+                    } else {
+                        // No clear monthly pattern from previous, use next gap
+                        frequencyNum = getFrequencyFromDays(daysToNext);
+                    }
                 }
             }
 
@@ -349,7 +369,27 @@ async function backfillSingleTicker(ticker: string) {
                 const daysToNext = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
                 
                 if (daysToNext > 5) {
-                    frequencyNum = getFrequencyFromDays(daysToNext);
+                    // Use the gap to next dividend to determine frequency
+                    // BUT: If we have a previous gap that's clearly monthly (25-35 days),
+                    // and the next gap indicates weekly (6-14 days), the current dividend
+                    // likely belongs to the monthly pattern (the transition happens at the NEXT dividend)
+                    if (daysSincePrev !== null && daysSincePrev >= 25 && daysSincePrev <= 35) {
+                        // Previous gap indicates monthly pattern - current dividend is monthly
+                        // unless next gap also clearly indicates monthly
+                        const freqFromNext = getFrequencyFromDays(daysToNext);
+                        const freqFromPrev = getFrequencyFromDays(daysSincePrev);
+                        
+                        // If previous clearly indicates monthly and next indicates weekly,
+                        // the transition happens at the next dividend, so current is still monthly
+                        if (freqFromPrev === 12 && freqFromNext === 52 && daysToNext >= 6 && daysToNext <= 14) {
+                            frequencyNum = 12; // Stay with monthly pattern
+                        } else {
+                            frequencyNum = freqFromNext;
+                        }
+                    } else {
+                        // No clear monthly pattern from previous, use next gap
+                        frequencyNum = getFrequencyFromDays(daysToNext);
+                    }
                 }
             }
 
