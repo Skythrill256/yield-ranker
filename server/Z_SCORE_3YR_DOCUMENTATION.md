@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document explains the 3-Year Z-Score calculation for CEF (Closed-End Fund) Premium/Discount analysis using a **flexible lookback logic** with **3-year maximum** and **1-year minimum** thresholds.
+This document explains the 3-Year Z-Score calculation for CEF (Closed End Fund) Premium/Discount analysis using a **flexible lookback logic** with **3-year maximum** and **1-year minimum** thresholds.
 
 ---
 
