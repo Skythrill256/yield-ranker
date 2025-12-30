@@ -50,7 +50,8 @@
     "show:cef:exact": "tsx scripts/show_cef_ranking_exact_match.ts",
     "explain:ranking": "tsx scripts/explain_ranking_difference.ts",
     "test:zscore": "tsx scripts/test_zscore_ranking.ts",
-    "compare:zscore": "tsx scripts/compare_zscore_ranking.ts"
+    "compare:zscore": "tsx scripts/compare_zscore_ranking.ts",
+    "verify:ranking": "tsx scripts/verify_ranking_vs_database.ts"
   },
   "dependencies": {
     "@mailerlite/mailerlite-nodejs": "^1.5.0",
