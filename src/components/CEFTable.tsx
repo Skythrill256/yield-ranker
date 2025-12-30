@@ -169,7 +169,7 @@ export const CEFTable = ({
           <thead className="sticky top-0 z-50 bg-slate-50 shadow-sm border-b-2 border-slate-200">
             <tr className="bg-slate-50">
               <th
-                colSpan={20}
+                colSpan={19}
                 className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm border-r-2 border-slate-300"
               >
                 CEF DETAILS
