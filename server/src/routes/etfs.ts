@@ -1287,22 +1287,24 @@ router.post('/upload-static', upload.single('file'), handleStaticUpload);
  */
 router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
-    // Try Redis cache first
-    const cached = await getCached<any>(CACHE_KEYS.ETF_LIST);
-    if (cached) {
-      logger.info('Routes', `Returning ${cached.data?.length || 0} ETFs from Redis cache`);
-      res.json(cached);
-      return;
-    }
-
     const supabase = getSupabase();
 
-    // Filter at database level: Get ETFs (Covered Call Options)
-    // Include: records where nav_symbol IS NULL/empty OR records with nav_symbol but no NAV data
-    // This ensures records with nav_symbol but N/A NAV go to ETFs table, not CEFs
+    // CRITICAL: Clear cache to ensure fresh data with new database-level filtering
+    // This prevents old cached data with CEFs from being returned
+    try {
+      const { deleteCached } = await import('../services/redis.js');
+      await deleteCached(CACHE_KEYS.ETF_LIST);
+      logger.info('Routes', 'Cleared ETF list cache to ensure fresh filtered data');
+    } catch (cacheError) {
+      logger.warn('Routes', `Failed to clear cache: ${(cacheError as Error).message}`);
+    }
+
+    // CRITICAL: Filter at database level using category column
+    // This is the PRIMARY and MOST RELIABLE filter - only get CCETFs from database
     const staticResult = await supabase
       .from('etf_static')
       .select('*')
+      .eq('category', 'CCETF')  // ONLY get CCETFs, exclude CEFs at database level
       .order('ticker', { ascending: true })
       .limit(10000);
 
@@ -1314,64 +1316,29 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
 
     const allData = staticResult.data || [];
 
-    // Filter: Include ONLY actual CCETFs (Covered Call ETFs)
-    // PRIMARY FILTER: Use category column if available, otherwise fall back to nav_symbol logic
+    // Additional filtering for safety (backup checks)
+    // Since we're already filtering by category = 'CCETF' at database level,
+    // this is just extra safety to exclude any edge cases
     const staticData = allData.filter((item: any) => {
-      // CRITICAL: If category column exists and is set, use it for filtering
-      // This is the PRIMARY and MOST RELIABLE filter
-      if (item.category) {
-        const category = item.category.toUpperCase();
-        // Only include CCETF, explicitly exclude CEF
-        if (category === 'CEF') {
-          return false; // Explicitly exclude CEFs
-        }
-        return category === 'CCETF';
+      // Double-check category (should already be filtered, but safety check)
+      if (item.category && item.category.toUpperCase() === 'CEF') {
+        return false; // Explicitly exclude CEFs
       }
-      
-      // Fallback: Use nav_symbol logic for backward compatibility
+
+      // Exclude NAV symbol records (where ticker === nav_symbol)
       const ticker = item.ticker || '';
       const navSymbol = item.nav_symbol || '';
-      const issuer = item.issuer || '';
-      const description = item.description || '';
-
-      // CRITICAL: Exclude NAV symbol records (where ticker === nav_symbol)
-      // These are auto-created placeholder records for NAV price data, not actual funds
-      // Examples: XGABX (where ticker=XGABX and nav_symbol=XGABX), XBTOX, XBMEX, etc.
       if (ticker === navSymbol && navSymbol !== '') {
         return false;
       }
 
-      // Also exclude NAV proxy symbols by pattern (backup check)
-      // These follow the pattern X + base_symbol + X (e.g., XDNPX for DNP, XGABX for GAB)
+      // Exclude NAV proxy symbols by pattern
       const isNavProxySymbol = ticker.length >= 4 && ticker.startsWith('X') && ticker.endsWith('X');
       if (isNavProxySymbol) {
         return false;
       }
 
-      // CRITICAL: Exclude auto-created CEF placeholder records
-      // These have blank issuers and descriptions starting with "Auto-created for NAV"
-      // These are CEF symbols that got added to the table but should only show on CEFs page
-      const isAutoCreatedRecord = !issuer && description.toLowerCase().includes('auto-created for nav');
-      if (isAutoCreatedRecord) {
-        return false;
-      }
-
-      // CRITICAL: Exclude records with blank issuer AND have a nav_symbol set (these are CEFs, not CCETFs)
-      // Real CCETFs always have an issuer (e.g., "GRANITE YIELDBOOST", "ROUNDHILL", "TAPPALPHA")
-      if (!issuer && navSymbol) {
-        return false;
-      }
-
-      const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
-      const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
-
-      // CRITICAL: If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
-      // This is the most reliable fallback check - CEFs have both nav_symbol and nav data
-      if (hasNavSymbol && hasNAVData) {
-        return false;
-      }
-
-      // Include everything else: CCETFs with issuers, no nav_symbol, or nav_symbol but no NAV data
+      // All records should already be CCETFs from database filter, but include for safety
       return true;
     });
 
