@@ -182,7 +182,7 @@ function calculateRanks(cefData: CEFData[], weights: Weights): RankedCEF[] {
     .sort((a, b) => (a.zScore ?? 0) - (b.zScore ?? 0));
   
   const zScoreRanked: { ticker: string; rank: number }[] = [];
-  let currentRank = 1;
+  let zScoreCurrentRank = 1;
   zScoreSorted.forEach((cef, index) => {
     // If this Z-score is different from previous, update rank
     if (index > 0) {
@@ -190,12 +190,12 @@ function calculateRanks(cefData: CEFData[], weights: Weights): RankedCEF[] {
       const currentZScore = cef.zScore ?? 0;
       // Only increment rank if Z-scores are different (accounting for floating point precision)
       if (Math.abs(prevZScore - currentZScore) > 0.0001) {
-        currentRank = index + 1;
+        zScoreCurrentRank = index + 1;
       }
     }
     zScoreRanked.push({ 
       ticker: cef.ticker, 
-      rank: currentRank
+      rank: zScoreCurrentRank
     });
   });
   const zScoreRankMap = new Map(zScoreRanked.map((r) => [r.ticker, r.rank]));
