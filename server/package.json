@@ -46,7 +46,8 @@
     "calc:normalized:ticker": "tsx scripts/calculate_normalized_dividends.ts --ticker",
     "verify:gooy": "tsx scripts/verify_gooy_normalization.ts",
     "export:zscore": "tsx scripts/export_zscore_calculation.ts",
-    "show:cef:ranking": "tsx scripts/show_cef_ranking_breakdown.ts"
+    "show:cef:ranking": "tsx scripts/show_cef_ranking_breakdown.ts",
+    "show:cef:exact": "tsx scripts/show_cef_ranking_exact_match.ts"
   },
   "dependencies": {
     "@mailerlite/mailerlite-nodejs": "^1.5.0",

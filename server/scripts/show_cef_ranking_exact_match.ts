@@ -1,19 +1,13 @@
 /**
- * CEF Ranking Breakdown Script
+ * CEF Ranking Exact Match Script
  * 
- * Shows detailed ranking calculation breakdown for CEO review
- * Displays each CEF with:
- * - Raw values (YIELD, Z-SCORE, TR 12MO, TR 6MO, TR 3MO)
- * - Rank for each metric (1 = best, higher = worse)
- * - Weighted total score
- * - Final rank
+ * Shows ranking breakdown matching CEO's exact format
+ * Compares website calculation with CEO's manual calculation
  * 
- * Usage: cd server && npm run show:cef:ranking [yieldWeight] [zScoreWeight] [tr12Weight] [tr6Weight] [tr3Weight]
- * Example: cd server && npm run show:cef:ranking 50 50 0 0 0
- * Default: 50% YIELD, 50% Z-SCORE (if no arguments provided)
+ * Usage: cd server && npm run show:cef:exact [yieldWeight] [zScoreWeight] [tr12Weight] [tr6Weight] [tr3Weight]
+ * Example: cd server && npm run show:cef:exact 50 50 0 0 0
  */
 
-// CRITICAL: Load environment variables FIRST
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -24,17 +18,15 @@ const __dirname = path.dirname(__filename);
 
 // Load .env from multiple possible locations
 const envPaths = [
-  path.resolve(process.cwd(), '.env'),                    // Current working directory
-  path.resolve(process.cwd(), '../.env'),                 // Parent of current directory
-  path.resolve(__dirname, '../.env'),                      // server/.env
-  path.resolve(__dirname, '../../.env'),                  // root/.env
-  path.resolve(__dirname, '../../../yield-ranker/server/.env'), // yield-ranker/server/.env
-  path.resolve(__dirname, '../../yield-ranker/server/.env'),    // root/yield-ranker/server/.env
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(process.cwd(), '../.env'),
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../../../yield-ranker/server/.env'),
+  path.resolve(__dirname, '../../yield-ranker/server/.env'),
 ];
 
 let loadedEnvPath: string | null = null;
-
-// Try all paths - dotenv.config() doesn't throw if file doesn't exist
 for (const envPath of envPaths) {
   const result = dotenv.config({ path: envPath });
   if (!result.error) {
@@ -43,26 +35,11 @@ for (const envPath of envPaths) {
   }
 }
 
-// If no path worked, try default location
-if (!loadedEnvPath) {
-  const defaultResult = dotenv.config();
-  if (!defaultResult.error) {
-    loadedEnvPath = 'default location';
-  }
-}
-
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('❌ ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY) must be set in .env');
-  if (loadedEnvPath) {
-    console.error(`   .env file was loaded from: ${loadedEnvPath}`);
-  } else {
-    console.error(`   Could not find .env file in any of these locations:`);
-    envPaths.forEach(p => console.error(`     - ${p}`));
-    console.error(`   Please ensure .env file exists and contains SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY`);
-  }
+  console.error('❌ ERROR: Missing Supabase credentials');
   process.exit(1);
 }
 
@@ -97,8 +74,6 @@ interface Weights {
 
 function parseWeights(): Weights {
   const args = process.argv.slice(2);
-  
-  // Default: 50% YIELD, 50% Z-SCORE (as CEO requested)
   const defaultWeights: Weights = {
     yield: 50,
     zScore: 50,
@@ -111,21 +86,13 @@ function parseWeights(): Weights {
     return defaultWeights;
   }
 
-  const weights: Weights = {
+  return {
     yield: parseFloat(args[0]) || 0,
     zScore: parseFloat(args[1]) || 0,
     return12Mo: parseFloat(args[2]) || 0,
     return6Mo: parseFloat(args[3]) || 0,
     return3Mo: parseFloat(args[4]) || 0,
   };
-
-  // Validate weights sum to 100
-  const total = weights.yield + weights.zScore + weights.return12Mo + weights.return6Mo + weights.return3Mo;
-  if (Math.abs(total - 100) > 0.01) {
-    console.warn(`⚠️  Warning: Weights sum to ${total}%, not 100%. Using provided values anyway.`);
-  }
-
-  return weights;
 }
 
 async function fetchCEFData(): Promise<CEFData[]> {
@@ -134,7 +101,7 @@ async function fetchCEFData(): Promise<CEFData[]> {
   const { data: cefs, error } = await supabase
     .from("etf_static")
     .select("ticker, forward_yield, five_year_z_score, tr_drip_12m, tr_drip_6m, tr_drip_3m")
-    .eq("category", "CEF")  // Use category filter to ensure we only get CEFs
+    .eq("category", "CEF")
     .order("ticker", { ascending: true });
 
   if (error) {
@@ -172,38 +139,38 @@ function calculateRanks(cefData: CEFData[], weights: Weights): RankedCEF[] {
   const yieldRanked = [...cefData]
     .filter((c) => c.yield !== null && !isNaN(c.yield) && c.yield > 0)
     .sort((a, b) => (b.yield ?? 0) - (a.yield ?? 0))
-    .map((c, index) => ({ ticker: c.ticker, rank: index + 1 }));
+    .map((c, index) => ({ ticker: c.ticker, rank: index + 1, value: c.yield ?? 0 }));
   const yieldRankMap = new Map(yieldRanked.map((r) => [r.ticker, r.rank]));
 
   // Rank Z-SCORE: Lower is better (rank 1 = lowest/most negative Z-score)
   const zScoreRanked = [...cefData]
     .filter((c) => c.zScore !== null && !isNaN(c.zScore))
     .sort((a, b) => (a.zScore ?? 0) - (b.zScore ?? 0))
-    .map((c, index) => ({ ticker: c.ticker, rank: index + 1 }));
+    .map((c, index) => ({ ticker: c.ticker, rank: index + 1, value: c.zScore ?? 0 }));
   const zScoreRankMap = new Map(zScoreRanked.map((r) => [r.ticker, r.rank]));
 
-  // Rank TR 12MO: Higher is better (rank 1 = highest return)
+  // Rank TR 12MO: Higher is better
   const return12Ranked = [...cefData]
     .filter((c) => c.return12Mo !== null && !isNaN(c.return12Mo))
     .sort((a, b) => (b.return12Mo ?? 0) - (a.return12Mo ?? 0))
     .map((c, index) => ({ ticker: c.ticker, rank: index + 1 }));
   const return12RankMap = new Map(return12Ranked.map((r) => [r.ticker, r.rank]));
 
-  // Rank TR 6MO: Higher is better (rank 1 = highest return)
+  // Rank TR 6MO: Higher is better
   const return6Ranked = [...cefData]
     .filter((c) => c.return6Mo !== null && !isNaN(c.return6Mo))
     .sort((a, b) => (b.return6Mo ?? 0) - (a.return6Mo ?? 0))
     .map((c, index) => ({ ticker: c.ticker, rank: index + 1 }));
   const return6RankMap = new Map(return6Ranked.map((r) => [r.ticker, r.rank]));
 
-  // Rank TR 3MO: Higher is better (rank 1 = highest return)
+  // Rank TR 3MO: Higher is better
   const return3Ranked = [...cefData]
     .filter((c) => c.return3Mo !== null && !isNaN(c.return3Mo))
     .sort((a, b) => (b.return3Mo ?? 0) - (a.return3Mo ?? 0))
     .map((c, index) => ({ ticker: c.ticker, rank: index + 1 }));
   const return3RankMap = new Map(return3Ranked.map((r) => [r.ticker, r.rank]));
 
-  // Calculate weighted scores for each CEF
+  // Calculate weighted scores
   const rankedCEFs: RankedCEF[] = cefData.map((cef) => {
     const yieldRank = yieldRankMap.get(cef.ticker) ?? maxRank;
     const zScoreRank = zScoreRankMap.get(cef.ticker) ?? maxRank;
@@ -211,7 +178,6 @@ function calculateRanks(cefData: CEFData[], weights: Weights): RankedCEF[] {
     const return6Rank = return6RankMap.get(cef.ticker) ?? maxRank;
     const return3Rank = return3RankMap.get(cef.ticker) ?? maxRank;
 
-    // Calculate weighted total score (lower is better)
     const totalScore =
       yieldRank * (weights.yield / 100) +
       zScoreRank * (weights.zScore / 100) +
@@ -227,20 +193,16 @@ function calculateRanks(cefData: CEFData[], weights: Weights): RankedCEF[] {
       return6Rank,
       return3Rank,
       totalScore,
-      finalRank: 0, // Will be set after sorting
+      finalRank: 0,
     };
   });
 
-  // Sort by total score (lower is better) and assign final ranks with ties
+  // Sort and assign final ranks with ties
   rankedCEFs.sort((a, b) => a.totalScore - b.totalScore);
   let currentRank = 1;
   rankedCEFs.forEach((cef, index) => {
-    // If this CEF has a different score than the previous one, update the rank
     if (index > 0) {
-      const prevScore = rankedCEFs[index - 1].totalScore;
-      const currentScore = cef.totalScore;
-      // Only increment rank if scores are different (accounting for floating point precision)
-      if (Math.abs(prevScore - currentScore) > 0.0001) {
+      if (Math.abs(rankedCEFs[index - 1].totalScore - cef.totalScore) > 0.0001) {
         currentRank = index + 1;
       }
     }
@@ -297,7 +259,7 @@ function printTable(rankedCEFs: RankedCEF[], weights: Weights) {
     const tr6Str = formatNumber(cef.return6Mo);
     const tr3Str = formatNumber(cef.return3Mo);
 
-    // Build weight column (show which metrics have weight)
+    // Build weight column
     let weightCol = "";
     if (weights.yield > 0) weightCol += `YIELD ${weights.yield}% `;
     if (weights.zScore > 0) weightCol += `Z SCORE ${weights.zScore}% `;
@@ -326,14 +288,19 @@ function printTable(rankedCEFs: RankedCEF[], weights: Weights) {
 
   console.log();
   console.log("=".repeat(150));
-  console.log("NOTES:");
-  console.log("- 1 = BEST, 6 = WORST (or N = worst if more than 6 CEFs)");
-  console.log("- YIELD: Higher is better (rank 1 = highest yield)");
-  console.log("- Z-SCORE: Lower is better (rank 1 = lowest/most negative Z-score)");
-  console.log("- TR 12MO/6MO/3MO: Higher is better (rank 1 = highest return)");
-  console.log("- TOTAL SCORE = (YIELD Rank × Yield Weight%) + (Z-SCORE Rank × Z-Score Weight%) + ...");
-  console.log("- Lower TOTAL SCORE = Better Final Rank");
-  console.log("- CEFs with same TOTAL SCORE get the same FINAL RANK");
+  console.log("EXPLANATION FOR CEO:");
+  console.log("=".repeat(150));
+  console.log("1. Each metric is ranked 1 to N (1 = BEST, N = WORST)");
+  console.log("2. YIELD: Higher yield = better rank (rank 1 = highest yield)");
+  console.log("3. Z-SCORE: Lower Z-score = better rank (rank 1 = most negative Z-score)");
+  console.log("4. TR 12MO/6MO/3MO: Higher return = better rank (rank 1 = highest return)");
+  console.log("5. TOTAL SCORE = (YIELD Rank × Yield Weight%) + (Z-SCORE Rank × Z-Score Weight%) + ...");
+  console.log("6. Lower TOTAL SCORE = Better Final Rank");
+  console.log("7. CEFs with identical TOTAL SCORE get the same FINAL RANK");
+  console.log("8. If website ranking differs from your manual calculation:");
+  console.log("   - Check if the same CEFs are being ranked (some may be filtered out)");
+  console.log("   - Check if the data values match (yield, z-score, returns)");
+  console.log("   - Check if weights are exactly the same");
   console.log("=".repeat(150));
 }
 
