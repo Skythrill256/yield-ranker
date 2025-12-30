@@ -169,7 +169,7 @@ export const CEFTable = ({
           <thead className="sticky top-0 z-50 bg-slate-50 shadow-sm border-b-2 border-slate-200">
             <tr className="bg-slate-50">
               <th
-                colSpan={19}
+                colSpan={18}
                 className="h-7 px-1.5 text-center align-middle font-bold text-foreground bg-slate-100 text-sm border-r-2 border-slate-300"
               >
                 CEF DETAILS
@@ -465,32 +465,6 @@ export const CEFTable = ({
                   </TooltipContent>
                 </Tooltip>
               </th>
-              <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <Tooltip delayDuration={200}>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <SortButton
-                        field="dividendCVPercent"
-                        sortField={sortField}
-                        sortDirection={sortDirection}
-                        onSort={handleSort}
-                      >
-                        DVI
-                      </SortButton>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    sideOffset={8}
-                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[300px]"
-                  >
-                    <p>
-                      Dividend Volatility Index is computed using the
-                      Coefficient of Variation (CV) with Adjusted Dividends
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs border-r-2 border-slate-300">
                 <SortButton
                   field="weightedRank"
@@ -685,13 +659,6 @@ export const CEFTable = ({
                   ) : (
                     <span className="text-muted-foreground">N/A</span>
                   )}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
-                  {cef.dividendCVPercent != null
-                    ? `${cef.dividendCVPercent.toFixed(1)}%`
-                    : cef.dividendCV != null
-                      ? `${(cef.dividendCV * 100).toFixed(1)}%`
-                      : "N/A"}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
                   {isGuest ? (

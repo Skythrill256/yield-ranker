@@ -56,6 +56,18 @@ export async function calculateETFRankings(): Promise<Map<string, number>> {
 
     // Filter to CC ETFs only (same logic as GET / route)
     const etfs = allETFs.filter((etf: any) => {
+      // CRITICAL: If category column exists and is set, use it for filtering
+      // This is the PRIMARY and MOST RELIABLE filter
+      if (etf.category) {
+        const category = etf.category.toUpperCase();
+        // Only include CCETF, explicitly exclude CEF
+        if (category === 'CEF') {
+          return false; // Explicitly exclude CEFs
+        }
+        return category === 'CCETF';
+      }
+
+      // Fallback: Use nav_symbol logic for backward compatibility
       const ticker = etf.ticker || '';
       const navSymbol = etf.nav_symbol || '';
       const issuer = etf.issuer || '';
@@ -86,7 +98,8 @@ export async function calculateETFRankings(): Promise<Map<string, number>> {
       const hasNavSymbol = etf.nav_symbol !== null && etf.nav_symbol !== undefined && etf.nav_symbol !== '';
       const hasNAVData = etf.nav !== null && etf.nav !== undefined && etf.nav !== 0;
 
-      // If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
+      // CRITICAL: If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
+      // This is the most reliable fallback check - CEFs have both nav_symbol and nav data
       if (hasNavSymbol && hasNAVData) {
         return false;
       }
@@ -1304,9 +1317,15 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
     // Filter: Include ONLY actual CCETFs (Covered Call ETFs)
     // PRIMARY FILTER: Use category column if available, otherwise fall back to nav_symbol logic
     const staticData = allData.filter((item: any) => {
-      // If category column exists and is set, use it for filtering
+      // CRITICAL: If category column exists and is set, use it for filtering
+      // This is the PRIMARY and MOST RELIABLE filter
       if (item.category) {
-        return item.category.toUpperCase() === 'CCETF';
+        const category = item.category.toUpperCase();
+        // Only include CCETF, explicitly exclude CEF
+        if (category === 'CEF') {
+          return false; // Explicitly exclude CEFs
+        }
+        return category === 'CCETF';
       }
       
       // Fallback: Use nav_symbol logic for backward compatibility
@@ -1337,7 +1356,7 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
         return false;
       }
 
-      // Exclude records with blank issuer AND have a nav_symbol set (these are CEFs, not CCETFs)
+      // CRITICAL: Exclude records with blank issuer AND have a nav_symbol set (these are CEFs, not CCETFs)
       // Real CCETFs always have an issuer (e.g., "GRANITE YIELDBOOST", "ROUNDHILL", "TAPPALPHA")
       if (!issuer && navSymbol) {
         return false;
@@ -1346,7 +1365,8 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
       const hasNavSymbol = item.nav_symbol !== null && item.nav_symbol !== undefined && item.nav_symbol !== '';
       const hasNAVData = item.nav !== null && item.nav !== undefined && item.nav !== 0;
 
-      // If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
+      // CRITICAL: If it has nav_symbol AND NAV data, it's a CEF (exclude from ETFs)
+      // This is the most reliable fallback check - CEFs have both nav_symbol and nav data
       if (hasNavSymbol && hasNAVData) {
         return false;
       }
