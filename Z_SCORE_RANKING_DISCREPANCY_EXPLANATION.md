@@ -34,15 +34,18 @@ When sorting by Z-score from **lowest (most negative) to highest**, the correct 
 ## Specific Errors in CEO's Ranking
 
 ### Error 1: FOF vs PCN
+
 - **FOF**: -1.62 (better Z-score) → Should be rank 5, CEO shows rank 8 ❌
 - **PCN**: -1.57 (worse Z-score) → Should be rank 6, CEO shows rank 5 ❌
 - **Issue**: CEO has these reversed
 
 ### Error 2: UTG Position
+
 - **UTG**: -0.82 → Should be rank 8, CEO shows rank 6 ❌
 - **Issue**: UTG is ranked too high in CEO's list (should be after BTO at rank 7)
 
 ### Error 3: BME vs DNP
+
 - **BME**: -0.36 (worse Z-score) → Should be rank 9, CEO shows rank 10 ❌
 - **DNP**: -0.31 (better Z-score) → Should be rank 10, CEO shows rank 9 ❌
 - **Issue**: CEO has these reversed (DNP's -0.31 is closer to 0, so it's worse than BME's -0.36)
@@ -52,7 +55,7 @@ When sorting by Z-score from **lowest (most negative) to highest**, the correct 
 When sorted from **lowest to highest** (most negative to least negative):
 
 | Rank | Ticker | Z-Score | CEO's Rank | Match |
-|------|--------|---------|------------|-------|
+| ---- | ------ | ------- | ---------- | ----- |
 | 1    | FFA    | -3.04   | 1          | ✓     |
 | 2    | CSQ    | -2.12   | 2          | ✓     |
 | 3    | GOF    | -1.97   | 3          | ✓     |
@@ -71,8 +74,8 @@ When sorted from **lowest to highest** (most negative to least negative):
 **The website's Z-score ranking is mathematically correct.** The CEO's manual ranking has 5 errors where the order doesn't match the Z-score values.
 
 **What to tell the CEO:**
+
 1. The website correctly sorts Z-scores from lowest (most negative) to highest
 2. Lower Z-score = Better rank (rank 1 = best)
 3. The CEO's ranking has FOF/PCN, UTG, and BME/DNP in the wrong order
 4. The website's ranking matches the actual Z-score values from the database
-

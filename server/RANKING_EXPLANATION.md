@@ -51,3 +51,4 @@ Ranks are: **1, 2, 3, 4, 5, 6** (whole numbers only)
 All ranks are **whole numbers (1, 2, 3, ...)**, never decimals.
 
 
+

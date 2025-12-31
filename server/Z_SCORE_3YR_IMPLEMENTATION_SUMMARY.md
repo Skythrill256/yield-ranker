@@ -128,3 +128,4 @@ I've created `server/scripts/calculate_zscore_tiingo.py` which:
 
 **Your 3-Year Z-Score implementation is CORRECT.** The flexible lookback logic (3-year max, 1-year min) is properly implemented, uses population standard deviation (STDEV.P), and follows the exact formula you specified. Any small differences from your spreadsheet are due to dynamic date selection and data source variations, not logic errors.
 
+

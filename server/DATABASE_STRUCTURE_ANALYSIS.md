@@ -197,3 +197,4 @@ After your programmer adds the category column, verify:
 Your database **IS relational** and well-structured. The issue is simply a missing `category` column that needs to be added. Once added, the filtering will work correctly and you'll be able to add unlimited new categories (REITs, BDCs, etc.) without any structural changes.
 
 
+

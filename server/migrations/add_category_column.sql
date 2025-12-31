@@ -55,3 +55,4 @@ SELECT
 FROM public.etf_static;
 
 
+
