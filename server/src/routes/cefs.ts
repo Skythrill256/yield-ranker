@@ -1342,18 +1342,10 @@ router.post(
         return;
       }
 
-      // Category is required - must be CEF
+      // Category is optional - defaults to CEF for backward compatibility
+      // If present, must be CEF or CCETF
       const categoryCol = findColumn(headerMap, "category");
-      if (!categoryCol) {
-        cleanupFile(filePath);
-        res.status(400).json({
-          error: "CATEGORY column not found (required)",
-          details: `Available columns: ${headers.join(
-            ", "
-          )}. Please add a CATEGORY column with value "CEF".`,
-        });
-        return;
-      }
+      const hasCategoryColumn = categoryCol !== null;
 
       logger.info(
         "CEF Upload",
@@ -1616,26 +1608,23 @@ router.post(
           continue;
         }
 
-        // Validate category - must be CEF
-        const categoryValue =
-          categoryCol && row[categoryCol]
-            ? String(row[categoryCol]).trim().toUpperCase()
-            : null;
-        if (!categoryValue) {
-          logger.warn(
-            "CEF Upload",
-            `Row with ticker ${ticker} missing CATEGORY - skipping`
-          );
-          skipped++;
-          continue;
+        // Validate category - optional, defaults to CEF for backward compatibility
+        // If category column exists, must be CEF or CCETF
+        let categoryValue: string | null = null;
+        if (hasCategoryColumn && categoryCol && row[categoryCol]) {
+          categoryValue = String(row[categoryCol]).trim().toUpperCase();
+          if (categoryValue && categoryValue !== "CEF" && categoryValue !== "CCETF") {
+            logger.warn(
+              "CEF Upload",
+              `Row with ticker ${ticker} has invalid CATEGORY "${categoryValue}" - must be "CEF" or "CCETF". Skipping.`
+            );
+            skipped++;
+            continue;
+          }
         }
-        if (categoryValue !== "CEF") {
-          logger.warn(
-            "CEF Upload",
-            `Row with ticker ${ticker} has invalid CATEGORY "${categoryValue}" - must be "CEF". Skipping.`
-          );
-          skipped++;
-          continue;
+        // Default to CEF if category column doesn't exist or is empty (backward compatibility)
+        if (!categoryValue) {
+          categoryValue = "CEF";
         }
 
         logger.info("CEF Upload", `Processing ${ticker}`);
@@ -1675,6 +1664,7 @@ router.post(
 
         const updateData: any = {
           ticker,
+          category: categoryValue, // Set category (CEF or CCETF)
           updated_at: now,
         };
 
