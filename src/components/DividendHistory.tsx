@@ -201,40 +201,40 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       // normalizedDiv is calculated from adj_amount (adjusted dividends) in the database
       // Formula: normalizedDiv = (adj_amount × frequency) / 52 (weekly equivalent rate)
       // This ensures split ETFs (like ULTY, CONY) work correctly - adj_amount accounts for splits
-      // Only show line for Regular dividends (not Special or Initial)
+      // Plot normalized line for ALL dates that have normalizedDiv values (not just when frequency changes)
       let normalizedRate: number | null = null;
 
-      if (frequencyChanged) {
-        // Filter out Special dividends from the line (they would spike artificially)
-        const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
+      // Filter out Special dividends from the line (they would spike artificially)
+      const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
 
-        if (pmtType === 'Regular') {
-          // CRITICAL: Use normalizedDiv directly from database
-          // This normalizedDiv was calculated from adj_amount (adjusted dividends) in the backend
-          // For split ETFs like ULTY (split 12/2): adj_amount correctly adjusts pre-split dividends
-          // Example: ULTY 11/25: DIV=$0.0594, ADJ DIV=$0.5940 → normalizedDiv=0.594 (calculated from $0.5940)
-          if (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0) {
-            // Use normalizedDiv directly - this is the weekly equivalent rate from database
-            // It was calculated from adj_amount, ensuring split ETFs work correctly
-            normalizedRate = div.normalizedDiv;
-          } else {
-            // Fallback: calculate locally ONLY if backend didn't provide normalizedDiv
-            // MUST use adjAmount (adjusted dividends) - never use unadjusted amount
-            // This ensures split ETFs work correctly
-            const adjAmount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
-              ? div.adjAmount
-              : 0;
-            if (adjAmount > 0) {
-              const freqNum = div.frequencyNum || numPayments || 12;
-              // Calculate weekly equivalent: normalizedDiv = (adj_amount × frequency) / 52
-              // MUST use adj_amount (not unadjusted amount) for proper normalization after splits
-              const annualizedRaw = adjAmount * freqNum;
-              normalizedRate = annualizedRaw / 52;
-            }
+      if (pmtType === 'Regular') {
+        // CRITICAL: Use normalizedDiv directly from database for ALL dates
+        // This normalizedDiv was calculated from adj_amount (adjusted dividends) in the backend
+        // For split ETFs like ULTY (split 12/2): adj_amount correctly adjusts pre-split dividends
+        // Example: ULTY 11/25: DIV=$0.0594, ADJ DIV=$0.5940 → normalizedDiv=0.594 (calculated from $0.5940)
+        // After split (12/2+): DIV=$0.5881, ADJ DIV=$0.5881 → normalizedDiv=0.5881 (matches bar height)
+        if (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0) {
+          // Use normalizedDiv directly - this is the weekly equivalent rate from database
+          // It was calculated from adj_amount, ensuring split ETFs work correctly
+          // This will plot the line at the correct height for each date
+          normalizedRate = div.normalizedDiv;
+        } else {
+          // Fallback: calculate locally ONLY if backend didn't provide normalizedDiv
+          // MUST use adjAmount (adjusted dividends) - never use unadjusted amount
+          // This ensures split ETFs work correctly
+          const adjAmount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
+            ? div.adjAmount
+            : 0;
+          if (adjAmount > 0) {
+            const freqNum = div.frequencyNum || numPayments || 12;
+            // Calculate weekly equivalent: normalizedDiv = (adj_amount × frequency) / 52
+            // MUST use adj_amount (not unadjusted amount) for proper normalization after splits
+            const annualizedRaw = adjAmount * freqNum;
+            normalizedRate = annualizedRaw / 52;
           }
         }
-        // For Special/Initial dividends, normalizedRate stays null (skip in line chart)
       }
+      // For Special/Initial dividends, normalizedRate stays null (skip in line chart)
 
       // Ensure amount is a valid number
       const validAmount = typeof amount === 'number' && !isNaN(amount) && isFinite(amount) && amount > 0
