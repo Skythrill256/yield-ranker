@@ -460,7 +460,7 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         <div className="mb-4 sm:mb-6">
           <h3 className="text-xs sm:text-sm font-medium mb-3 sm:mb-4">
             {individualChartData.frequencyChanged
-              ? `Dividend History: Individual Adjusted Dividends vs. Normalized Rate`
+              ? `Dividend History: Individual Dividends vs. Normalized Rate`
               : `Dividend Payments by Ex-Date`}
           </h3>
           <div className="relative">
