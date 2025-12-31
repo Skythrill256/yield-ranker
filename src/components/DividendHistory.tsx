@@ -192,12 +192,16 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
     // Bars = unadjusted dividend (div.amount = div_cash)
     // Line = normalized column (div.normalizedDiv = normalized_div from database)
     const chartData = dividends.map((div) => {
-      // BAR: Use unadjusted dividend (div.amount = div_cash from database)
-      // Example ULTY 11/25: DIVIDEND=$0.0594 → bar shows $0.0594
-      // Example ULTY 12/2+: DIVIDEND=$0.5881 → bar shows $0.5881
-      const amount = (typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
-        ? div.amount
-        : 0;
+      // BAR: Use adjusted dividend (div.adjAmount = adj_amount from database)
+      // This ensures bars align with normalized line, especially for ETFs with splits
+      // Example ULTY 11/25: ADJ_AMT=$0.5940 → bar shows $0.5940 (matches line)
+      // Example ULTY 12/2+: ADJ_AMT=$0.5881 → bar shows $0.5881 (matches line)
+      // For ETFs without splits: adj_amount = div_cash, so no change
+      const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
+        ? div.adjAmount
+        : (typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
+          ? div.amount
+          : 0;
 
       // LINE: Use normalized column (div.normalizedDiv = normalized_div from database)
       // This is the NORMALZD column - weekly equivalent rate calculated from adj_amount
