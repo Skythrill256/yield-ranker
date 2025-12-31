@@ -633,25 +633,55 @@ export const CEFTable = ({
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold">
                   {cef.signal != null ? (
-                    <span
-                      className={
-                        cef.signal === 3
-                          ? "text-green-700 bg-green-50 px-2 py-0.5 rounded font-semibold"
-                          : cef.signal === 2
-                            ? "text-green-600 bg-green-50/50 px-2 py-0.5 rounded font-semibold"
-                            : cef.signal === 1
-                              ? "text-blue-600 font-semibold"
-                              : "text-gray-500 font-semibold"
-                      }
-                    >
-                      {cef.signal === 3
-                        ? "High"
-                        : cef.signal === 2
-                          ? "Good"
-                          : cef.signal === 1
-                            ? "Weak"
-                            : "Low"}
-                    </span>
+                    <Tooltip delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={
+                            cef.signal === 3
+                              ? "text-green-700 bg-green-50 px-2 py-0.5 rounded font-semibold cursor-help"
+                              : cef.signal === 2
+                                ? "text-green-600 bg-green-50/50 px-2 py-0.5 rounded font-semibold cursor-help"
+                                : cef.signal === 1
+                                  ? "text-blue-600 font-semibold cursor-help"
+                                  : "text-gray-500 font-semibold cursor-help"
+                          }
+                        >
+                          {cef.signal > 0 ? `+${cef.signal}` : cef.signal}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        sideOffset={8}
+                        className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                      >
+                        <p className="font-semibold mb-1">
+                          {cef.signal === 3
+                            ? "High (Optimal)"
+                            : cef.signal === 2
+                              ? "Good (Good Value)"
+                              : cef.signal === 1
+                                ? "Weak (Healthy)"
+                                : cef.signal === 0
+                                  ? "Low (Neutral)"
+                                  : cef.signal === -1
+                                    ? "Low (Value Trap)"
+                                    : "Low (Overvalued)"}
+                        </p>
+                        <p className="text-slate-300 text-xs">
+                          {cef.signal === 3
+                            ? "The fund is historically cheap and growing strongly."
+                            : cef.signal === 2
+                              ? "The fund is healthy, but one metric is slightly off."
+                              : cef.signal === 1
+                                ? "Only one of the three metrics shows positive health."
+                                : cef.signal === 0
+                                  ? "None of the health or value metrics are currently met."
+                                  : cef.signal === -1
+                                    ? "Warning: Looks cheap but assets shrinking."
+                                    : "Avoid: Statistically expensive."}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   ) : (
                     <span className="text-muted-foreground">N/A</span>
                   )}
