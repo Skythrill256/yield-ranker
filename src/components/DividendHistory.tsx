@@ -211,11 +211,25 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
 
       if (pmtType === 'Regular') {
-        // Use normalizedDiv directly from database - this is the NORMALZD column
-        // It's already calculated correctly in the backend from adj_amount
-        normalizedRate = (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0)
-          ? div.normalizedDiv
-          : null;
+        // CRITICAL: Use normalizedDiv directly from database - this is the NORMALZD column
+        // For weekly (FREQ=52): normalizedDiv = ADJ DIV (e.g., 0.5705)
+        // For monthly (FREQ=12): normalizedDiv = (ADJ DIV × 12) / 52 (e.g., 4.6530 → 1.073769231)
+        // The database should have this calculated correctly, but verify it's not null
+        if (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0) {
+          normalizedRate = div.normalizedDiv;
+        } else {
+          // Fallback: If normalizedDiv is missing, calculate it from adjAmount and frequencyNum
+          // This should not happen if refresh_all.ts has run, but handle it gracefully
+          const adjAmount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
+            ? div.adjAmount
+            : null;
+          const freqNum = div.frequencyNum || numPayments || 12;
+          if (adjAmount !== null && adjAmount > 0) {
+            // Calculate normalized: (adj_amount × frequency) / 52
+            const annualizedRaw = adjAmount * freqNum;
+            normalizedRate = annualizedRaw / 52;
+          }
+        }
       }
       // For Special/Initial dividends, normalizedRate stays null (skip in line chart)
 
