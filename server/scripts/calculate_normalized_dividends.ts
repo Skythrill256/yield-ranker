@@ -349,6 +349,14 @@ async function backfillSingleTicker(ticker: string) {
 
     console.log(`Found ${dividends.length} dividends for ${ticker}\n`);
 
+    const results: Array<{
+        date: string;
+        adjAmount: number | null;
+        frequency: number;
+        annualized: number | null;
+        normalized: number | null;
+    }> = [];
+
     for (let i = 0; i < dividends.length; i++) {
         const current = dividends[i];
         const previous = i > 0 ? dividends[i - 1] : null;
