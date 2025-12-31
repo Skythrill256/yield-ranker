@@ -188,19 +188,21 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
     }
 
     // Map dividends to chart data
-    // Per CEO: "USE ADJ DIV FOR LINE AND UNADJ PRICE FOR BAR"
-    // Bars = unadjusted dividend (div.amount = div_cash)
-    // Line = adjusted dividend (div.adjAmount = adj_amount)
+    // Bars and Line both use adjusted dividend (adj_amount) for proper visualization
+    // This ensures bars are properly sized and line aligns correctly
     const chartData = dividends.map((div) => {
-      // BAR: Use unadjusted dividend (div.amount = div_cash from database)
-      // Example ULTY 11/25: DIVIDEND=$0.0594 → bar shows $0.0594
-      const amount = (typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
-        ? div.amount
-        : 0;
+      // BAR: Use adjusted dividend (div.adjAmount = adj_amount from database)
+      // This makes bars properly sized, especially for split ETFs
+      // Example ULTY 11/25: ADJ DIV=$0.5940 → bar shows $0.5940 (not $0.0594)
+      const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
+        ? div.adjAmount
+        : ((typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
+          ? div.amount
+          : 0);
 
       // LINE: Use adjusted dividend (div.adjAmount = adj_amount from database)
       // Example ULTY 11/25: ADJ DIV=$0.5940 → line plots at $0.5940
-      // Example ULTY 12/2+: ADJ DIV=$0.5881 → line plots at $0.5881 (matches bar after split)
+      // Example ULTY 12/2+: ADJ DIV=$0.5881 → line plots at $0.5881 (matches bar)
       let normalizedRate: number | null = null;
 
       // Filter out Special dividends from the line (they would spike artificially)
