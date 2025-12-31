@@ -178,12 +178,14 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     logger.info('Routes', `Fetching dividends from Tiingo for ${ticker}...`);
 
     // Preserve normalized values from database for merging later
+    // Include ALL dividends with frequency_num, even if normalized_div is null
     const dbNormalizedMap = new Map<string, any>();
     dividends.forEach(d => {
       const exDate = d.ex_date.split('T')[0];
-      if ((d as any).normalized_div !== null && (d as any).normalized_div !== undefined) {
+      // Include if frequency_num exists (even if normalized_div is null)
+      if ((d as any).frequency_num !== null && (d as any).frequency_num !== undefined) {
         dbNormalizedMap.set(exDate, {
-          normalized_div: (d as any).normalized_div,
+          normalized_div: (d as any).normalized_div ?? null,
           frequency_num: (d as any).frequency_num,
           pmt_type: (d as any).pmt_type,
           days_since_prev: (d as any).days_since_prev,
@@ -404,27 +406,28 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       const normalizedExDate = d.exDate.split('T')[0];
       const dbDiv = dividendsByDateMap.get(normalizedExDate);
       
-      // Always prefer database normalized values if available
-      if (dbDiv && (dbDiv as any).normalized_div !== null && (dbDiv as any).normalized_div !== undefined) {
+      // Always use database values if available (even if normalized_div is null)
+      // frequency_num should be returned even if normalized_div is null (e.g., first dividend)
+      if (dbDiv) {
         return {
           ...d,
           pmtType: ((dbDiv as any).pmt_type ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
-          frequencyNum: (dbDiv as any).frequency_num ?? 12,
+          frequencyNum: (dbDiv as any).frequency_num ?? 12, // Use database frequency_num
           daysSincePrev: (dbDiv as any).days_since_prev ?? null,
           annualized: (dbDiv as any).annualized ?? null,
-          normalizedDiv: (dbDiv as any).normalized_div ?? null, // Always use database value
+          normalizedDiv: (dbDiv as any).normalized_div ?? null, // Can be null for first dividend
         };
       }
       
-      // Fallback: if database value not available, return null for normalizedDiv
-      // This prevents incorrect calculations - should not happen if refresh_all.ts has run
+      // Fallback: if database record not found, return defaults
+      // This should not happen if refresh_all.ts has run
       return {
         ...d,
         pmtType: 'Regular' as const,
         frequencyNum: 12,
         daysSincePrev: null,
         annualized: null,
-        normalizedDiv: null, // Explicitly null if not in database
+        normalizedDiv: null,
       };
     });
 
