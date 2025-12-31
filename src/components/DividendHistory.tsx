@@ -188,30 +188,33 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
     }
 
     // Map dividends to chart data
-    // Bars and Line both use adjusted dividend (adj_amount) for proper visualization
-    // This ensures bars are properly sized and line aligns correctly
+    // Per CEO: "USE ADJ DIV FOR LINE AND UNADJ PRICE FOR BAR"
+    // Bars = unadjusted dividend (div.amount = div_cash)
+    // Line = normalized column (div.normalizedDiv = normalized_div from database)
     const chartData = dividends.map((div) => {
-      // BAR: Use adjusted dividend (div.adjAmount = adj_amount from database)
-      // This makes bars properly sized, especially for split ETFs
-      // Example ULTY 11/25: ADJ DIV=$0.5940 → bar shows $0.5940 (not $0.0594)
-      const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
-        ? div.adjAmount
-        : ((typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
-          ? div.amount
-          : 0);
+      // BAR: Use unadjusted dividend (div.amount = div_cash from database)
+      // Example ULTY 11/25: DIVIDEND=$0.0594 → bar shows $0.0594
+      // Example ULTY 12/2+: DIVIDEND=$0.5881 → bar shows $0.5881
+      const amount = (typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
+        ? div.amount
+        : 0;
 
-      // LINE: Use adjusted dividend (div.adjAmount = adj_amount from database)
-      // Example ULTY 11/25: ADJ DIV=$0.5940 → line plots at $0.5940
-      // Example ULTY 12/2+: ADJ DIV=$0.5881 → line plots at $0.5881 (matches bar)
+      // LINE: Use normalized column (div.normalizedDiv = normalized_div from database)
+      // This is the NORMALZD column - weekly equivalent rate calculated from adj_amount
+      // For weekly (FREQ=52): normalizedDiv = ADJ DIV (e.g., 0.5705 = 0.5705)
+      // For monthly (FREQ=12): normalizedDiv = (ADJ DIV × 12) / 52 (e.g., 4.6530 → 1.073769231)
+      // Example GOOY: FREQ=52 → normalizedDiv=0.0869, FREQ=12 → normalizedDiv=0.1601538462
+      // Example ULTY: FREQ=52 → normalizedDiv=0.5705, FREQ=12 → normalizedDiv=1.073769231
       let normalizedRate: number | null = null;
 
       // Filter out Special dividends from the line (they would spike artificially)
       const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
 
       if (pmtType === 'Regular') {
-        // Use adjAmount directly - it's already the adjusted dividend from database
-        normalizedRate = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
-          ? div.adjAmount
+        // Use normalizedDiv directly from database - this is the NORMALZD column
+        // It's already calculated correctly in the backend from adj_amount
+        normalizedRate = (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0)
+          ? div.normalizedDiv
           : null;
       }
       // For Special/Initial dividends, normalizedRate stays null (skip in line chart)
