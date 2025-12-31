@@ -238,12 +238,7 @@ function ClosedEndFunds() {
                       <td className="border border-slate-300 px-4 py-2">Annual Dividend / Price × 100</td>
                       <td className="border border-slate-300 px-4 py-2">1</td>
                     </tr>
-                    <tr>
-                      <td className="border border-slate-300 px-4 py-2">DVI</td>
-                      <td className="border border-slate-300 px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">FORMULA</span></td>
-                      <td className="border border-slate-300 px-4 py-2">(SD / Mean of annualized dividends) × 100</td>
-                      <td className="border border-slate-300 px-4 py-2">~365 days</td>
-                    </tr>
+                    {/* DVI row removed per CEO request */}
                   </tbody>
                 </table>
               </div>

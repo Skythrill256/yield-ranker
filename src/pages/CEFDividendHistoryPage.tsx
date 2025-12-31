@@ -235,16 +235,7 @@ const CEFDividendHistoryPage = () => {
                             <span className="font-semibold">${cef.week52Low.toFixed(2)} - ${cef.week52High.toFixed(2)}</span>
                           </div>
                         )}
-                        {(cef.dividendCVPercent != null || cef.dividendVolatilityIndex) && (
-                          <div>
-                            <span className="text-muted-foreground font-bold">Div Volatility: </span>
-                            <span className="font-semibold">
-                              {cef.dividendCVPercent != null && cef.dividendCVPercent > 0 
-                                ? `${cef.dividendCVPercent.toFixed(1)}%` 
-                                : (cef.dividendVolatilityIndex || 'N/A')}
-                            </span>
-                          </div>
-                        )}
+                        {/* DVI/Div Volatility removed per CEO request */}
                       </div>
                     </div>
                   </Card>
