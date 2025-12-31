@@ -173,18 +173,39 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
         }
         
         // For the current dividend, determine its frequency:
-        // - If not the last dividend: use gap to next (will be finalized when next dividend is processed)
-        // - If last dividend: use gap from previous
+        // CRITICAL FIX: When there's a frequency change, use the frequency from the PREVIOUS gap
+        // (the gap that brought us to this dividend), not the gap to the next dividend.
+        // This ensures the last payment of the old frequency keeps the old frequency.
+        // Example: Last monthly payment (28 days from previous) before switching to weekly
+        // should be monthly (12), not weekly (52) based on the 7-day gap to next.
         if (i < sortedDividends.length - 1) {
-            // Not the last dividend: use gap to next as temporary frequency
+            // Not the last dividend: check for frequency transition
             const nextDiv = sortedDividends[i + 1];
             const nextDate = new Date(nextDiv.ex_date);
             const currentDate = new Date(current.ex_date);
             const daysToNext = Math.round(
                 (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
             );
-            if (daysToNext > 5) {
+            
+            if (daysSincePrev !== null && daysSincePrev > 5 && daysToNext > 5) {
+                // Both gaps are valid - check if there's a frequency change
+                const prevFreq = getFrequencyFromDays(daysSincePrev);
+                const nextFreq = getFrequencyFromDays(daysToNext);
+                
+                if (prevFreq !== nextFreq) {
+                    // Frequency transition detected: use the PREVIOUS frequency
+                    // This ensures the last payment of the old frequency keeps the old frequency
+                    frequencyNum = prevFreq;
+                } else {
+                    // No frequency change: use gap to next (will be finalized when next dividend is processed)
+                    frequencyNum = nextFreq;
+                }
+            } else if (daysToNext > 5) {
+                // Only next gap is valid
                 frequencyNum = getFrequencyFromDays(daysToNext);
+            } else if (daysSincePrev !== null && daysSincePrev > 5) {
+                // Only previous gap is valid
+                frequencyNum = getFrequencyFromDays(daysSincePrev);
             }
         } else if (i > 0) {
             // Last dividend: use gap from previous
