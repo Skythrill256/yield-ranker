@@ -845,7 +845,67 @@ async function refreshCEF(ticker: string): Promise<void> {
       );
     }
 
-    // 6. Calculate DVI (Dividend Volatility Index)
+    // 6. Calculate and update normalized dividends (for split ETFs like CONY, ULTY)
+    // CRITICAL: Must use adj_amount (adjusted dividends) for proper normalization
+    console.log(`  📊 Calculating normalized dividends...`);
+    try {
+      const { calculateNormalizedDividends } = await import("../src/services/dividendNormalization.js");
+      const dividendsForNormalization = await getDividendHistory(ticker.toUpperCase(), "2009-01-01");
+      
+      if (dividendsForNormalization.length > 0) {
+        // Convert to format expected by calculateNormalizedDividends
+        const dividendInputs = dividendsForNormalization.map(d => ({
+          id: d.id,
+          ticker: d.ticker,
+          ex_date: d.ex_date,
+          div_cash: Number(d.div_cash),
+          adj_amount: d.adj_amount ? Number(d.adj_amount) : null,
+        }));
+        
+        const normalizedResults = calculateNormalizedDividends(dividendInputs);
+        
+        // Batch update normalized values
+        const updates = normalizedResults.map(result => ({
+          id: result.id,
+          days_since_prev: result.days_since_prev,
+          pmt_type: result.pmt_type,
+          frequency_num: result.frequency_num,
+          annualized: result.annualized,
+          normalized_div: result.normalized_div,
+        }));
+        
+        // Update in batches to avoid overwhelming the database
+        const BATCH_SIZE = 100;
+        let updatedCount = 0;
+        for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+          const batch = updates.slice(i, i + BATCH_SIZE);
+          const updatePromises = batch.map(update => 
+            supabase
+              .from('dividends_detail')
+              .update({
+                days_since_prev: update.days_since_prev,
+                pmt_type: update.pmt_type,
+                frequency_num: update.frequency_num,
+                annualized: update.annualized,
+                normalized_div: update.normalized_div,
+              })
+              .eq('id', update.id)
+          );
+          await Promise.all(updatePromises);
+          updatedCount += batch.length;
+        }
+        
+        console.log(`    ✓ Normalized dividends: Updated ${updatedCount} records`);
+      } else {
+        console.log(`    ⚠ Normalized dividends: No dividends found`);
+      }
+    } catch (error) {
+      console.warn(
+        `    ⚠ Failed to calculate normalized dividends: ${(error as Error).message}`
+      );
+    }
+
+    // 7. Calculate DVI (Dividend Volatility Index)
     console.log(`  📊 Calculating DVI (Dividend Volatility Index)...`);
     let dviResult: any = null;
     try {
