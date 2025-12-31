@@ -403,13 +403,17 @@ async function backfillSingleTicker(ticker: string) {
                 }
             }
 
-        const amount = current.adj_amount !== null ? Number(current.adj_amount) : Number(current.div_cash);
+        // CRITICAL: Use adj_amount (adjusted dividend) for normalization
+        // Never use div_cash (unadjusted) as it gives wrong results after splits
+        const amount = current.adj_amount !== null && current.adj_amount > 0
+            ? Number(current.adj_amount)
+            : null;
         
         // Calculate annualized: Amount × Frequency
         let annualized: number | null = null;
         let normalizedDiv: number | null = null;
         
-        if (pmtType === 'Regular' && amount > 0) {
+        if (pmtType === 'Regular' && amount !== null && amount > 0) {
             const annualizedRaw = amount * frequencyNum;
             // Round annualized to 2 decimals for storage/display
             annualized = Number(annualizedRaw.toFixed(2));
