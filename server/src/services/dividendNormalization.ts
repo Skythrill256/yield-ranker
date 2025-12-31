@@ -240,7 +240,7 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
             pmt_type: pmtType,
             frequency_num: frequencyNum,
             annualized: annualized !== null ? Number(annualized.toFixed(2)) : null,
-            normalized_div: normalizedDiv !== null ? Number(normalizedDiv.toFixed(6)) : null,
+            normalized_div: normalizedDiv !== null ? Number(normalizedDiv.toFixed(9)) : null, // Use 9 decimals to match spreadsheet precision
         });
     }
 

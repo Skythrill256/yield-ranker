@@ -421,7 +421,14 @@ async function backfillSingleTicker(ticker: string) {
             normalizedDiv = annualizedRaw / 52;
         }
 
-        console.log(`${current.ex_date}: Days=${daysSincePrev ?? 'N/A'}, Type=${pmtType}, Freq=${frequencyNum}, Amt=${amount.toFixed(4)}, Ann=${annualized?.toFixed(4) ?? 'N/A'}, Norm=${normalizedDiv?.toFixed(4) ?? 'N/A'}`);
+        // Store for table display
+        results.push({
+            date: current.ex_date,
+            adjAmount: current.adj_amount,
+            frequency: frequencyNum,
+            annualized,
+            normalized: normalizedDiv,
+        });
 
         // Update the database
         const { error: updateError } = await supabase
@@ -430,8 +437,8 @@ async function backfillSingleTicker(ticker: string) {
                 days_since_prev: daysSincePrev,
                 pmt_type: pmtType,
                 frequency_num: frequencyNum,
-                annualized: annualized ? Number(annualized.toFixed(6)) : null,
-                normalized_div: normalizedDiv ? Number(normalizedDiv.toFixed(6)) : null,
+                annualized: annualized ? Number(annualized.toFixed(2)) : null,
+                normalized_div: normalizedDiv ? Number(normalizedDiv.toFixed(9)) : null,
             })
             .eq('id', current.id);
 
@@ -439,6 +446,32 @@ async function backfillSingleTicker(ticker: string) {
             console.error(`  Error updating:`, updateError);
         }
     }
+
+    // Display results in table format (most recent first)
+    console.log('\n============================================');
+    console.log('Results (most recent first):');
+    console.log('============================================');
+    console.log('Date       | ADJ DIV   | FREQ | ANNLZD  | NORMLZD');
+    console.log('-----------|-----------|------|---------|----------------');
+    
+    results.reverse().forEach(r => {
+        const dateStr = new Date(r.date).toISOString().split('T')[0];
+        const adjDivStr = r.adjAmount !== null ? r.adjAmount.toFixed(4).padStart(9) : 'N/A'.padStart(9);
+        const freqStr = r.frequency.toString().padStart(4);
+        const annStr = r.annualized !== null ? r.annualized.toFixed(2).padStart(7) : 'N/A'.padStart(7);
+        const normStr = r.normalized !== null ? r.normalized.toFixed(9) : 'N/A';
+        console.log(`${dateStr} | ${adjDivStr} | ${freqStr} | ${annStr} | ${normStr}`);
+    });
+
+    // Show just normalized values column for easy comparison
+    console.log('\n============================================');
+    console.log('Normalized values (NORMLZD column):');
+    console.log('============================================');
+    results.reverse().forEach(r => {
+        if (r.normalized !== null) {
+            console.log(r.normalized.toFixed(9));
+        }
+    });
 
     console.log('\nDone!');
 }
