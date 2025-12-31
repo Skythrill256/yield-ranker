@@ -189,9 +189,9 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
 
     // Map dividends to chart data using backend-provided normalized values
     const chartData = dividends.map((div) => {
-      // Use ADJUSTED amount (adj_amount) for BAR chart - per CEO requirement
-      // "USE ADJ PRICE FOR LINE AND UNADJ PRICE FOR BAR" - but bars should show adj_amount for split ETFs
-      // Actually, let's use adjAmount for bars to match the "Individual Adjusted Dividends" title
+      // Use ADJUSTED amount (adj_amount) for BAR chart
+      // Chart title says "Individual Adjusted Dividends" so bars should show adj_amount
+      // This ensures bars show split-adjusted amounts for accurate comparison
       const amount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
         ? div.adjAmount
         : ((typeof div.amount === 'number' && !isNaN(div.amount) && isFinite(div.amount) && div.amount > 0)
@@ -208,25 +208,30 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
 
         if (pmtType === 'Regular') {
-          // ALWAYS use backend-provided normalizedDiv if available (weekly equivalent rate)
-          // normalizedDiv is calculated from adj_amount × frequency / 52
-          // This ensures consistency with backend calculations
+          // CRITICAL FIX: Convert normalizedDiv (weekly equivalent) back to per-payment amount to align with bars
+          // normalizedDiv = (adj_amount × frequency) / 52 (weekly equivalent)
+          // To align with bars showing adj_amount, we need: normalizedDiv × (52 / frequency) = adj_amount
+          // But we want to show the normalized rate as a point that aligns with the bar
+          // So we convert: normalizedDiv × (52 / frequency) = annualized / frequency = adj_amount
+          // Actually, the line should show the same scale as bars, so convert normalizedDiv back
           if (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0) {
-            normalizedRate = div.normalizedDiv;
+            // Convert weekly equivalent back to per-payment amount to align with bars
+            // normalizedDiv = (adj_amount × frequency) / 52
+            // So: adj_amount = normalizedDiv × 52 / frequency
+            const freqNum = div.frequencyNum || numPayments || 12;
+            if (freqNum > 0) {
+              // Convert back: normalizedDiv × 52 / frequency = adj_amount (to align with bars)
+              normalizedRate = div.normalizedDiv * 52 / freqNum;
+            } else {
+              normalizedRate = div.normalizedDiv;
+            }
           } else {
-            // Fallback: calculate locally if backend didn't provide value
-            // Must use adjAmount (not unadjusted amount) for normalization calculation
-            // IMPORTANT: Match backend logic - use UNROUNDED annualized value for normalization
+            // Fallback: use adjAmount directly if normalizedDiv not available
             const adjAmount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
               ? div.adjAmount
-              : 0;
-            if (adjAmount > 0) {
-              const freqNum = div.frequencyNum || numPayments || 12;
-              // Calculate weekly equivalent: use unrounded annualized value
-              // Formula: normalizedDiv = (amount × frequency) / 52
-              // This matches the backend calculation logic
-              const annualizedRaw = adjAmount * freqNum;
-              normalizedRate = annualizedRaw / 52;
+              : null;
+            if (adjAmount !== null && adjAmount > 0) {
+              normalizedRate = adjAmount;
             }
           }
         }
