@@ -389,7 +389,7 @@ async function backfillSingleTicker(ticker: string) {
             // IMPORTANT: Frequency is assigned to the PREVIOUS dividend based on the gap FROM previous TO current
             // When we process dividend[i], we calculate days from dividend[i-1] to dividend[i],
             // and assign that frequency to dividend[i-1] (the previous one)
-            if (i > 0 && daysSincePrev !== null && daysSincePrev > 5) {
+            if (i > 0 && previous !== null && daysSincePrev !== null && daysSincePrev > 5) {
                 // Calculate frequency from gap between previous and current
                 // This frequency will be assigned to the PREVIOUS dividend
                 frequencyNum = getFrequencyFromDays(daysSincePrev);
@@ -410,7 +410,7 @@ async function backfillSingleTicker(ticker: string) {
                 const prevPmtType = getPaymentType(prevDaysSincePrev);
                 
                 // Recalculate annualized and normalized for previous dividend with updated frequency
-                if (prevPmtType === 'Regular' && previous) {
+                if (prevPmtType === 'Regular') {
                     const prevAmount = previous.adj_amount !== null && previous.adj_amount > 0
                         ? Number(previous.adj_amount)
                         : null;
