@@ -8,25 +8,27 @@ The Signal rating is a composite score that combines **Z-Score** (premium/discou
 
 ## Rating Scale
 
-| Rating | Meaning | Investment Signal |
-|--------|---------|-------------------|
-| **+3** | Optimal | Best opportunity: Cheap + Growing assets |
-| **+2** | Good Value | Attractive: Cheap + Recent growth |
-| **+1** | Healthy | Neutral-positive: Assets growing (but not cheap) |
-| **0** | Neutral | No clear signal |
-| **-1** | Value Trap | Warning: Looks cheap but assets shrinking |
-| **-2** | Overvalued | Avoid: Statistically expensive |
+| Signal | Health Rating | Meaning    | Simple Interpretation                                |
+| ------ | ------------- | ---------- | ---------------------------------------------------- |
+| **+3** | **High**      | Optimal    | The fund is historically cheap and growing strongly. |
+| **+2** | **Good**      | Good Value | The fund is healthy, but one metric is slightly off. |
+| **+1** | **Weak**      | Healthy    | Only one of the three metrics shows positive health. |
+| **0**  | **Low**       | Neutral    | None of the health or value metrics are currently met. |
+| **-1** | **Low**       | Value Trap | Warning: Looks cheap but assets shrinking            |
+| **-2** | **Low**       | Overvalued | Avoid: Statistically expensive                       |
 
 ---
 
 ## Required Inputs
 
 1. **Z-Score** (3-Year): How cheap/expensive the CEF is relative to its historical average
+
    - Negative = Cheap (below average premium/discount)
    - Positive = Expensive (above average premium/discount)
    - Threshold: **-1.5** (1.5 standard deviations)
 
 2. **6-Month NAV Trend**: Percentage change in Net Asset Value over last 6 months
+
    - Positive = Assets growing
    - Negative = Assets shrinking
    - Uses **adjusted NAV prices** (accounts for distributions)
@@ -43,74 +45,102 @@ The Signal rating is a composite score that combines **Z-Score** (premium/discou
 The system uses a simple decision tree to assign ratings:
 
 ### Step 1: Check if Optimal (+3)
+
 **Condition:** `Z-Score < -1.5` AND `6M NAV Trend > 0` AND `12M NAV Trend > 0`
+
 - **Meaning:** Cheap price + Both short-term and long-term asset growth
 - **Signal:** Best opportunity - buy when undervalued with strong asset health
 
-### Step 2: Check if Good Value (+2)
+### Step 2: Check if Good Value (+2) - Health Rating: Good
+
 **Condition:** `Z-Score < -1.5` AND `6M NAV Trend > 0` (12M can be anything)
+
+- **Health Rating:** Good
 - **Meaning:** Cheap price + Recent asset growth (6 months)
-- **Signal:** Attractive investment - undervalued with recent positive momentum
+- **Simple Interpretation:** The fund is healthy, but one metric is slightly off.
 
-### Step 3: Check if Healthy (+1)
+### Step 3: Check if Healthy (+1) - Health Rating: Weak
+
 **Condition:** `Z-Score > -1.5` AND `6M NAV Trend > 0`
+
+- **Health Rating:** Weak
 - **Meaning:** Not cheap, but assets are growing
-- **Signal:** Neutral-positive - assets healthy but not a bargain
+- **Simple Interpretation:** Only one of the three metrics shows positive health.
 
-### Step 4: Check if Value Trap (-1)
+### Step 4: Check if Value Trap (-1) - Health Rating: Low
+
 **Condition:** `Z-Score < -1.5` AND `6M NAV Trend < 0`
+
+- **Health Rating:** Low
 - **Meaning:** Looks cheap, but assets are shrinking
-- **Signal:** Warning - don't be fooled by low price if assets declining
+- **Simple Interpretation:** Warning - don't be fooled by low price if assets declining
 
-### Step 5: Check if Overvalued (-2)
+### Step 5: Check if Overvalued (-2) - Health Rating: Low
+
 **Condition:** `Z-Score > 1.5`
-- **Meaning:** Statistically expensive (more than 1.5 standard deviations above average)
-- **Signal:** Avoid - paying too much relative to historical average
 
-### Step 6: Default to Neutral (0)
+- **Health Rating:** Low
+- **Meaning:** Statistically expensive (more than 1.5 standard deviations above average)
+- **Simple Interpretation:** Avoid - paying too much relative to historical average
+
+### Step 6: Default to Neutral (0) - Health Rating: Low
+
 **Condition:** None of the above conditions met
+
+- **Health Rating:** Low
 - **Meaning:** No clear signal from the data
-- **Signal:** Neutral - wait for clearer opportunity
+- **Simple Interpretation:** None of the health or value metrics are currently met.
 
 ---
 
 ## Examples
 
 ### Example 1: Rating +3 (Optimal)
+
 - **Z-Score:** -2.0 (cheap)
 - **6M NAV Trend:** +5.2% (growing)
 - **12M NAV Trend:** +8.1% (growing)
 - **Result:** +3 (Optimal - cheap with strong asset growth)
 
-### Example 2: Rating +2 (Good Value)
+### Example 2: Rating +2 (Good Value) - Health Rating: Good
+
 - **Z-Score:** -1.8 (cheap)
 - **6M NAV Trend:** +3.5% (growing)
 - **12M NAV Trend:** -2.1% (declining)
-- **Result:** +2 (Good Value - cheap with recent growth, despite longer-term decline)
+- **Result:** +2 (Good Value - Health Rating: Good)
+- **Interpretation:** The fund is healthy, but one metric is slightly off.
 
-### Example 3: Rating +1 (Healthy)
+### Example 3: Rating +1 (Healthy) - Health Rating: Weak
+
 - **Z-Score:** -0.5 (slightly cheap, but not significantly)
 - **6M NAV Trend:** +4.2% (growing)
 - **12M NAV Trend:** +6.3% (growing)
-- **Result:** +1 (Healthy - assets growing but not a bargain price)
+- **Result:** +1 (Healthy - Health Rating: Weak)
+- **Interpretation:** Only one of the three metrics shows positive health.
 
-### Example 4: Rating -1 (Value Trap)
+### Example 4: Rating -1 (Value Trap) - Health Rating: Low
+
 - **Z-Score:** -2.1 (cheap)
 - **6M NAV Trend:** -3.8% (shrinking)
 - **12M NAV Trend:** -5.2% (shrinking)
-- **Result:** -1 (Value Trap - looks cheap but assets declining)
+- **Result:** -1 (Value Trap - Health Rating: Low)
+- **Interpretation:** Warning - looks cheap but assets declining
 
-### Example 5: Rating -2 (Overvalued)
+### Example 5: Rating -2 (Overvalued) - Health Rating: Low
+
 - **Z-Score:** +2.3 (expensive)
 - **6M NAV Trend:** +2.1% (growing)
 - **12M NAV Trend:** +4.5% (growing)
-- **Result:** -2 (Overvalued - paying premium despite growth)
+- **Result:** -2 (Overvalued - Health Rating: Low)
+- **Interpretation:** Avoid - paying too much relative to historical average
 
-### Example 6: Rating 0 (Neutral)
+### Example 6: Rating 0 (Neutral) - Health Rating: Low
+
 - **Z-Score:** -0.8 (slightly cheap)
 - **6M NAV Trend:** -1.2% (slightly shrinking)
 - **12M NAV Trend:** +1.5% (slightly growing)
-- **Result:** 0 (Neutral - no clear signal)
+- **Result:** 0 (Neutral - Health Rating: Low)
+- **Interpretation:** None of the health or value metrics are currently met.
 
 ---
 
@@ -129,10 +159,10 @@ The system uses a simple decision tree to assign ratings:
 ## Summary
 
 The Signal rating provides a quick, actionable investment signal by combining:
+
 - **Valuation** (Z-Score: cheap vs. expensive)
 - **Asset Health** (NAV Trends: growing vs. shrinking)
 
 **Best Opportunities:** +3 and +2 ratings (cheap with growth)
 **Avoid:** -2 and -1 ratings (expensive or value traps)
 **Neutral:** 0 and +1 ratings (no clear signal or healthy but not a bargain)
-
