@@ -737,6 +737,9 @@ async function refreshCEF(ticker: string): Promise<void> {
       calculateNAVReturns,
       calculateDividendHistory,
     } = await import("../src/routes/cefs.js");
+    
+    // Import normalized dividend calculation
+    const { calculateNormalizedDividends } = await import("../src/services/dividendNormalization.js");
 
     const updateData: any = {};
 
