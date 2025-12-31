@@ -196,9 +196,11 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         ? div.amount
         : 0;
 
-      // Use NORMALIZED COLUMN (normalizedDiv) directly for LINE chart
-      // Per CEO: "USE NORMALIZED COLUMN FOR LINE"
-      // normalizedDiv is the weekly equivalent rate calculated from adj_amount
+      // CRITICAL: Use NORMALIZED COLUMN (normalizedDiv) directly for LINE chart
+      // Per CEO: "USE NORMALIZED COLUMN FOR LINE" and "MUST USE ADJ DIVIDEND TO COMPUTE NORMALIZED DIVIDENDS"
+      // normalizedDiv is calculated from adj_amount (adjusted dividends) in the database
+      // Formula: normalizedDiv = (adj_amount × frequency) / 52 (weekly equivalent rate)
+      // This ensures split ETFs (like ULTY, CONY) work correctly - adj_amount accounts for splits
       // Only show line for Regular dividends (not Special or Initial)
       let normalizedRate: number | null = null;
 
@@ -207,23 +209,25 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
         const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
 
         if (pmtType === 'Regular') {
-          // CRITICAL: Use normalizedDiv directly from database (weekly equivalent rate)
-          // This is the NORMALIZED COLUMN value that CEO wants for the line
-          // normalizedDiv = (adj_amount × frequency) / 52 (weekly equivalent)
-          // This is stored in the database and calculated using adj_amount (adjusted dividends)
+          // CRITICAL: Use normalizedDiv directly from database
+          // This normalizedDiv was calculated from adj_amount (adjusted dividends) in the backend
+          // For split ETFs like ULTY (split 12/2): adj_amount correctly adjusts pre-split dividends
+          // Example: ULTY 11/25: DIV=$0.0594, ADJ DIV=$0.5940 → normalizedDiv=0.594 (calculated from $0.5940)
           if (div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv) && div.normalizedDiv > 0) {
-            // Use normalizedDiv directly - this is the weekly equivalent rate
+            // Use normalizedDiv directly - this is the weekly equivalent rate from database
+            // It was calculated from adj_amount, ensuring split ETFs work correctly
             normalizedRate = div.normalizedDiv;
           } else {
-            // Fallback: calculate locally if backend didn't provide value
-            // Must use adjAmount (adjusted dividends) for normalization calculation
+            // Fallback: calculate locally ONLY if backend didn't provide normalizedDiv
+            // MUST use adjAmount (adjusted dividends) - never use unadjusted amount
+            // This ensures split ETFs work correctly
             const adjAmount = (typeof div.adjAmount === 'number' && !isNaN(div.adjAmount) && isFinite(div.adjAmount) && div.adjAmount > 0)
               ? div.adjAmount
               : 0;
             if (adjAmount > 0) {
               const freqNum = div.frequencyNum || numPayments || 12;
               // Calculate weekly equivalent: normalizedDiv = (adj_amount × frequency) / 52
-              // This matches the backend calculation logic
+              // MUST use adj_amount (not unadjusted amount) for proper normalization after splits
               const annualizedRaw = adjAmount * freqNum;
               normalizedRate = annualizedRaw / 52;
             }
