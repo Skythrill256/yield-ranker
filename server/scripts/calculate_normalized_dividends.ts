@@ -432,49 +432,73 @@ async function backfillSingleTicker(ticker: string) {
             
             // Update the PREVIOUS dividend's frequency based on gap FROM previous TO current
             // This happens when we process the current dividend and can confirm the previous one's frequency
+            // IMPORTANT: At frequency transition points, the LAST payment of the old frequency should
+            // keep its original frequency (based on gap to next), not get overwritten with the new frequency
             if (i > 0 && previous !== null && daysSincePrev !== null && daysSincePrev > 5) {
                 const prevFrequencyNum = getFrequencyFromDays(daysSincePrev);
                 
                 // Update the previous dividend's frequency in the results array
                 const prevResult = results[results.length - 1];
-                prevResult.frequency = prevFrequencyNum;
                 
-                // Calculate previous dividend's payment type to determine if we should recalculate annualized/normalized
-                // Previous dividend's payment type is based on gap from [i-2] to [i-1]
-                let prevDaysSincePrev: number | null = null;
+                // Check if previous dividend was at a frequency transition point
+                // If the gap from prevPrev to previous differs from previous to current, 
+                // previous was at a transition and should keep its original frequency (the one based on gap to next)
+                let shouldUpdatePrevFrequency = true;
                 if (i > 1) {
                     const prevPrev = dividends[i - 2];
-                    const prevDate = new Date(previous.ex_date);
                     const prevPrevDate = new Date(prevPrev.ex_date);
-                    prevDaysSincePrev = Math.round((prevDate.getTime() - prevPrevDate.getTime()) / (1000 * 60 * 60 * 24));
-                }
-                const prevPmtType = getPaymentType(prevDaysSincePrev);
-                
-                // Recalculate annualized and normalized for previous dividend with updated frequency
-                let prevAnnualized: number | null = null;
-                let prevNormalizedDiv: number | null = null;
-                if (prevPmtType === 'Regular') {
-                    const prevAmount = previous.adj_amount !== null && previous.adj_amount > 0
-                        ? Number(previous.adj_amount)
-                        : null;
-                    if (prevAmount !== null && prevAmount > 0) {
-                        const annualizedRaw = prevAmount * prevFrequencyNum;
-                        prevAnnualized = Number(annualizedRaw.toFixed(2));
-                        prevNormalizedDiv = Number((annualizedRaw / 52).toFixed(9));
-                        prevResult.annualized = prevAnnualized;
-                        prevResult.normalized = prevNormalizedDiv;
+                    const prevDate = new Date(previous.ex_date);
+                    const prevPrevDays = Math.round((prevDate.getTime() - prevPrevDate.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    if (prevPrevDays > 5) {
+                        const prevPrevFreq = getFrequencyFromDays(prevPrevDays);
+                        // If frequencies differ, previous was at a transition point
+                        // Keep the frequency that was set based on gap to next (already in prevResult.frequency)
+                        if (prevPrevFreq !== prevFrequencyNum) {
+                            shouldUpdatePrevFrequency = false;
+                        }
                     }
                 }
                 
-                // Update the database for the PREVIOUS dividend with its correct frequency
-                const { error: prevUpdateError } = await supabase
-                    .from('dividends_detail')
-                    .update({
-                        frequency_num: prevFrequencyNum,
-                        annualized: prevAnnualized,
-                        normalized_div: prevNormalizedDiv,
-                    })
-                    .eq('id', previous.id);
+                if (shouldUpdatePrevFrequency) {
+                    prevResult.frequency = prevFrequencyNum;
+                    
+                    // Calculate previous dividend's payment type to determine if we should recalculate annualized/normalized
+                    // Previous dividend's payment type is based on gap from [i-2] to [i-1]
+                    let prevDaysSincePrev: number | null = null;
+                    if (i > 1) {
+                        const prevPrev = dividends[i - 2];
+                        const prevDate = new Date(previous.ex_date);
+                        const prevPrevDate = new Date(prevPrev.ex_date);
+                        prevDaysSincePrev = Math.round((prevDate.getTime() - prevPrevDate.getTime()) / (1000 * 60 * 60 * 24));
+                    }
+                    const prevPmtType = getPaymentType(prevDaysSincePrev);
+                    
+                    // Recalculate annualized and normalized for previous dividend with updated frequency
+                    let prevAnnualized: number | null = null;
+                    let prevNormalizedDiv: number | null = null;
+                    if (prevPmtType === 'Regular') {
+                        const prevAmount = previous.adj_amount !== null && previous.adj_amount > 0
+                            ? Number(previous.adj_amount)
+                            : null;
+                        if (prevAmount !== null && prevAmount > 0) {
+                            const annualizedRaw = prevAmount * prevFrequencyNum;
+                            prevAnnualized = Number(annualizedRaw.toFixed(2));
+                            prevNormalizedDiv = Number((annualizedRaw / 52).toFixed(9));
+                            prevResult.annualized = prevAnnualized;
+                            prevResult.normalized = prevNormalizedDiv;
+                        }
+                    }
+                    
+                    // Update the database for the PREVIOUS dividend with its correct frequency
+                    const { error: prevUpdateError } = await supabase
+                        .from('dividends_detail')
+                        .update({
+                            frequency_num: prevFrequencyNum,
+                            annualized: prevAnnualized,
+                            normalized_div: prevNormalizedDiv,
+                        })
+                        .eq('id', previous.id);
                 
                 if (prevUpdateError) {
                     console.error(`  Error updating previous dividend ${previous.id}:`, prevUpdateError);
