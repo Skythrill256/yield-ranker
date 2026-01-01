@@ -149,8 +149,8 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
         // The gap from current to next determines the current dividend's frequency.
         // This is the "backward confirmation" rule: we confirm a dividend's frequency
         // by seeing when the next one arrives.
-        // For frequency calculation, we look at the gap to the next dividend (even if it's Special),
-        // but we use the gap to the next Regular dividend if we can find one.
+        // EXCEPTION: At frequency transition points, use the frequency from the PREVIOUS gap
+        // (the gap that brought us here), not the gap to next.
         let frequencyNum = 12; // Default to monthly
 
         if (i < sortedDividends.length - 1) {
@@ -183,8 +183,28 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
                 }
             }
             
-            // Prefer gap to next Regular dividend if found, otherwise use gap to immediate next
-            if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 5) {
+            // Check for frequency transition: if previous gap indicates one frequency
+            // and next gap indicates a different frequency, we're at a transition point
+            // At transitions, use the frequency from the PREVIOUS gap (the one that brought us here)
+            if (daysSincePrev !== null && daysSincePrev > 5 && daysToNext > 5) {
+                const freqFromPrev = getFrequencyFromDays(daysSincePrev);
+                const freqFromNext = daysToNextRegular !== null && daysToNextRegular > 5
+                    ? getFrequencyFromDays(daysToNextRegular)
+                    : getFrequencyFromDays(daysToNext);
+                
+                // If frequencies differ, we're at a transition point
+                // Use the frequency from the PREVIOUS gap (the pattern that brought us here)
+                if (freqFromPrev !== freqFromNext) {
+                    frequencyNum = freqFromPrev;
+                } else {
+                    // No transition: use gap to next (backward confirmation rule)
+                    if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 5) {
+                        frequencyNum = getFrequencyFromDays(daysToNextRegular);
+                    } else {
+                        frequencyNum = getFrequencyFromDays(daysToNext);
+                    }
+                }
+            } else if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 5) {
                 // Use gap to next Regular to determine frequency (backward confirmation rule)
                 frequencyNum = getFrequencyFromDays(daysToNextRegular);
             } else if (daysToNext > 5) {
