@@ -369,6 +369,8 @@ export function calculateNormalizedForResponse(
         // The gap from current to next determines the current dividend's frequency.
         // This is the "backward confirmation" rule: we confirm a dividend's frequency
         // by seeing when the next one arrives.
+        // EXCEPTION: At frequency transition points, use the frequency from the PREVIOUS gap
+        // (the gap that brought us here), not the gap to next.
         let frequencyNum = 12; // Default to monthly
 
         if (i < sorted.length - 1) {
@@ -380,12 +382,60 @@ export function calculateNormalizedForResponse(
                 (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
             );
             
-            if (daysToNext > 5) {
-                // Use gap to next to determine frequency (backward confirmation rule)
+            // Try to find the next Regular dividend (skip Special dividends)
+            let nextRegularDiv: typeof current | null = null;
+            let daysToNextRegular: number | null = null;
+            for (let j = i + 1; j < sorted.length; j++) {
+                const testDiv = sorted[j];
+                const testPrev = j > 0 ? sorted[j - 1] : null;
+                let testDaysSincePrev: number | null = null;
+                if (testPrev) {
+                    const testDate = new Date(testDiv.exDate);
+                    const testPrevDate = new Date(testPrev.exDate);
+                    testDaysSincePrev = Math.round((testDate.getTime() - testPrevDate.getTime()) / (1000 * 60 * 60 * 24));
+                }
+                const testPmtType = getPaymentType(testDaysSincePrev);
+                if (testPmtType === 'Regular') {
+                    nextRegularDiv = testDiv;
+                    const testDate = new Date(testDiv.exDate);
+                    daysToNextRegular = Math.round((testDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+                    break;
+                }
+            }
+            
+            // Check for frequency transition: if previous gap indicates one frequency
+            // and next gap indicates a different frequency, we're at a transition point
+            // At transitions, use the frequency from the PREVIOUS gap (the one that brought us here)
+            // This is CRITICAL: The last payment of the old frequency should keep the old frequency
+            if (daysSincePrev !== null && daysSincePrev > 5) {
+                const freqFromPrev = getFrequencyFromDays(daysSincePrev);
+                
+                // Determine frequency from next gap (prefer Regular dividend if found)
+                let freqFromNext: number | null = null;
+                if (daysToNext > 5) {
+                    freqFromNext = daysToNextRegular !== null && daysToNextRegular > 5
+                        ? getFrequencyFromDays(daysToNextRegular)
+                        : getFrequencyFromDays(daysToNext);
+                }
+                
+                // If we have both previous and next gaps, check for transition
+                if (freqFromNext !== null && freqFromPrev !== freqFromNext) {
+                    // TRANSITION DETECTED: Use frequency from PREVIOUS gap (the pattern that brought us here)
+                    // This ensures the last payment of the old frequency keeps the old frequency
+                    frequencyNum = freqFromPrev;
+                } else if (freqFromNext !== null) {
+                    // No transition: use gap to next (backward confirmation rule)
+                    frequencyNum = freqFromNext;
+                } else {
+                    // No valid next gap: use previous gap
+                    frequencyNum = freqFromPrev;
+                }
+            } else if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 5) {
+                // Use gap to next Regular to determine frequency (backward confirmation rule)
+                frequencyNum = getFrequencyFromDays(daysToNextRegular);
+            } else if (daysToNext > 5) {
+                // Use gap to immediate next dividend (backward confirmation rule)
                 frequencyNum = getFrequencyFromDays(daysToNext);
-            } else if (daysSincePrev !== null && daysSincePrev > 5) {
-                // If gap to next is invalid (special payment), fall back to previous gap
-                frequencyNum = getFrequencyFromDays(daysSincePrev);
             }
         } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 5) {
             // Last dividend: use gap from previous (no next dividend available)
@@ -394,20 +444,44 @@ export function calculateNormalizedForResponse(
         
         // Update the PREVIOUS dividend's frequency based on gap FROM previous TO current
         // This happens when we process the current dividend and can confirm the previous one's frequency
+        // IMPORTANT: At frequency transition points, don't overwrite the previous dividend's frequency
+        // if it was already set correctly based on gap to next
         if (i > 0 && previous !== null && daysSincePrev !== null && daysSincePrev > 5) {
             const prevFrequencyNum = getFrequencyFromDays(daysSincePrev);
-            
-            // Update the previous dividend's frequency
             const prevResult = results[results.length - 1];
-            prevResult.frequencyNum = prevFrequencyNum;
             
-            // Recalculate annualized and normalized for previous dividend with updated frequency
-            if (prevResult.pmtType === 'Regular') {
-                const prevAmount = previous.adjAmount > 0 ? previous.adjAmount : null;
-                if (prevAmount !== null && prevAmount > 0) {
-                    const annualizedRaw = prevAmount * prevFrequencyNum;
-                    prevResult.annualized = Number(annualizedRaw.toFixed(2));
-                    prevResult.normalizedDiv = Number((annualizedRaw / 52).toFixed(6));
+            // Check if previous dividend was at a frequency transition point
+            // The previous dividend's frequency was already set based on gap to next (current dividend)
+            // If that frequency differs from what we'd assign based on gap from prevPrev to previous,
+            // then previous was at a transition and should keep its original frequency (from gap to next)
+            let shouldUpdatePrevFrequency = true;
+            if (i > 1) {
+                const prevPrev = sorted[i - 2];
+                const prevPrevDate = new Date(prevPrev.exDate);
+                const prevDate = new Date(previous.exDate);
+                const prevPrevDays = Math.round((prevDate.getTime() - prevPrevDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                if (prevPrevDays > 5) {
+                    const prevPrevFreq = getFrequencyFromDays(prevPrevDays);
+                    // Compare: frequency already set for previous (based on gap to current) vs frequency from prevPrev gap
+                    // If they differ, previous was at a transition point - keep the already-set frequency
+                    if (prevPrevFreq !== prevResult.frequencyNum) {
+                        shouldUpdatePrevFrequency = false;
+                    }
+                }
+            }
+            
+            if (shouldUpdatePrevFrequency) {
+                prevResult.frequencyNum = prevFrequencyNum;
+                
+                // Recalculate annualized and normalized for previous dividend with updated frequency
+                if (prevResult.pmtType === 'Regular') {
+                    const prevAmount = previous.adjAmount > 0 ? previous.adjAmount : null;
+                    if (prevAmount !== null && prevAmount > 0) {
+                        const annualizedRaw = prevAmount * prevFrequencyNum;
+                        prevResult.annualized = Number(annualizedRaw.toFixed(2));
+                        prevResult.normalizedDiv = Number((annualizedRaw / 52).toFixed(6));
+                    }
                 }
             }
         }
