@@ -2085,7 +2085,8 @@ router.post(
                 }
 
                 // Update database with ALL calculated metrics (ETF + CEF-specific)
-                // Use 'any' type to include CEF-specific fields not in ETFStaticRecord interface
+                // CRITICAL: Always set last_updated to ensure CEF tracking works
+                const now = new Date().toISOString();
                 await batchUpdateETFMetricsPreservingCEFFields([
                   {
                     ticker,
@@ -2114,6 +2115,9 @@ router.post(
                       price_return_3m: metrics.priceReturn?.['3M'],
                       price_return_1m: metrics.priceReturn?.['1M'],
                       price_return_1w: metrics.priceReturn?.['1W'],
+                      // CRITICAL: Always set last_updated and updated_at
+                      last_updated: now,
+                      updated_at: now,
                       // CEF-specific metrics (cast to any to bypass TypeScript type check)
                       five_year_z_score: fiveYearZScore,
                       nav_trend_6m: navTrend6M,
@@ -2123,6 +2127,8 @@ router.post(
                     } as any,
                   },
                 ]);
+                
+                logger.info("CEF Upload", `${ticker}: Database update completed with last_updated=${now}`);
 
                 logger.info(
                   "CEF Upload",
