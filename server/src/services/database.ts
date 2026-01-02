@@ -474,6 +474,64 @@ export async function batchUpdateETFMetricsPreservingCEFFields(
 // Price Daily Table Operations
 // ============================================================================
 
+/**
+ * Get the latest date we have in the database for a ticker's price history
+ * Returns null if no data exists
+ */
+export async function getLatestPriceDate(ticker: string): Promise<string | null> {
+  try {
+    return await withRetry(async () => {
+      const db = getSupabase();
+
+      const { data, error } = await db
+        .from('prices_daily')
+        .select('date')
+        .eq('ticker', ticker.toUpperCase())
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        throw error;
+      }
+
+      return data?.date || null;
+    });
+  } catch (error) {
+    logger.error('Database', `Error getting latest price date for ${ticker}: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Get the latest date we have in the database for a ticker's dividend history
+ * Returns null if no data exists
+ */
+export async function getLatestDividendDate(ticker: string): Promise<string | null> {
+  try {
+    return await withRetry(async () => {
+      const db = getSupabase();
+
+      const { data, error } = await db
+        .from('dividends_detail')
+        .select('ex_date')
+        .eq('ticker', ticker.toUpperCase())
+        .order('ex_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        throw error;
+      }
+
+      return data?.ex_date || null;
+    });
+  } catch (error) {
+    logger.error('Database', `Error getting latest dividend date for ${ticker}: ${error}`);
+    return null;
+  }
+}
+
 export async function getPriceHistory(
   ticker: string,
   startDate: string,

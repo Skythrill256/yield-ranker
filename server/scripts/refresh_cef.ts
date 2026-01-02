@@ -57,6 +57,8 @@ import {
   getPriceHistory,
   batchUpdateETFMetricsPreservingCEFFields,
   getDividendHistory,
+  getLatestPriceDate,
+  getLatestDividendDate,
 } from "../src/services/database.js";
 import { formatDate } from "../src/utils/index.js";
 import { fetchPriceHistory, fetchDividendHistory } from "../src/services/tiingo.js";
@@ -971,7 +973,11 @@ async function main() {
   }
 
   // Process CEFs in parallel batches for speed while avoiding rate limits
-  const BATCH_SIZE = 3; // Process 3 CEFs simultaneously (good balance of speed and rate limit safety)
+  // Reduced batch size and increased delay to prevent rate limit spikes
+  // 2 CEFs per batch = 6-10 simultaneous API calls (safer than 9-15)
+  // 2.5s delay between batches = ~60 calls/minute = 360 calls/hour (well under 500 limit)
+  const BATCH_SIZE = 2; // Process 2 CEFs simultaneously (safer for rate limits)
+  const BATCH_DELAY_MS = 2500; // 2.5 seconds between batches (prevents spikes)
   const startTime = Date.now();
   
   console.log(`\n🚀 Processing ${tickers.length} CEF(s) in parallel batches of ${BATCH_SIZE}...\n`);
@@ -981,13 +987,15 @@ async function main() {
     const batchNum = Math.floor(i / BATCH_SIZE) + 1;
     const totalBatches = Math.ceil(tickers.length / BATCH_SIZE);
     
+    console.log(`📦 Processing batch ${batchNum}/${totalBatches} (${batch.join(', ')})...`);
+    
     // Process batch in parallel
     const batchPromises = batch.map((ticker) => refreshCEF(ticker));
     await Promise.allSettled(batchPromises);
     
-    // Small delay between batches to avoid overwhelming API
+    // Delay between batches to prevent rate limit spikes
     if (i + BATCH_SIZE < tickers.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
     }
   }
 

@@ -172,12 +172,27 @@ function findLastRegularDividend(
 /**
  * Determine payment type based on days gap from last REGULAR dividend
  * Special dividend: paid 1-4 days after last regular dividend
+ * OR: tiny amount (< 1% of next dividend) that comes 1-4 days before next dividend
  */
 function getPaymentType(
     daysSincePrev: number | null,
-    daysSinceLastRegular: number | null = null
+    daysSinceLastRegular: number | null = null,
+    currentAmount: number | null = null,
+    nextAmount: number | null = null,
+    daysToNext: number | null = null
 ): string {
     if (daysSincePrev === null) return 'Initial';
+    
+    // Special case: If current dividend is tiny (< 1% of next) and comes 1-4 days before next,
+    // it's likely a special dividend (e.g., $0.0003 before $0.4866)
+    if (currentAmount !== null && currentAmount > 0 && 
+        nextAmount !== null && nextAmount > 0 && 
+        daysToNext !== null && daysToNext >= 1 && daysToNext <= 4) {
+        const ratio = currentAmount / nextAmount;
+        if (ratio < 0.01) { // Current is less than 1% of next
+            return 'Special';
+        }
+    }
     
     // If we have days since last regular, use that (more accurate)
     if (daysSinceLastRegular !== null) {
@@ -257,8 +272,20 @@ async function backfillNormalizedDividends() {
                 daysSinceLastRegular = daysSincePrev;
             }
 
+            // Get next dividend info for amount-based special detection
+            const next = i < dividends.length - 1 ? dividends[i + 1] : null;
+            let daysToNext: number | null = null;
+            if (next) {
+                const currentDate = new Date(current.ex_date);
+                const nextDate = new Date(next.ex_date);
+                daysToNext = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+            }
+            const currentAmount = current.adj_amount ?? current.div_cash;
+            const nextAmount = next ? (next.adj_amount ?? next.div_cash) : null;
+
             // Determine payment type: Special if 1-4 days after last Regular dividend
-            const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular);
+            // OR if tiny amount (< 1% of next) that comes 1-4 days before next
+            const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular, currentAmount, nextAmount, daysToNext);
             calculatedTypes.push(pmtType);
 
             // Determine frequency using backward confirmation rule:
@@ -458,7 +485,20 @@ async function backfillSingleTicker(ticker: string) {
             daysSinceLastRegular = daysSincePrev;
         }
 
-        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular);
+        // Get next dividend info for amount-based special detection
+        const next = i < dividends.length - 1 ? dividends[i + 1] : null;
+        let daysToNext: number | null = null;
+        if (next) {
+            const currentDate = new Date(current.ex_date);
+            const nextDate = new Date(next.ex_date);
+            daysToNext = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
+        const currentAmount = current.adj_amount ?? current.div_cash;
+        const nextAmount = next ? (next.adj_amount ?? next.div_cash) : null;
+
+        // Determine payment type: Special if 1-4 days after last Regular dividend
+        // OR if tiny amount (< 1% of next) that comes 1-4 days before next
+        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular, currentAmount, nextAmount, daysToNext);
         calculatedTypes.push(pmtType);
             let frequencyNum = 12; // Default to monthly (temporary, will be updated)
 
@@ -514,7 +554,11 @@ async function backfillSingleTicker(ticker: string) {
                 } else if (prevDaysSincePrev !== null) {
                     prevDaysSinceLastRegular = prevDaysSincePrev;
                 }
-                const prevPmtType = getPaymentType(prevDaysSincePrev, prevDaysSinceLastRegular);
+                // Get previous dividend's next (which is current) for amount-based detection
+                const prevDaysToNext = daysSincePrev; // Days from previous to current
+                const prevAmount = previous.adj_amount ?? previous.div_cash;
+                const currentAmount = current.adj_amount ?? current.div_cash;
+                const prevPmtType = getPaymentType(prevDaysSincePrev, prevDaysSinceLastRegular, prevAmount, currentAmount, prevDaysToNext);
                 
                 // Recalculate annualized and normalized for previous dividend with updated frequency
                 let prevAnnualized: number | null = null;

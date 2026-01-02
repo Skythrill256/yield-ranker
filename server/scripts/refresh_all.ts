@@ -81,7 +81,12 @@ import {
   healthCheck,
 } from '../src/services/tiingo.js';
 import { calculateMetrics } from '../src/services/metrics.js';
-import { batchUpdateETFMetrics, batchUpdateETFMetricsPreservingCEFFields } from '../src/services/database.js';
+import { 
+  batchUpdateETFMetrics, 
+  batchUpdateETFMetricsPreservingCEFFields,
+  getLatestPriceDate,
+  getLatestDividendDate,
+} from '../src/services/database.js';
 import { calculateNormalizedDividends } from '../src/services/dividendNormalization.js';
 import type { TiingoPriceData } from '../src/types/index.js';
 
@@ -415,11 +420,41 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
   console.log(`  ✅ VERIFIED: Fetching data from last ${LOOKBACK_DAYS} days (${years} years for CEF metrics - 15Y returns, 3Y Z-Score, Signal)...`);
 
   try {
-    const priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
-    const dividendStartDate = getDateDaysAgo(DIVIDEND_LOOKBACK_DAYS);
+    const fullPriceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
+    const fullDividendStartDate = getDateDaysAgo(DIVIDEND_LOOKBACK_DAYS);
 
-    console.log(`  Prices: ${priceStartDate} to today`);
-    console.log(`  Dividends: ${dividendStartDate} to today`);
+    // OPTIMIZATION: Check database first to only fetch missing/new data
+    const [latestPriceDate, latestDividendDate] = await Promise.all([
+      getLatestPriceDate(ticker),
+      getLatestDividendDate(ticker),
+    ]);
+
+    // Calculate fetch start dates: use latest date from DB + 1 day, or full lookback if no data
+    // Add 7-day buffer to catch any missing days due to weekends/holidays
+    const getFetchStartDate = (latestDate: string | null, fullStartDate: string): string => {
+      if (!latestDate) return fullStartDate; // No data yet, fetch everything
+      
+      const latest = new Date(latestDate);
+      latest.setDate(latest.getDate() - 7); // 7-day buffer for safety
+      const bufferDate = latest.toISOString().split('T')[0];
+      
+      // Use the earlier of: buffer date or full start date
+      return bufferDate < fullStartDate ? fullStartDate : bufferDate;
+    };
+
+    const priceStartDate = getFetchStartDate(latestPriceDate, fullPriceStartDate);
+    const dividendStartDate = getFetchStartDate(latestDividendDate, fullDividendStartDate);
+
+    if (latestPriceDate) {
+      console.log(`  Prices: Latest in DB = ${latestPriceDate}, fetching from ${priceStartDate} to today`);
+    } else {
+      console.log(`  Prices: No data in DB, fetching full history from ${priceStartDate} to today`);
+    }
+    if (latestDividendDate) {
+      console.log(`  Dividends: Latest in DB = ${latestDividendDate}, fetching from ${dividendStartDate} to today`);
+    } else {
+      console.log(`  Dividends: No data in DB, fetching full history from ${dividendStartDate} to today`);
+    }
 
     // This script only processes ETFs (CEFs are excluded at query level)
     // PARALLELIZE price and dividend fetching for speed
