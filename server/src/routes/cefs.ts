@@ -1897,22 +1897,53 @@ router.post(
                 // Fetch data in parallel
                 const [pricesResult, dividendsResult] = await Promise.allSettled([
                   fetchPriceHistory(ticker, formatDate(priceStartDate))
-                    .then(async (prices) => {
-                      // Upsert prices to database
-                      if (prices && prices.length > 0) {
+                    .then(async (tiingoPrices) => {
+                      // Convert TiingoPriceData[] to PriceRecord[] format
+                      if (tiingoPrices && tiingoPrices.length > 0) {
                         const { upsertPrices } = await import("../services/database.js");
-                        await upsertPrices(prices);
+                        const priceRecords = tiingoPrices.map((p) => ({
+                          ticker: ticker.toUpperCase(),
+                          date: p.date.split("T")[0],
+                          open: p.open,
+                          high: p.high,
+                          low: p.low,
+                          close: p.close,
+                          adj_close: p.adjClose,
+                          adj_open: p.adjOpen,
+                          adj_high: p.adjHigh,
+                          adj_low: p.adjLow,
+                          volume: p.volume,
+                          div_cash: p.divCash || 0,
+                          split_factor: p.splitFactor || 1,
+                        }));
+                        await upsertPrices(priceRecords);
                       }
-                      return prices;
+                      return tiingoPrices;
                     }),
                   fetchDividendHistory(ticker, formatDate(dividendStartDate))
-                    .then(async (dividends) => {
-                      // Upsert dividends to database
-                      if (dividends && dividends.length > 0) {
+                    .then(async (tiingoDividends) => {
+                      // Convert Tiingo dividend format to DividendRecord[] format
+                      if (tiingoDividends && tiingoDividends.length > 0) {
                         const { upsertDividends } = await import("../services/database.js");
-                        await upsertDividends(dividends);
+                        const dividendRecords = tiingoDividends.map((d) => ({
+                          ticker: ticker.toUpperCase(),
+                          ex_date: d.date.split("T")[0],
+                          pay_date: d.paymentDate?.split("T")[0] || null,
+                          record_date: d.recordDate?.split("T")[0] || null,
+                          declare_date: d.declarationDate?.split("T")[0] || null,
+                          div_cash: d.dividend,
+                          adj_amount: d.adjDividend > 0 ? d.adjDividend : null,
+                          scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
+                          split_factor: d.adjDividend > 0 && d.dividend > 0 ? d.dividend / d.adjDividend : 1,
+                          div_type: null,
+                          frequency: null,
+                          currency: 'USD',
+                          description: null,
+                          is_manual: false,
+                        }));
+                        await upsertDividends(dividendRecords);
                       }
-                      return dividends;
+                      return tiingoDividends;
                     }),
                 ]);
 
