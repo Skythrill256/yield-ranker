@@ -28,6 +28,9 @@ import {
   getPriceHistory,
   getLatestPrice,
 } from "../services/database.js";
+import { fetchPriceHistory, fetchDividendHistory } from "../services/tiingo.js";
+import { calculateMetrics } from "../services/metrics.js";
+import { batchUpdateETFMetricsPreservingCEFFields } from "../services/database.js";
 import type { DividendRecord, PriceRecord } from "../types/index.js";
 
 const router: Router = Router();
@@ -1358,6 +1361,7 @@ router.post(
       let added = 0;
       let updated = 0;
       let skipped = 0;
+      const processedTickers: string[] = []; // Track tickers that were added/updated
 
       let navSymbolCol = findColumn(
         headerMap,
@@ -1836,6 +1840,9 @@ router.post(
             added++;
             logger.info("CEF Upload", `Successfully added ${ticker}`);
           }
+          
+          // Track this ticker for metric calculation
+          processedTickers.push(ticker);
         }
 
         if (lastDivCol && row[lastDivCol]) {
@@ -1863,6 +1870,149 @@ router.post(
 
       cleanupFile(filePath);
 
+      // Calculate metrics for all processed CEFs (same as ETF upload does)
+      // This ensures lastDividend, forwardYield, and returns are calculated
+      if (processedTickers.length > 0) {
+        logger.info(
+          "CEF Upload",
+          `Calculating metrics for ${processedTickers.length} CEF(s)...`
+        );
+
+        // Process in batches to avoid overwhelming the system
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < processedTickers.length; i += BATCH_SIZE) {
+          const batch = processedTickers.slice(i, i + BATCH_SIZE);
+          
+          await Promise.allSettled(
+            batch.map(async (ticker) => {
+              try {
+                logger.info("CEF Upload", `Processing metrics for ${ticker}...`);
+                
+                // First, fetch price and dividend data if needed (same as refreshCEF does)
+                const priceStartDate = new Date();
+                priceStartDate.setDate(priceStartDate.getDate() - 730); // 2 years
+                const dividendStartDate = new Date();
+                dividendStartDate.setDate(dividendStartDate.getDate() - 730); // 2 years
+
+                // Fetch data in parallel
+                const [prices, dividends] = await Promise.allSettled([
+                  fetchPriceHistory(ticker, formatDate(priceStartDate))
+                    .then(async (prices) => {
+                      // Upsert prices to database
+                      if (prices && prices.length > 0) {
+                        const { upsertPrices } = await import("../services/database.js");
+                        await upsertPrices(ticker, prices);
+                      }
+                      return prices;
+                    }),
+                  fetchDividendHistory(ticker, formatDate(dividendStartDate))
+                    .then(async (dividends) => {
+                      // Upsert dividends to database
+                      if (dividends && dividends.length > 0) {
+                        const { upsertDividends } = await import("../services/database.js");
+                        await upsertDividends(ticker, dividends);
+                      }
+                      return dividends;
+                    }),
+                ]);
+
+                // Calculate normalized dividends (same as refreshCEF)
+                try {
+                  const { calculateNormalizedDividends } = await import("../services/dividendNormalization.js");
+                  const dividendsForNormalization = await getDividendHistory(ticker, "2009-01-01");
+                  
+                  if (dividendsForNormalization.length > 0) {
+                    const dividendInputs = dividendsForNormalization
+                      .filter(d => d.id !== undefined && d.id !== null)
+                      .map(d => ({
+                        id: d.id!,
+                        ticker: d.ticker,
+                        ex_date: d.ex_date,
+                        div_cash: Number(d.div_cash),
+                        adj_amount: d.adj_amount ? Number(d.adj_amount) : null,
+                      }));
+                    
+                    const normalizedResults = calculateNormalizedDividends(dividendInputs);
+                    
+                    // Batch update normalized values
+                    const BATCH_SIZE_NORM = 100;
+                    for (let j = 0; j < normalizedResults.length; j += BATCH_SIZE_NORM) {
+                      const normBatch = normalizedResults.slice(j, j + BATCH_SIZE_NORM);
+                      const updatePromises = normBatch.map(result => 
+                        supabase
+                          .from('dividends_detail')
+                          .update({
+                            days_since_prev: result.days_since_prev,
+                            pmt_type: result.pmt_type,
+                            frequency_num: result.frequency_num,
+                            annualized: result.annualized,
+                            normalized_div: result.normalized_div,
+                          })
+                          .eq('id', result.id)
+                      );
+                      await Promise.all(updatePromises);
+                    }
+                  }
+                } catch (normError) {
+                  logger.warn("CEF Upload", `Failed to calculate normalized dividends for ${ticker}: ${(normError as Error).message}`);
+                }
+
+                // Calculate all metrics (lastDividend, forwardYield, returns, etc.)
+                const metrics = await calculateMetrics(ticker);
+
+                // Update database with calculated metrics
+                await batchUpdateETFMetricsPreservingCEFFields([
+                  {
+                    ticker,
+                    metrics: {
+                      price: metrics.currentPrice,
+                      price_change: metrics.priceChange,
+                      price_change_pct: metrics.priceChangePercent,
+                      last_dividend: metrics.lastDividend,
+                      annual_dividend: metrics.annualizedDividend,
+                      forward_yield: metrics.forwardYield,
+                      dividend_sd: metrics.dividendSD,
+                      dividend_cv: metrics.dividendCV,
+                      dividend_cv_percent: metrics.dividendCVPercent,
+                      dividend_volatility_index: metrics.dividendVolatilityIndex,
+                      week_52_high: metrics.week52High,
+                      week_52_low: metrics.week52Low,
+                      tr_drip_3y: metrics.totalReturnDrip?.['3Y'],
+                      tr_drip_12m: metrics.totalReturnDrip?.['1Y'],
+                      tr_drip_6m: metrics.totalReturnDrip?.['6M'],
+                      tr_drip_3m: metrics.totalReturnDrip?.['3M'],
+                      tr_drip_1m: metrics.totalReturnDrip?.['1M'],
+                      tr_drip_1w: metrics.totalReturnDrip?.['1W'],
+                      price_return_3y: metrics.priceReturn?.['3Y'],
+                      price_return_12m: metrics.priceReturn?.['1Y'],
+                      price_return_6m: metrics.priceReturn?.['6M'],
+                      price_return_3m: metrics.priceReturn?.['3M'],
+                      price_return_1m: metrics.priceReturn?.['1M'],
+                      price_return_1w: metrics.priceReturn?.['1W'],
+                    },
+                  },
+                ]);
+
+                logger.info(
+                  "CEF Upload",
+                  `✓ ${ticker} metrics calculated - Last Div: ${metrics.lastDividend?.toFixed(4) || 'N/A'}, Yield: ${metrics.forwardYield?.toFixed(2) || 'N/A'}%, TR 12M: ${metrics.totalReturnDrip?.['1Y']?.toFixed(2) || 'N/A'}%`
+                );
+              } catch (error) {
+                logger.warn(
+                  "CEF Upload",
+                  `Failed to calculate metrics for ${ticker}: ${(error as Error).message}`
+                );
+              }
+            })
+          );
+        }
+
+        logger.info(
+          "CEF Upload",
+          `Completed metric calculation for ${processedTickers.length} CEF(s)`
+        );
+      }
+
       // Clear CEF cache immediately
       const redis = getRedis();
       if (redis) {
@@ -1879,11 +2029,12 @@ router.post(
 
       res.json({
         success: true,
-        message: `Processed CEF upload: ${added} added, ${updated} updated, ${skipped} skipped`,
+        message: `Processed CEF upload: ${added} added, ${updated} updated, ${skipped} skipped. Metrics calculated for ${processedTickers.length} CEF(s).`,
         added,
         updated,
         skipped,
         count: added + updated,
+        metricsCalculated: processedTickers.length,
       });
     } catch (error) {
       cleanupFile(filePath);
