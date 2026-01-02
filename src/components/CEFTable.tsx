@@ -357,60 +357,113 @@ export const CEFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="premiumDiscount"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    Prem/
-                    <br />
-                    Disc
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="premiumDiscount"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          Prem/
+                          <br />
+                          Disc
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Negative number indicates price below NAV.</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="fiveYearZScore"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    3 Yr
-                    <br />
-                    Z-Score
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="fiveYearZScore"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          3 Yr
+                          <br />
+                          Z-Score
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Measures current Prem/Disc to 3 year historical records.</p>
+                    <p className="mt-1 text-green-400">Negative number is good.</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="navTrend6M"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    6 Mo
-                    <br />
-                    NAV Trend
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="navTrend6M"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          6 Mo
+                          <br />
+                          NAV Trend
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Today's NAV higher than 6 month ago.</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton
-                  field="navTrend12M"
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSort={handleSort}
-                >
-                  <div className="whitespace-normal leading-tight">
-                    12 Mo
-                    <br />
-                    NAV Trend
-                  </div>
-                </SortButton>
+                <Tooltip delayDuration={200}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <SortButton
+                        field="navTrend12M"
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                      >
+                        <div className="whitespace-normal leading-tight">
+                          12 Mo
+                          <br />
+                          NAV Trend
+                        </div>
+                      </SortButton>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={8}
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                  >
+                    <p>Today's NAV higher than 12 months ago.</p>
+                  </TooltipContent>
+                </Tooltip>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
                 <Tooltip delayDuration={200}>
@@ -429,27 +482,30 @@ export const CEFTable = ({
                   <TooltipContent
                     side="top"
                     sideOffset={8}
-                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[350px]"
+                    className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg max-w-[400px]"
                   >
                     <p className="font-semibold mb-2">
-                      Health Rating:
+                      Health Rating: Based on Z-Score, 6mo and 12mo NAV trend
+                    </p>
+                    <p className="mb-2 text-xs text-slate-300">
+                      <span className="font-bold">Scoring System:</span> 3-Point Binary (0 to +3)
                     </p>
                     <ul className="space-y-1 text-left">
                       <li>
-                        <span className="font-bold text-green-400">High:</span>{" "}
-                        The fund is historically cheap and growing strongly.
+                        <span className="font-bold text-green-400">High (3):</span>{" "}
+                        3 out of 3 rated as positive. The fund is historically cheap and growing strongly.
                       </li>
                       <li>
-                        <span className="font-bold text-green-400">Good:</span>{" "}
-                        The fund is healthy, but one metric is slightly off.
+                        <span className="font-bold text-green-400">Good (2):</span>{" "}
+                        2 out of 3 rated as positive. The fund is healthy, but one metric is slightly off.
                       </li>
                       <li>
-                        <span className="font-bold text-blue-400">Weak:</span>{" "}
-                        Only one of the three metrics shows positive health.
+                        <span className="font-bold text-blue-400">Weak (1):</span>{" "}
+                        1 out of 3 rated as positive. Only one of the three metrics shows positive health.
                       </li>
                       <li>
-                        <span className="font-bold text-gray-400">Low:</span>{" "}
-                        None of the health or value metrics are currently met.
+                        <span className="font-bold text-gray-400">Low (0):</span>{" "}
+                        0 out of 3 rated as positive. None of the health or value metrics are currently met.
                       </li>
                     </ul>
                     <p className="mt-2 text-xs text-slate-300">
