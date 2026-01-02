@@ -1061,12 +1061,21 @@ async function refreshCEF(ticker: string): Promise<void> {
     updateData.last_updated = now;
     updateData.updated_at = now;
 
-    await batchUpdateETFMetricsPreservingCEFFields([
-      {
-        ticker,
-        metrics: updateData,
-      },
-    ]);
+    // Add timeout protection for database update to prevent hanging
+    await Promise.race([
+      batchUpdateETFMetricsPreservingCEFFields([
+        {
+          ticker,
+          metrics: updateData,
+        },
+      ]),
+      new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error(`Database update timeout for ${ticker} (exceeded 2 minutes)`)), 2 * 60 * 1000);
+      })
+    ]).catch((error) => {
+      console.error(`  ❌ Database update failed/timed out for ${ticker}: ${error.message}`);
+      throw error; // Re-throw to be caught by outer try-catch
+    });
 
     // Verify save - CRITICAL: Always verify last_updated was saved
     console.log(`  🔍 Verifying database update...`);
