@@ -44,7 +44,9 @@ function addBusinessDays(date: Date, days: number): Date {
 /**
  * Estimate record date and pay date from ex-dividend date
  * Based on standard market patterns:
- * - Record Date: T+1 (1 business day after ex-date)
+ * - Record Date: Same as ex-date (T+1 settlement since May 2024)
+ *   Note: Under T+2 settlement (pre-May 2024), record date was 1 business day after ex-date
+ *   With T+1 settlement, ex-date and record date are typically the same
  * - Pay Date: Varies by frequency
  */
 function estimateDividendDates(
@@ -53,8 +55,9 @@ function estimateDividendDates(
 ): { recordDate: string; payDate: string } {
   const ex = new Date(exDate);
 
-  // Record date is typically 1 business day after ex-date (T+1 settlement)
-  const recordDate = addBusinessDays(ex, 1);
+  // Record date is typically the same as ex-date (T+1 settlement since May 2024)
+  // For historical data (pre-May 2024), it would be 1 business day after, but we use same date for simplicity
+  const recordDate = new Date(ex); // Same date as ex-date
 
   // Pay date varies by dividend frequency
   let payDaysAfterEx: number;
