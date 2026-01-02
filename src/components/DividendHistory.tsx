@@ -777,7 +777,6 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Dividend Type</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Frequency</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Ex-Div Date</TableHead>
-                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Record Date</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Pay Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -885,15 +884,6 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                                 day: 'numeric',
                                 year: '2-digit',
                               })}
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
-                              {recordDate && !isNaN(recordDate.getTime())
-                                ? recordDate.toLocaleDateString('en-US', {
-                                  month: 'numeric',
-                                  day: 'numeric',
-                                  year: '2-digit',
-                                })
-                                : '_'}
                             </TableCell>
                             <TableCell className="text-xs sm:text-sm px-2 sm:px-4 py-2 whitespace-nowrap">
                               {payDate && !isNaN(payDate.getTime())
