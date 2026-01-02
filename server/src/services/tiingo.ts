@@ -313,7 +313,20 @@ export async function fetchDividendHistory(
             .filter(p => p.divCash && p.divCash > 0)
             .map(p => {
                 const divCash = p.divCash || 0;
-                const exDate = new Date(p.date);
+                
+                // Extract date string - handle both ISO format (2025-10-16T00:00:00Z) and simple date (2025-10-16)
+                // IMPORTANT: Use the date string directly, don't convert to Date object to avoid timezone issues
+                // Tiingo returns dates in YYYY-MM-DD format or ISO format, we want just YYYY-MM-DD
+                let exDateStr = p.date;
+                if (exDateStr.includes('T')) {
+                    exDateStr = exDateStr.split('T')[0];
+                }
+                // Ensure we have a valid date string (YYYY-MM-DD format)
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(exDateStr)) {
+                    logger.warn('Tiingo', `Invalid date format from Tiingo for ${ticker}: ${p.date}, using as-is`);
+                }
+                
+                const exDate = new Date(exDateStr + 'T00:00:00Z'); // Parse as UTC to avoid timezone shifts
                 
                 // Calculate adjusted dividend: ALWAYS divide raw dividend by cumulative split factor
                 // Formula: adj_amount = div_cash / cumulative_split_factor
@@ -358,8 +371,25 @@ export async function fetchDividendHistory(
                     ? divCash * (adjClose / close)
                     : adjDividend; // Fallback to split-adjusted if prices unavailable
 
+                // Ensure date is in YYYY-MM-DD format (no timezone conversion)
+                // Tiingo returns dates as strings, extract just the date part
+                let dateStr = exDateStr; // Use the already extracted date string
+                
+                // Validate date format
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    logger.warn('Tiingo', `Invalid date format for ${ticker}: ${p.date}, extracted as: ${dateStr}`);
+                    // Fallback: try to extract date from original string
+                    const fallbackDate = p.date.split('T')[0].split(' ')[0];
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(fallbackDate)) {
+                        dateStr = fallbackDate;
+                    } else {
+                        logger.error('Tiingo', `Cannot parse date for ${ticker}: ${p.date}`);
+                        dateStr = p.date; // Use original as fallback
+                    }
+                }
+
                 return {
-                    date: p.date.split('T')[0],
+                    date: dateStr, // Store as YYYY-MM-DD string (no timezone conversion)
                     dividend: divCash,
                     adjDividend: adjDividend, // Uses split factor method (matches Seeking Alpha)
                     scaledDividend: scaledDividend, // Scaled by adjClose/close ratio
