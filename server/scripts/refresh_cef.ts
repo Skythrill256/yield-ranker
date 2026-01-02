@@ -552,11 +552,54 @@ async function refreshCEF(ticker: string): Promise<void> {
         .catch(() => ({ type: 'dividends', ticker, error: true }))
     );
 
-    await Promise.allSettled(fetchPromises);
+    // Wait for all data to be fetched and saved
+    const fetchResults = await Promise.allSettled(fetchPromises);
     
-    // Small delay to ensure data is fully committed to database before calculations
-    // This prevents calculation functions from falling back to API when data exists in DB
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Log any fetch errors and verify data was saved
+    let hasErrors = false;
+    for (const result of fetchResults) {
+      if (result.status === 'rejected') {
+        console.error(`  ⚠ Data fetch error: ${result.reason}`);
+        hasErrors = true;
+      } else if (result.value?.error) {
+        console.error(`  ⚠ Data fetch failed for ${result.value.type}: ${result.value.ticker}`);
+        hasErrors = true;
+      }
+    }
+    
+    // Verify data was actually saved by checking database
+    // This ensures calculations will find the data
+    if (!hasErrors) {
+      const [priceCount, navCount] = await Promise.all([
+        navSymbolForCalc !== ticker
+          ? supabase
+              .from('prices_daily')
+              .select('date', { count: 'exact', head: true })
+              .eq('ticker', ticker.toUpperCase())
+              .gte('date', priceStartDate)
+              .then(r => r.count || 0)
+          : Promise.resolve(0),
+        navSymbolForCalc !== ticker
+          ? supabase
+              .from('prices_daily')
+              .select('date', { count: 'exact', head: true })
+              .eq('ticker', navSymbolForCalc.toUpperCase())
+              .gte('date', navPriceStartDate)
+              .then(r => r.count || 0)
+          : Promise.resolve(0),
+      ]);
+      
+      // If we have data, proceed. If not, log warning but continue anyway
+      if (priceCount === 0 && navSymbolForCalc !== ticker) {
+        console.warn(`  ⚠ No price data saved for ${ticker}`);
+      }
+      if (navCount === 0 && navSymbolForCalc !== ticker) {
+        console.warn(`  ⚠ No NAV data saved for ${navSymbolForCalc}`);
+      }
+    }
+    
+    // Delay to ensure data is fully committed to database before calculations
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Import CEF calculation functions
     const {

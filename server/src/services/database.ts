@@ -560,6 +560,8 @@ export async function getPriceHistory(
 
       const records = (data ?? []) as PriceRecord[];
 
+      // Only fallback to API if database is completely empty
+      // During refresh_cef, we just fetched fresh data, so database should have it
       if (records.length === 0) {
         logger.debug('Database', `No price data in database for ${ticker}, attempting Tiingo API fallback`);
         try {
