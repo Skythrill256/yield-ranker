@@ -1234,6 +1234,12 @@ async function main() {
   console.log(`✅ Completed processing ${tickers.length} CEF(s) in ${elapsed}s`);
   console.log(`⚡ Average: ${(parseFloat(elapsed) / tickers.length).toFixed(1)}s per CEF`);
   console.log("=".repeat(60));
+  
+  // CRITICAL: Explicitly exit to prevent hanging
+  process.exit(0);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error("Fatal error in main:", error);
+  process.exit(1);
+});
