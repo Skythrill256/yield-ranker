@@ -1883,6 +1883,8 @@ router.post(
         for (let i = 0; i < processedTickers.length; i += BATCH_SIZE) {
           const batch = processedTickers.slice(i, i + BATCH_SIZE);
           
+          logger.info("CEF Upload", `Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(processedTickers.length / BATCH_SIZE)} (${batch.length} CEFs)...`);
+          
           await Promise.allSettled(
             batch.map(async (ticker) => {
               try {
@@ -1990,14 +1992,21 @@ router.post(
                 }
 
                 // Get CEF data to determine NAV symbol
-                const { data: cefData } = await supabase
+                const { data: cefData, error: cefDataError } = await supabase
                   .from("etf_static")
                   .select("nav_symbol")
                   .eq("ticker", ticker.toUpperCase())
                   .maybeSingle();
 
+                if (cefDataError) {
+                  logger.error("CEF Upload", `Failed to fetch CEF data for ${ticker}: ${cefDataError.message}`);
+                  throw cefDataError;
+                }
+
                 const navSymbol = cefData?.nav_symbol || null;
                 const navSymbolForCalc = navSymbol || ticker;
+                
+                logger.info("CEF Upload", `${ticker}: Using NAV symbol: ${navSymbolForCalc}`);
 
                 // Calculate CEF-specific metrics (Z-Score, NAV Trends, Signal, etc.)
                 // Import CEF calculation functions
@@ -2010,16 +2019,29 @@ router.post(
                 } = await import("./cefs.js");
 
                 // Calculate all metrics in parallel where possible
+                // Add detailed error logging for each calculation
                 const [
                   metrics,
                   fiveYearZScore,
                   navTrend6M,
                   navTrend12M,
                 ] = await Promise.all([
-                  calculateMetrics(ticker),
-                  calculateCEFZScore(ticker, navSymbolForCalc).catch(() => null),
-                  navSymbolForCalc ? calculateNAVTrend6M(navSymbolForCalc).catch(() => null) : Promise.resolve(null),
-                  navSymbolForCalc ? calculateNAVReturn12M(navSymbolForCalc).catch(() => null) : Promise.resolve(null),
+                  calculateMetrics(ticker).catch((err) => {
+                    logger.error("CEF Upload", `${ticker}: calculateMetrics failed: ${err.message}`);
+                    throw err;
+                  }),
+                  calculateCEFZScore(ticker, navSymbolForCalc).catch((err) => {
+                    logger.warn("CEF Upload", `${ticker}: calculateCEFZScore failed: ${err.message}`);
+                    return null;
+                  }),
+                  navSymbolForCalc ? calculateNAVTrend6M(navSymbolForCalc).catch((err) => {
+                    logger.warn("CEF Upload", `${ticker}: calculateNAVTrend6M failed: ${err.message}`);
+                    return null;
+                  }) : Promise.resolve(null),
+                  navSymbolForCalc ? calculateNAVReturn12M(navSymbolForCalc).catch((err) => {
+                    logger.warn("CEF Upload", `${ticker}: calculateNAVReturn12M failed: ${err.message}`);
+                    return null;
+                  }) : Promise.resolve(null),
                 ]);
 
                 // Calculate Signal (requires Z-Score and NAV trends)
@@ -2089,13 +2111,14 @@ router.post(
 
                 logger.info(
                   "CEF Upload",
-                  `✓ ${ticker} metrics calculated - Last Div: ${metrics.lastDividend?.toFixed(4) || 'N/A'}, Yield: ${metrics.forwardYield?.toFixed(2) || 'N/A'}%, TR 12M: ${metrics.totalReturnDrip?.['1Y']?.toFixed(2) || 'N/A'}%`
+                  `✓ ${ticker} metrics calculated - Last Div: ${metrics.lastDividend?.toFixed(4) || 'N/A'}, Yield: ${metrics.forwardYield?.toFixed(2) || 'N/A'}%, TR 12M: ${metrics.totalReturnDrip?.['1Y']?.toFixed(2) || 'N/A'}%, Z-Score: ${fiveYearZScore?.toFixed(2) || 'N/A'}, Signal: ${signal !== null ? signal : 'N/A'}`
                 );
               } catch (error) {
-                logger.warn(
+                logger.error(
                   "CEF Upload",
                   `Failed to calculate metrics for ${ticker}: ${(error as Error).message}`
                 );
+                logger.error("CEF Upload", `Stack trace: ${(error as Error).stack}`);
               }
             })
           );
