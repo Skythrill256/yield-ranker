@@ -500,11 +500,11 @@ export const CEFTable = ({
                         2 out of 3 rated as positive. The fund is healthy, but one metric is slightly off.
                       </li>
                       <li>
-                        <span className="font-bold text-blue-400">Weak (1):</span>{" "}
+                        <span className="font-bold text-blue-400">Low (1):</span>{" "}
                         1 out of 3 rated as positive. Only one of the three metrics shows positive health.
                       </li>
                       <li>
-                        <span className="font-bold text-gray-400">Low (0):</span>{" "}
+                        <span className="font-bold text-gray-400">Weak (0):</span>{" "}
                         0 out of 3 rated as positive. None of the health or value metrics are currently met.
                       </li>
                     </ul>
@@ -702,7 +702,13 @@ export const CEFTable = ({
                                   : "text-gray-500 font-semibold cursor-help"
                           }
                         >
-                          {cef.signal}
+                          {cef.signal === 3
+                            ? "High"
+                            : cef.signal === 2
+                              ? "Good"
+                              : cef.signal === 1
+                                ? "Low"
+                                : "Weak"}
                         </span>
                       </TooltipTrigger>
                       <TooltipContent
@@ -712,26 +718,40 @@ export const CEFTable = ({
                       >
                         <p className="font-semibold mb-1">
                           {cef.signal === 3
-                            ? "High (Optimal)"
+                            ? "High: 3 out of 3 rated as positive"
                             : cef.signal === 2
-                              ? "Good (Two Gates Pass)"
+                              ? "Good: 2 out of 3 rated as positive"
                               : cef.signal === 1
-                                ? "Weak (One Gate Passes)"
-                                : "Low (Neutral)"}
+                                ? "Low: 1 out of 3 rated as positive"
+                                : "Weak: 0 out of 3 rated as positive"}
                         </p>
                         <p className="text-slate-300 text-xs">
                           {cef.signal === 3
-                            ? "All three gates pass: Value (Z < -1.0), 6M Health, 12M Health"
+                            ? "The fund is historically cheap and growing strongly."
                             : cef.signal === 2
-                              ? "Two gates pass: Value and/or Health metrics met"
+                              ? "The fund is healthy, but one metric is slightly off."
                               : cef.signal === 1
-                                ? "One gate passes: Value or Health metric met"
-                                : "No gates pass: Neutral signal"}
+                                ? "Only one of the three metrics shows positive health."
+                                : "None of the health or value metrics are currently met."}
                         </p>
                       </TooltipContent>
                     </Tooltip>
                   ) : (
-                    <span className="text-muted-foreground">N/A</span>
+                    <Tooltip delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <span className="text-muted-foreground cursor-help">N/A</span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        sideOffset={8}
+                        className="bg-slate-900 text-white text-xs px-3 py-2 border-slate-700 shadow-lg"
+                      >
+                        <p className="font-semibold mb-1">N/A: Insufficient history</p>
+                        <p className="text-slate-300 text-xs">
+                          Less than 2 years of data available
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   )}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
