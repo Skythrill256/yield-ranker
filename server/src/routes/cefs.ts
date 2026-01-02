@@ -2112,18 +2112,18 @@ router.post(
           const rankings = await calculateCEFRankings();
           
           // Update weighted_rank for all CEFs
-          const updatePromises: Promise<any>[] = [];
+          const updatePromises: Promise<void>[] = [];
           rankings.forEach((rank, ticker) => {
             updatePromises.push(
-              supabase
-                .from("etf_static")
-                .update({ weighted_rank: rank })
-                .eq("ticker", ticker)
-                .then(({ error }) => {
-                  if (error) {
-                    logger.warn("CEF Upload", `Failed to update rank for ${ticker}: ${error.message}`);
-                  }
-                })
+              (async () => {
+                const { error } = await supabase
+                  .from("etf_static")
+                  .update({ weighted_rank: rank })
+                  .eq("ticker", ticker);
+                if (error) {
+                  logger.warn("CEF Upload", `Failed to update rank for ${ticker}: ${error.message}`);
+                }
+              })()
             );
           });
           
