@@ -710,14 +710,30 @@ async function refreshCEF(ticker: string): Promise<void> {
           }));
         
         const normalizedResults = calculateNormalizedDividends(dividendInputs);
-        const updates = normalizedResults.map(result => ({
-          id: result.id,
-          days_since_prev: result.days_since_prev,
-          pmt_type: result.pmt_type,
-          frequency_num: result.frequency_num,
-          annualized: result.annualized,
-          normalized_div: result.normalized_div,
-        }));
+        const updates = normalizedResults.map(result => {
+          // Set frequency string field: "Special" if pmt_type is Special, otherwise based on frequency_num
+          let frequencyStr: string | null = null;
+          if (result.pmt_type === 'Special') {
+            frequencyStr = 'Special';
+          } else if (result.frequency_num !== null && result.frequency_num !== undefined) {
+            // Map frequency_num to string representation
+            if (result.frequency_num === 52) frequencyStr = 'Weekly';
+            else if (result.frequency_num === 12) frequencyStr = 'Monthly';
+            else if (result.frequency_num === 4) frequencyStr = 'Quarterly';
+            else if (result.frequency_num === 2) frequencyStr = 'Semi-Annual';
+            else if (result.frequency_num === 1) frequencyStr = 'Annual';
+          }
+          
+          return {
+            id: result.id,
+            days_since_prev: result.days_since_prev,
+            pmt_type: result.pmt_type,
+            frequency: frequencyStr, // Set frequency string: "Special" for special dividends
+            frequency_num: result.frequency_num,
+            annualized: result.annualized,
+            normalized_div: result.normalized_div,
+          };
+        });
         
         const BATCH_SIZE = 100;
         for (let i = 0; i < updates.length; i += BATCH_SIZE) {
@@ -728,6 +744,7 @@ async function refreshCEF(ticker: string): Promise<void> {
               .update({
                 days_since_prev: update.days_since_prev,
                 pmt_type: update.pmt_type,
+                frequency: update.frequency, // Update frequency string field
                 frequency_num: update.frequency_num,
                 annualized: update.annualized,
                 normalized_div: update.normalized_div,

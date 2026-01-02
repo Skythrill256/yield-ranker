@@ -498,11 +498,25 @@ async function refreshTicker(ticker: string, dryRun: boolean): Promise<void> {
 
           // Batch update database with normalized values
           for (const norm of normalized) {
+            // Set frequency string field: "Special" if pmt_type is Special, otherwise based on frequency_num
+            let frequencyStr: string | null = null;
+            if (norm.pmt_type === 'Special') {
+              frequencyStr = 'Special';
+            } else if (norm.frequency_num !== null && norm.frequency_num !== undefined) {
+              // Map frequency_num to string representation
+              if (norm.frequency_num === 52) frequencyStr = 'Weekly';
+              else if (norm.frequency_num === 12) frequencyStr = 'Monthly';
+              else if (norm.frequency_num === 4) frequencyStr = 'Quarterly';
+              else if (norm.frequency_num === 2) frequencyStr = 'Semi-Annual';
+              else if (norm.frequency_num === 1) frequencyStr = 'Annual';
+            }
+            
             const { error: updateError } = await supabase
               .from('dividends_detail')
               .update({
                 days_since_prev: norm.days_since_prev,
                 pmt_type: norm.pmt_type,
+                frequency: frequencyStr, // Set frequency string: "Special" for special dividends
                 frequency_num: norm.frequency_num,
                 annualized: norm.annualized,
                 normalized_div: norm.normalized_div,

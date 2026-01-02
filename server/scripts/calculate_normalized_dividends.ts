@@ -415,11 +415,25 @@ async function backfillNormalizedDividends() {
 
         // Batch update this ticker's dividends
         for (const update of updates) {
+            // Set frequency string field: "Special" if pmt_type is Special, otherwise based on frequency_num
+            let frequencyStr: string | null = null;
+            if (update.pmt_type === 'Special') {
+                frequencyStr = 'Special';
+            } else if (update.frequency_num !== null && update.frequency_num !== undefined) {
+                // Map frequency_num to string representation
+                if (update.frequency_num === 52) frequencyStr = 'Weekly';
+                else if (update.frequency_num === 12) frequencyStr = 'Monthly';
+                else if (update.frequency_num === 4) frequencyStr = 'Quarterly';
+                else if (update.frequency_num === 2) frequencyStr = 'Semi-Annual';
+                else if (update.frequency_num === 1) frequencyStr = 'Annual';
+            }
+            
             const { error: updateError } = await supabase
                 .from('dividends_detail')
                 .update({
                     days_since_prev: update.days_since_prev,
                     pmt_type: update.pmt_type,
+                    frequency: frequencyStr, // Set frequency string: "Special" for special dividends
                     frequency_num: update.frequency_num,
                     annualized: update.annualized,
                     normalized_div: update.normalized_div,
@@ -636,10 +650,23 @@ async function backfillSingleTicker(ticker: string) {
                     }
                 }
                 
+                // Set frequency string for previous dividend
+                let prevFrequencyStr: string | null = null;
+                if (prevPmtType === 'Special') {
+                    prevFrequencyStr = 'Special';
+                } else if (prevFrequencyNum !== null && prevFrequencyNum !== undefined) {
+                    if (prevFrequencyNum === 52) prevFrequencyStr = 'Weekly';
+                    else if (prevFrequencyNum === 12) prevFrequencyStr = 'Monthly';
+                    else if (prevFrequencyNum === 4) prevFrequencyStr = 'Quarterly';
+                    else if (prevFrequencyNum === 2) prevFrequencyStr = 'Semi-Annual';
+                    else if (prevFrequencyNum === 1) prevFrequencyStr = 'Annual';
+                }
+                
                 // Update the database for the PREVIOUS dividend with its correct frequency
                 const { error: prevUpdateError } = await supabase
                     .from('dividends_detail')
                     .update({
+                        frequency: prevFrequencyStr, // Set frequency string: "Special" for special dividends
                         frequency_num: prevFrequencyNum,
                         annualized: prevAnnualized,
                         normalized_div: prevNormalizedDiv,
@@ -684,12 +711,25 @@ async function backfillSingleTicker(ticker: string) {
             normalized: normalizedDiv,
         });
 
+        // Set frequency string field: "Special" if pmt_type is Special, otherwise based on frequency_num
+        let frequencyStr: string | null = null;
+        if (pmtType === 'Special') {
+            frequencyStr = 'Special';
+        } else if (frequencyNum !== null && frequencyNum !== undefined) {
+            if (frequencyNum === 52) frequencyStr = 'Weekly';
+            else if (frequencyNum === 12) frequencyStr = 'Monthly';
+            else if (frequencyNum === 4) frequencyStr = 'Quarterly';
+            else if (frequencyNum === 2) frequencyStr = 'Semi-Annual';
+            else if (frequencyNum === 1) frequencyStr = 'Annual';
+        }
+        
         // Update the database
         const { error: updateError } = await supabase
             .from('dividends_detail')
             .update({
                 days_since_prev: daysSincePrev,
                 pmt_type: pmtType,
+                frequency: frequencyStr, // Set frequency string: "Special" for special dividends
                 frequency_num: frequencyNum,
                 annualized: annualized ? Number(annualized.toFixed(2)) : null,
                 normalized_div: normalizedDiv ? Number(normalizedDiv.toFixed(9)) : null,
