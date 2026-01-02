@@ -203,6 +203,7 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
         // The gap from current to next determines the current dividend's frequency.
         // This is the "backward confirmation" rule: we confirm a dividend's frequency
         // by seeing when the next one arrives.
+        // IMPORTANT: For Special dividends (small gaps), look back to last Regular dividend
         let frequencyNum = 12; // Default to monthly
 
         if (i < sortedDividends.length - 1) {
@@ -237,16 +238,37 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
             
             // SIMPLE RULE: Use gap to next Regular dividend if available, otherwise use gap to immediate next
             // This ensures frequency is based on actual dates, not complex transition logic
+            // IMPORTANT: For Special dividends (small gaps <= 4 days), look back to last Regular dividend
             if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 4) {
                 // Use gap to next Regular to determine frequency (backward confirmation rule)
                 frequencyNum = getFrequencyFromDays(daysToNextRegular);
             } else if (daysToNext > 4) {
                 // Use gap to immediate next dividend (backward confirmation rule)
                 frequencyNum = getFrequencyFromDays(daysToNext);
+            } else if (daysToNext <= 4 && lastRegular) {
+                // Small gap (Special dividend): look back to last Regular dividend to determine frequency
+                // This handles cases like 12/29 (Special) where gap to next is 1 day, but gap from last Regular (12/23) is 6 days = Weekly
+                const currentDate2 = new Date(current.ex_date);
+                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysFromLastRegular > 4) {
+                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
+                }
             }
-        } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
-            // Last dividend: use gap from previous (no next dividend available)
-            frequencyNum = getFrequencyFromDays(daysSincePrev);
+        } else {
+            // Last dividend: use gap from last Regular dividend if available, otherwise from previous
+            if (lastRegular) {
+                const currentDate2 = new Date(current.ex_date);
+                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysFromLastRegular > 4) {
+                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
+                } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
+                    frequencyNum = getFrequencyFromDays(daysSincePrev);
+                }
+            } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
+                frequencyNum = getFrequencyFromDays(daysSincePrev);
+            }
         }
         
         // Update the PREVIOUS dividend's frequency based on gap FROM previous TO current
@@ -425,8 +447,7 @@ export function calculateNormalizedForResponse(
         // The gap from current to next determines the current dividend's frequency.
         // This is the "backward confirmation" rule: we confirm a dividend's frequency
         // by seeing when the next one arrives.
-        // EXCEPTION: At frequency transition points, use the frequency from the PREVIOUS gap
-        // (the gap that brought us here), not the gap to next.
+        // IMPORTANT: For Special dividends (small gaps), look back to last Regular dividend
         let frequencyNum = 12; // Default to monthly
 
         if (i < sorted.length - 1) {
@@ -461,16 +482,37 @@ export function calculateNormalizedForResponse(
             
             // SIMPLE RULE: Use gap to next Regular dividend if available, otherwise use gap to immediate next
             // This ensures frequency is based on actual dates, not complex transition logic
+            // IMPORTANT: For Special dividends (small gaps <= 4 days), look back to last Regular dividend
             if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 4) {
                 // Use gap to next Regular to determine frequency (backward confirmation rule)
                 frequencyNum = getFrequencyFromDays(daysToNextRegular);
             } else if (daysToNext > 4) {
                 // Use gap to immediate next dividend (backward confirmation rule)
                 frequencyNum = getFrequencyFromDays(daysToNext);
+            } else if (daysToNext <= 4 && lastRegular) {
+                // Small gap (Special dividend): look back to last Regular dividend to determine frequency
+                // This handles cases like 12/29 (Special) where gap to next is 1 day, but gap from last Regular (12/23) is 6 days = Weekly
+                const currentDate2 = new Date(current.exDate);
+                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysFromLastRegular > 4) {
+                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
+                }
             }
-        } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
-            // Last dividend: use gap from previous (no next dividend available)
-            frequencyNum = getFrequencyFromDays(daysSincePrev);
+        } else {
+            // Last dividend: use gap from last Regular dividend if available, otherwise from previous
+            if (lastRegular) {
+                const currentDate2 = new Date(current.exDate);
+                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+                if (daysFromLastRegular > 4) {
+                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
+                } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
+                    frequencyNum = getFrequencyFromDays(daysSincePrev);
+                }
+            } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
+                frequencyNum = getFrequencyFromDays(daysSincePrev);
+            }
         }
         
         // Update the PREVIOUS dividend's frequency based on gap FROM previous TO current
