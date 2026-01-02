@@ -154,11 +154,38 @@ function getFrequencyFromDays(days: number): number {
 }
 
 /**
- * Determine payment type based on days gap
+ * Find the last Regular dividend before the given index
  */
-function getPaymentType(daysSincePrev: number | null): string {
+function findLastRegularDividend(
+    dividends: Array<{ id: number; ticker: string; ex_date: string; adj_amount: number | null; div_cash: number }>,
+    currentIndex: number,
+    calculatedTypes: string[]
+): { dividend: typeof dividends[0]; index: number } | null {
+    for (let i = currentIndex - 1; i >= 0; i--) {
+        if (calculatedTypes[i] === 'Regular') {
+            return { dividend: dividends[i], index: i };
+        }
+    }
+    return null;
+}
+
+/**
+ * Determine payment type based on days gap from last REGULAR dividend
+ * Special dividend: paid 1-4 days after last regular dividend
+ */
+function getPaymentType(
+    daysSincePrev: number | null,
+    daysSinceLastRegular: number | null = null
+): string {
     if (daysSincePrev === null) return 'Initial';
-    // Special dividend: paid 1-4 days after previous dividend
+    
+    // If we have days since last regular, use that (more accurate)
+    if (daysSinceLastRegular !== null) {
+        if (daysSinceLastRegular >= 1 && daysSinceLastRegular <= 4) return 'Special';
+        return 'Regular';
+    }
+    
+    // Fallback: use days since previous (less accurate but works for first pass)
     if (daysSincePrev >= 1 && daysSincePrev <= 4) return 'Special';
     return 'Regular';
 }
@@ -203,6 +230,7 @@ async function backfillNormalizedDividends() {
         }
 
         const updates: CalculatedDividend[] = [];
+        const calculatedTypes: string[] = [];
 
         for (let i = 0; i < dividends.length; i++) {
             const current = dividends[i];
@@ -216,8 +244,22 @@ async function backfillNormalizedDividends() {
                 daysSincePrev = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
             }
 
-            // Determine payment type
-            const pmtType = getPaymentType(daysSincePrev);
+            // Find last Regular dividend to calculate days since last regular
+            // Special dividend rule: paid 1-4 days after LAST REGULAR dividend (not just previous)
+            let daysSinceLastRegular: number | null = null;
+            const lastRegular = findLastRegularDividend(dividends, i, calculatedTypes);
+            if (lastRegular) {
+                const currentDate = new Date(current.ex_date);
+                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+                daysSinceLastRegular = Math.round((currentDate.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+            } else if (daysSincePrev !== null) {
+                // No regular dividend found yet, use days since previous as fallback
+                daysSinceLastRegular = daysSincePrev;
+            }
+
+            // Determine payment type: Special if 1-4 days after last Regular dividend
+            const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular);
+            calculatedTypes.push(pmtType);
 
             // Determine frequency using backward confirmation rule:
             // IMPORTANT: Frequency is assigned to the PREVIOUS dividend based on the gap FROM previous TO current
@@ -392,6 +434,7 @@ async function backfillSingleTicker(ticker: string) {
         annualized: number | null;
         normalized: number | null;
     }> = [];
+    const calculatedTypes: string[] = [];
 
     for (let i = 0; i < dividends.length; i++) {
         const current = dividends[i];
@@ -404,7 +447,19 @@ async function backfillSingleTicker(ticker: string) {
             daysSincePrev = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
         }
 
-            const pmtType = getPaymentType(daysSincePrev);
+        // Find last Regular dividend to calculate days since last regular
+        let daysSinceLastRegular: number | null = null;
+        const lastRegular = findLastRegularDividend(dividends, i, calculatedTypes);
+        if (lastRegular) {
+            const currentDate = new Date(current.ex_date);
+            const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+            daysSinceLastRegular = Math.round((currentDate.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+        } else if (daysSincePrev !== null) {
+            daysSinceLastRegular = daysSincePrev;
+        }
+
+        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular);
+        calculatedTypes.push(pmtType);
             let frequencyNum = 12; // Default to monthly (temporary, will be updated)
 
             // Determine frequency using backward confirmation rule:
@@ -449,7 +504,17 @@ async function backfillSingleTicker(ticker: string) {
                     const prevPrevDate = new Date(prevPrev.ex_date);
                     prevDaysSincePrev = Math.round((prevDate.getTime() - prevPrevDate.getTime()) / (1000 * 60 * 60 * 24));
                 }
-                const prevPmtType = getPaymentType(prevDaysSincePrev);
+                // Find last Regular dividend before previous to calculate days since last regular
+                let prevDaysSinceLastRegular: number | null = null;
+                const prevLastRegular = findLastRegularDividend(dividends, i - 1, calculatedTypes);
+                if (prevLastRegular) {
+                    const prevDate = new Date(previous.ex_date);
+                    const prevLastRegularDate = new Date(prevLastRegular.dividend.ex_date);
+                    prevDaysSinceLastRegular = Math.round((prevDate.getTime() - prevLastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+                } else if (prevDaysSincePrev !== null) {
+                    prevDaysSinceLastRegular = prevDaysSincePrev;
+                }
+                const prevPmtType = getPaymentType(prevDaysSincePrev, prevDaysSinceLastRegular);
                 
                 // Recalculate annualized and normalized for previous dividend with updated frequency
                 let prevAnnualized: number | null = null;

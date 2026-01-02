@@ -86,11 +86,24 @@ export function getFrequencyFromDays(days: number): number {
 }
 
 /**
- * Determine payment type based on days gap
- * Special dividend: paid 1-4 days after previous dividend
+ * Determine payment type based on days gap from last REGULAR dividend
+ * Special dividend: paid 1-4 days after last regular dividend
+ * This catches cases like ULTY where a tiny special div ($0.0003) comes right before
+ * the regular monthly payment ($0.4866)
  */
-export function getPaymentType(daysSincePrev: number | null): 'Regular' | 'Special' | 'Initial' {
+export function getPaymentType(
+    daysSincePrev: number | null,
+    daysSinceLastRegular: number | null = null
+): 'Regular' | 'Special' | 'Initial' {
     if (daysSincePrev === null) return 'Initial';
+    
+    // If we have days since last regular, use that (more accurate)
+    if (daysSinceLastRegular !== null) {
+        if (daysSinceLastRegular >= 1 && daysSinceLastRegular <= 4) return 'Special';
+        return 'Regular';
+    }
+    
+    // Fallback: use days since previous (less accurate but works for first pass)
     if (daysSincePrev >= 1 && daysSincePrev <= 4) return 'Special';
     return 'Regular';
 }
@@ -141,8 +154,21 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
             daysSincePrev = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
         }
 
-        // Determine payment type
-        const pmtType = getPaymentType(daysSincePrev);
+        // Find last Regular dividend to calculate days since last regular
+        // Special dividend rule: paid 1-4 days after LAST REGULAR dividend (not just previous)
+        let daysSinceLastRegular: number | null = null;
+        const lastRegular = findLastRegularDividend(sortedDividends, i, calculatedTypes);
+        if (lastRegular) {
+            const currentDate = new Date(current.ex_date);
+            const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+            daysSinceLastRegular = Math.round((currentDate.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+        } else if (daysSincePrev !== null) {
+            // No regular dividend found yet, use days since previous as fallback
+            daysSinceLastRegular = daysSincePrev;
+        }
+
+        // Determine payment type: Special if 1-4 days after last Regular dividend
+        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular);
         calculatedTypes.push(pmtType);
 
         // Determine frequency using backward confirmation rule:
@@ -361,8 +387,25 @@ export function calculateNormalizedForResponse(
             );
         }
 
-        // Determine payment type
-        const pmtType = getPaymentType(daysSincePrev);
+        // Find last Regular dividend to calculate days since last regular
+        // Special dividend rule: paid 1-4 days after LAST REGULAR dividend (not just previous)
+        let daysSinceLastRegular: number | null = null;
+        const lastRegular = findLastRegularDividend(
+            sorted.map(d => ({ id: 0, ticker: '', ex_date: d.exDate, div_cash: d.amount, adj_amount: d.adjAmount })),
+            i,
+            calculatedTypes
+        );
+        if (lastRegular) {
+            const currentDate = new Date(current.exDate);
+            const lastRegularDate = new Date(lastRegular.dividend.ex_date);
+            daysSinceLastRegular = Math.round((currentDate.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
+        } else if (daysSincePrev !== null) {
+            // No regular dividend found yet, use days since previous as fallback
+            daysSinceLastRegular = daysSincePrev;
+        }
+
+        // Determine payment type: Special if 1-4 days after last Regular dividend
+        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular);
         calculatedTypes.push(pmtType);
 
         // Determine frequency using backward confirmation rule:
