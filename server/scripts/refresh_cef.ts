@@ -1147,6 +1147,8 @@ async function refreshCEF(ticker: string): Promise<void> {
       `  ❌ Error processing ${ticker}: ${(error as Error).message}`
     );
     console.error(error);
+    // Don't throw - continue processing other CEFs
+    // The error is logged, but we want the script to continue
   }
 }
 
@@ -1206,10 +1208,20 @@ async function main() {
     
     console.log(`\n📦 Batch ${batchNum}/${totalBatches} (${batch.length} CEFs): ${batch.join(", ")}`);
     
-    // Process batch in parallel
-    await Promise.allSettled(
-      batch.map((ticker) => refreshCEF(ticker))
-    );
+    // Process batch in parallel with timeout protection
+    const batchPromises = batch.map((ticker) => {
+      return Promise.race([
+        refreshCEF(ticker),
+        new Promise<void>((_, reject) => {
+          setTimeout(() => reject(new Error(`Timeout: ${ticker} took longer than 5 minutes`)), 5 * 60 * 1000);
+        })
+      ]).catch((error) => {
+        console.error(`  ❌ ${ticker} failed or timed out: ${error.message}`);
+        // Continue processing other CEFs
+      });
+    });
+    
+    await Promise.allSettled(batchPromises);
     
     // Small delay between batches to avoid overwhelming API
     if (i + BATCH_SIZE < tickers.length) {
