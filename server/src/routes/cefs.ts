@@ -2048,6 +2048,7 @@ router.post(
                 }
 
                 // Update database with ALL calculated metrics (ETF + CEF-specific)
+                // Use 'any' type to include CEF-specific fields not in ETFStaticRecord interface
                 await batchUpdateETFMetricsPreservingCEFFields([
                   {
                     ticker,
@@ -2076,13 +2077,13 @@ router.post(
                       price_return_3m: metrics.priceReturn?.['3M'],
                       price_return_1m: metrics.priceReturn?.['1M'],
                       price_return_1w: metrics.priceReturn?.['1W'],
-                      // CEF-specific metrics
+                      // CEF-specific metrics (cast to any to bypass TypeScript type check)
                       five_year_z_score: fiveYearZScore,
                       nav_trend_6m: navTrend6M,
                       nav_trend_12m: navTrend12M,
                       signal: signal,
                       dividend_history: dividendHistory,
-                    },
+                    } as any,
                   },
                 ]);
 
@@ -2118,6 +2119,11 @@ router.post(
                 .from("etf_static")
                 .update({ weighted_rank: rank })
                 .eq("ticker", ticker)
+                .then(({ error }) => {
+                  if (error) {
+                    logger.warn("CEF Upload", `Failed to update rank for ${ticker}: ${error.message}`);
+                  }
+                })
             );
           });
           
