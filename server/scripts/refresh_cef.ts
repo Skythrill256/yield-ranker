@@ -590,6 +590,46 @@ async function refreshCEF(ticker: string): Promise<void> {
 
     const updateData: any = {};
 
+    // Calculate general ETF metrics (lastDividend, forwardYield, short-term returns)
+    // This is needed for CEFs to show yearly dividend and F Yield
+    try {
+      const { calculateMetrics } = await import("../src/services/metrics.js");
+      const metrics = await calculateMetrics(ticker);
+      
+      // Update general metrics that CEFs also need
+      updateData.last_dividend = metrics.lastDividend;
+      updateData.forward_yield = metrics.forwardYield;
+      updateData.annual_dividend = metrics.annualizedDividend;
+      
+      // Update short-term returns (1W, 1M, 3M, 6M, 12M) - these are price-based returns
+      updateData.tr_drip_1w = metrics.totalReturnDrip['1W'];
+      updateData.tr_drip_1m = metrics.totalReturnDrip['1M'];
+      updateData.tr_drip_3m = metrics.totalReturnDrip['3M'];
+      updateData.tr_drip_6m = metrics.totalReturnDrip['6M'];
+      updateData.tr_drip_12m = metrics.totalReturnDrip['1Y'];
+      
+      updateData.price_return_1w = metrics.priceReturn['1W'];
+      updateData.price_return_1m = metrics.priceReturn['1M'];
+      updateData.price_return_3m = metrics.priceReturn['3M'];
+      updateData.price_return_6m = metrics.priceReturn['6M'];
+      updateData.price_return_12m = metrics.priceReturn['1Y'];
+    } catch (error) {
+      // If calculateMetrics fails, set these to null
+      updateData.last_dividend = null;
+      updateData.forward_yield = null;
+      updateData.annual_dividend = null;
+      updateData.tr_drip_1w = null;
+      updateData.tr_drip_1m = null;
+      updateData.tr_drip_3m = null;
+      updateData.tr_drip_6m = null;
+      updateData.tr_drip_12m = null;
+      updateData.price_return_1w = null;
+      updateData.price_return_1m = null;
+      updateData.price_return_3m = null;
+      updateData.price_return_6m = null;
+      updateData.price_return_12m = null;
+    }
+
     // Calculate all CEF metrics - PARALLELIZE independent calculations for speed
     const [fiveYearZScore, navTrend6M, navTrend12M] = await Promise.all([
       calculateCEFZScore(ticker, navSymbolForCalc).catch(() => null),
