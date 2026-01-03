@@ -352,7 +352,7 @@ export const CEFTable = ({
                 >
                   <div className="whitespace-normal leading-tight">
                     F<br />
-                    Yield
+                    <span className="font-bold">Yield</span>
                   </div>
                 </SortButton>
               </th>

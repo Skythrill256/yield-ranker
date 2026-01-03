@@ -316,7 +316,7 @@ export const ETFTable = ({
                 </SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
-                <SortButton field="forwardYield" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Yield</SortButton>
+                <SortButton field="forwardYield" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}><span className="font-bold">Yield</span></SortButton>
               </th>
               <th className="h-7 px-1.5 text-center bg-slate-50 text-xs">
                 <Tooltip delayDuration={200}>
