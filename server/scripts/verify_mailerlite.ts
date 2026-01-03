@@ -7,22 +7,52 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+// Try multiple .env file paths
+const envPaths = [
+    path.resolve(__dirname, '../../.env'),  // Root .env
+    path.resolve(__dirname, '../.env'),     // Server .env
+    path.resolve(process.cwd(), '.env'),    // Current directory .env
+];
+
+let envFileFound = false;
+for (const envPath of envPaths) {
+    if (existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        envFileFound = true;
+        break;
+    }
+}
+
+// Also try default location
+if (!process.env.MAILERLITE_API_KEY) {
+    dotenv.config();
+}
 
 async function verifyMailerLite() {
     console.log('============================================');
     console.log('Verifying MailerLite Connection');
     console.log('============================================\n');
 
+    if (!envFileFound) {
+        console.log('⚠️  .env file not found in common locations:');
+        envPaths.forEach(p => console.log(`   - ${p}`));
+        console.log('\n   Trying to load from environment anyway...\n');
+    }
+
     const apiKey = process.env.MAILERLITE_API_KEY;
     if (!apiKey) {
         console.log('❌ MAILERLITE_API_KEY not found in environment variables');
-        console.log('   Please set MAILERLITE_API_KEY in your .env file\n');
+        console.log('\n   To fix this:');
+        console.log('   1. Create or edit .env file in the project root');
+        console.log('   2. Add: MAILERLITE_API_KEY=your_api_key_here');
+        console.log('   3. Get your API key from: MailerLite Dashboard → Integrations → API');
+        console.log('\n   Example .env file location:');
+        console.log(`   ${path.resolve(__dirname, '../../.env')}\n`);
         return;
     }
 
