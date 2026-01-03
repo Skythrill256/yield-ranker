@@ -623,7 +623,7 @@ export const CEFTable = ({
                         navigate(`/cef/${cef.symbol}/dividends`);
                       }
                     }}
-                    className="tabular-nums text-xs text-primary font-medium hover:underline cursor-pointer transition-colors"
+                    className="tabular-nums text-xs text-primary font-bold hover:underline cursor-pointer transition-colors"
                     title="Click to view dividend history"
                   >
                     {cef.lastDividend != null
