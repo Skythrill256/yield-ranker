@@ -180,6 +180,8 @@ const AdminPanel = () => {
       setActiveTab("site-settings");
     } else if (path.endsWith("/notebook")) {
       setActiveTab("notebook");
+    } else if (path.endsWith("/newsletters") || path.includes("/admin/newsletters")) {
+      setActiveTab("newsletters");
     } else {
       const params = new URLSearchParams(location.search);
       const tab = params.get("tab");

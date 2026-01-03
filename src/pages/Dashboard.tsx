@@ -56,6 +56,7 @@ import {
   Clock,
   Loader2,
   Target,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -2830,6 +2831,21 @@ export default function Dashboard() {
             )}
           </button>
           {isAdmin && null}
+          <button
+            onClick={() => {
+              setShowFavoritesOnly(false);
+              setAdminSection(null);
+              navigate("/newsletters");
+            }}
+            className={`w-full flex items-center ${sidebarCollapsed
+              ? "justify-center px-0 py-2.5"
+              : "gap-3 px-4 py-3"
+              } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
+            title={sidebarCollapsed ? "Newsletters" : ""}
+          >
+            <Mail className="w-5 h-5" />
+            {!sidebarCollapsed && "Newsletters"}
+          </button>
           <button
             onClick={() => {
               setShowFavoritesOnly(false);

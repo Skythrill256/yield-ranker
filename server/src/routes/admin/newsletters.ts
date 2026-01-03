@@ -15,6 +15,7 @@ import {
     listCampaigns,
     addSubscriber,
     removeSubscriber,
+    listSubscribers,
     type Campaign,
 } from '../../services/mailerlite.js';
 
@@ -375,6 +376,36 @@ router.delete('/subscribers/:email', verifyToken, requireAdmin, async (req: Requ
         }
     } catch (error) {
         logger.error('Admin Newsletters', `Error removing subscriber: ${(error as Error).message}`);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+
+/**
+ * GET /admin/newsletters/subscribers - List all subscribers (admin only)
+ */
+router.get('/subscribers', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const limit = parseInt(req.query.limit as string) || 1000;
+        const offset = parseInt(req.query.offset as string) || 0;
+
+        const result = await listSubscribers(limit, offset);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                subscribers: result.subscribers || [],
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: result.message || 'Failed to list subscribers',
+            });
+        }
+    } catch (error) {
+        logger.error('Admin Newsletters', `Error listing subscribers: ${(error as Error).message}`);
         res.status(500).json({
             success: false,
             message: 'Internal server error',

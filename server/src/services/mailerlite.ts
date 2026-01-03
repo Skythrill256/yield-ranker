@@ -165,6 +165,60 @@ export async function removeSubscriber(email: string): Promise<UnsubscribeResult
 }
 
 /**
+ * List all subscribers
+ */
+export interface Subscriber {
+    id: string;
+    email: string;
+    status: string;
+    subscribed_at?: string;
+    unsubscribed_at?: string;
+}
+
+export interface SubscriberListResult {
+    success: boolean;
+    subscribers?: Subscriber[];
+    message?: string;
+}
+
+export async function listSubscribers(limit: number = 1000, offset: number = 0): Promise<SubscriberListResult> {
+    const mailerlite = getClient();
+
+    if (!mailerlite) {
+        return {
+            success: false,
+            message: 'Newsletter service is not configured',
+        };
+    }
+
+    try {
+        const response = await mailerlite.subscribers.get({ limit, offset });
+        
+        const subscribers: Subscriber[] = (response.data?.data || []).map((sub: any) => ({
+            id: sub.id || '',
+            email: sub.email || '',
+            status: sub.status || 'active',
+            subscribed_at: sub.subscribed_at,
+            unsubscribed_at: sub.unsubscribed_at,
+        }));
+
+        logger.info('MailerLite', `Listed ${subscribers.length} subscribers`);
+        return {
+            success: true,
+            subscribers,
+        };
+    } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } }; message?: string };
+        const errorMessage = err?.response?.data?.message || err?.message || 'Unknown error';
+        logger.error('MailerLite', `Failed to list subscribers: ${errorMessage}`);
+        return {
+            success: false,
+            message: 'Failed to list subscribers. Please try again later.',
+        };
+    }
+}
+
+/**
  * Create a new campaign/newsletter
  */
 export async function createCampaign(campaign: Omit<Campaign, 'id' | 'status' | 'created_at' | 'updated_at' | 'sent_at'>): Promise<CampaignResult> {

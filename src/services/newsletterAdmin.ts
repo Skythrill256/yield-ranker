@@ -284,3 +284,49 @@ export async function removeSubscriber(email: string): Promise<SubscriberRespons
     }
 }
 
+export interface Subscriber {
+    id: string;
+    email: string;
+    status: string;
+    subscribed_at?: string;
+    unsubscribed_at?: string;
+}
+
+export interface SubscriberListResponse {
+    success: boolean;
+    subscribers?: Subscriber[];
+    message?: string;
+}
+
+/**
+ * List all subscribers (admin only)
+ */
+export async function listSubscribers(limit: number = 1000, offset: number = 0): Promise<SubscriberListResponse> {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(
+            `${API_URL}/api/admin/newsletters/subscribers?limit=${limit}&offset=${offset}`,
+            {
+                method: 'GET',
+                headers,
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            return {
+                success: false,
+                message: error.message || 'Failed to fetch subscribers',
+            };
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        return {
+            success: false,
+            message: `Error: ${(error as Error).message}`,
+        };
+    }
+}
+

@@ -1,23 +1,38 @@
 import { Link } from "react-router-dom";
 import { NewsletterSubscribe } from "./NewsletterSubscribe";
+import { useAuth } from "@/contexts/AuthContext";
+import { Mail } from "lucide-react";
+import { Button } from "./ui/button";
 
-export const Footer = () => (
-  <footer className="w-full bg-white border-t border-slate-200">
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-      {/* Newsletter Subscription Section */}
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-primary/5 to-accent/5 px-6 py-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-foreground">
-              Stay Updated
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Get the latest ETF insights and market updates delivered to your inbox.
-            </p>
+export const Footer = () => {
+  const { profile, user } = useAuth();
+  const isPremium = profile?.is_premium || user?.user_metadata?.is_premium;
+
+  return (
+    <footer className="w-full bg-white border-t border-slate-200">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+        {/* Newsletter Subscription Section */}
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-primary/5 to-accent/5 px-6 py-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold text-foreground">
+                Stay Updated
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Get the latest ETF insights and market updates delivered to your inbox.
+              </p>
+              {isPremium && (
+                <Link to="/newsletters">
+                  <Button variant="link" className="p-0 h-auto text-primary hover:underline text-sm mt-2">
+                    <Mail className="w-4 h-4 mr-1 inline" />
+                    View Newsletter Archive
+                  </Button>
+                </Link>
+              )}
+            </div>
+            <NewsletterSubscribe />
           </div>
-          <NewsletterSubscribe />
         </div>
-      </div>
 
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs sm:text-sm text-muted-foreground">
         <span>© 2025 Dividends And Total Returns LLC All rights reserved.</span>

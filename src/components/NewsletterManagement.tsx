@@ -26,7 +26,9 @@ import {
     sendCampaign,
     addSubscriber,
     removeSubscriber,
+    listSubscribers,
     type Campaign,
+    type Subscriber,
 } from '@/services/newsletterAdmin';
 import {
     Mail,
@@ -38,6 +40,9 @@ import {
     UserPlus,
     UserMinus,
     RefreshCw,
+    Users,
+    CheckSquare,
+    Square,
 } from 'lucide-react';
 
 const formatDate = (dateString?: string) => {
@@ -55,6 +60,11 @@ const formatDate = (dateString?: string) => {
     }
 };
 
+// Default email settings
+const DEFAULT_FROM_EMAIL = 'dandtotalreturns@gmail.com';
+const DEFAULT_FROM_NAME = 'Dividends and Total Returns';
+const DEFAULT_REPLY_TO = 'dandtotalreturns@gmail.com';
+
 export function NewsletterManagement() {
     const { toast } = useToast();
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -68,16 +78,15 @@ export function NewsletterManagement() {
     const [subscriberEmail, setSubscriberEmail] = useState('');
     const [subscriberAction, setSubscriberAction] = useState<'add' | 'remove'>('add');
     const [subscriberLoading, setSubscriberLoading] = useState(false);
+    const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+    const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+    const [selectedSubscribers, setSelectedSubscribers] = useState<Set<string>>(new Set());
 
-    // Form state
+    // Form state - simplified to single email content
     const [formData, setFormData] = useState({
         name: '',
         subject: '',
-        type: 'regular' as 'regular' | 'ab',
-        content: { html: '', plain: '' },
-        from_name: '',
-        from_email: '',
-        reply_to: '',
+        emailContent: '', // Single content field
     });
 
     useEffect(() => {
@@ -108,15 +117,39 @@ export function NewsletterManagement() {
         }
     };
 
+    const loadSubscribers = async () => {
+        setLoadingSubscribers(true);
+        try {
+            const result = await listSubscribers(1000, 0);
+            if (result.success && result.subscribers) {
+                // Only show active subscribers
+                const activeSubscribers = result.subscribers.filter(
+                    (s) => s.status === 'active' || s.status === 'subscribed'
+                );
+                setSubscribers(activeSubscribers);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: result.message || 'Failed to load subscribers',
+                });
+            }
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: `Failed to load subscribers: ${(error as Error).message}`,
+            });
+        } finally {
+            setLoadingSubscribers(false);
+        }
+    };
+
     const handleCreate = () => {
         setFormData({
             name: '',
             subject: '',
-            type: 'regular',
-            content: { html: '', plain: '' },
-            from_name: '',
-            from_email: '',
-            reply_to: '',
+            emailContent: '',
         });
         setIsCreateDialogOpen(true);
     };
@@ -128,14 +161,12 @@ export function NewsletterManagement() {
             const result = await getCampaign(campaign.id);
             if (result.success && result.campaign) {
                 setEditingCampaign(result.campaign);
+                // Extract content from html or plain
+                const content = result.campaign.content?.html || result.campaign.content?.plain || '';
                 setFormData({
                     name: result.campaign.name,
                     subject: result.campaign.subject,
-                    type: result.campaign.type || 'regular',
-                    content: result.campaign.content || { html: '', plain: '' },
-                    from_name: result.campaign.from_name || '',
-                    from_email: result.campaign.from_email || '',
-                    reply_to: result.campaign.reply_to || '',
+                    emailContent: content,
                 });
                 setIsEditDialogOpen(true);
             } else {
@@ -155,22 +186,36 @@ export function NewsletterManagement() {
     };
 
     const handleSave = async () => {
-        if (!formData.name || !formData.subject) {
+        if (!formData.name || !formData.subject || !formData.emailContent) {
             toast({
                 variant: 'destructive',
                 title: 'Validation Error',
-                description: 'Name and subject are required',
+                description: 'Name, subject, and email content are required',
             });
             return;
         }
 
         setSaving(true);
         try {
+            // Convert single emailContent to both html and plain for MailerLite
+            const campaignData = {
+                name: formData.name,
+                subject: formData.subject,
+                type: 'regular' as const,
+                content: {
+                    html: formData.emailContent,
+                    plain: formData.emailContent.replace(/<[^>]*>/g, ''), // Strip HTML tags for plain text
+                },
+                from_name: DEFAULT_FROM_NAME,
+                from_email: DEFAULT_FROM_EMAIL,
+                reply_to: DEFAULT_REPLY_TO,
+            };
+
             let result;
             if (editingCampaign?.id) {
-                result = await updateCampaign(editingCampaign.id, formData);
+                result = await updateCampaign(editingCampaign.id, campaignData);
             } else {
-                result = await createCampaign(formData);
+                result = await createCampaign(campaignData);
             }
 
             if (result.success) {
@@ -201,7 +246,7 @@ export function NewsletterManagement() {
     };
 
     const handleSend = async (campaignId: string) => {
-        if (!confirm('Are you sure you want to send this newsletter? This action cannot be undone.')) {
+        if (!confirm('Are you sure you want to send this newsletter to all subscribers? This action cannot be undone.')) {
             return;
         }
 
@@ -211,7 +256,7 @@ export function NewsletterManagement() {
             if (result.success) {
                 toast({
                     title: 'Success',
-                    description: 'Newsletter sent successfully',
+                    description: 'Newsletter sent successfully to all subscribers',
                 });
                 await loadCampaigns();
             } else {
@@ -257,7 +302,7 @@ export function NewsletterManagement() {
                     description: result.message,
                 });
                 setSubscriberEmail('');
-                setIsSubscriberDialogOpen(false);
+                await loadSubscribers();
             } else {
                 toast({
                     variant: 'destructive',
@@ -274,6 +319,71 @@ export function NewsletterManagement() {
         } finally {
             setSubscriberLoading(false);
         }
+    };
+
+    const handleOpenSubscriberDialog = async () => {
+        setIsSubscriberDialogOpen(true);
+        await loadSubscribers();
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedSubscribers.size === subscribers.length) {
+            setSelectedSubscribers(new Set());
+        } else {
+            setSelectedSubscribers(new Set(subscribers.map(s => s.email)));
+        }
+    };
+
+    const toggleSubscriber = (email: string) => {
+        const newSelected = new Set(selectedSubscribers);
+        if (newSelected.has(email)) {
+            newSelected.delete(email);
+        } else {
+            newSelected.add(email);
+        }
+        setSelectedSubscribers(newSelected);
+    };
+
+    const handleBulkRemove = async () => {
+        if (selectedSubscribers.size === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'No Selection',
+                description: 'Please select at least one subscriber to remove',
+            });
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to remove ${selectedSubscribers.size} subscriber(s)?`)) {
+            return;
+        }
+
+        setSubscriberLoading(true);
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const email of selectedSubscribers) {
+            try {
+                const result = await removeSubscriber(email);
+                if (result.success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            } catch {
+                failCount++;
+            }
+        }
+
+        setSubscriberLoading(false);
+        setSelectedSubscribers(new Set());
+        await loadSubscribers();
+
+        toast({
+            title: successCount > 0 ? 'Success' : 'Error',
+            description: `Removed ${successCount} subscriber(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+            variant: failCount > 0 ? 'destructive' : 'default',
+        });
     };
 
     const getStatusBadge = (status?: string) => {
@@ -302,10 +412,10 @@ export function NewsletterManagement() {
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
-                        onClick={() => setIsSubscriberDialogOpen(true)}
+                        onClick={handleOpenSubscriberDialog}
                     >
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        Manage Subscribers
+                        <Users className="w-4 h-4 mr-2" />
+                        Manage Subscribers ({subscribers.length})
                     </Button>
                     <Button onClick={handleCreate}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -319,13 +429,13 @@ export function NewsletterManagement() {
             </div>
 
             {loading ? (
-                <Card className="p-12">
+                <Card className="p-12 border-2 border-slate-200">
                     <div className="flex items-center justify-center">
                         <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     </div>
                 </Card>
             ) : campaigns.length === 0 ? (
-                <Card className="p-12">
+                <Card className="p-12 border-2 border-slate-200">
                     <div className="text-center">
                         <Mail className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <p className="text-muted-foreground">No newsletters found</p>
@@ -338,7 +448,7 @@ export function NewsletterManagement() {
             ) : (
                 <div className="grid gap-4">
                     {campaigns.map((campaign) => (
-                        <Card key={campaign.id} className="p-6">
+                        <Card key={campaign.id} className="p-6 border-2 border-slate-200">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
@@ -400,7 +510,7 @@ export function NewsletterManagement() {
                     }
                 }}
             >
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {editingCampaign ? 'Edit Newsletter' : 'Create New Newsletter'}
@@ -418,7 +528,7 @@ export function NewsletterManagement() {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 placeholder="Newsletter Name"
-                                className="mt-1"
+                                className="mt-1 border-2"
                             />
                         </div>
                         <div>
@@ -427,67 +537,27 @@ export function NewsletterManagement() {
                                 value={formData.subject}
                                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                                 placeholder="Email Subject Line"
-                                className="mt-1"
+                                className="mt-1 border-2"
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium">HTML Content</label>
+                            <label className="text-sm font-medium">Email Content *</label>
                             <Textarea
-                                value={formData.content.html}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        content: { ...formData.content, html: e.target.value },
-                                    })
-                                }
-                                placeholder="HTML content for the newsletter"
-                                className="mt-1 min-h-[200px] font-mono text-sm"
+                                value={formData.emailContent}
+                                onChange={(e) => setFormData({ ...formData, emailContent: e.target.value })}
+                                placeholder="Enter the email content. You can use HTML formatting."
+                                className="mt-1 min-h-[300px] font-mono text-sm border-2"
                             />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                You can use HTML tags for formatting (e.g., &lt;p&gt;, &lt;strong&gt;, &lt;a&gt;)
+                            </p>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium">Plain Text Content</label>
-                            <Textarea
-                                value={formData.content.plain}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        content: { ...formData.content, plain: e.target.value },
-                                    })
-                                }
-                                placeholder="Plain text content for the newsletter"
-                                className="mt-1 min-h-[150px]"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium">From Name</label>
-                                <Input
-                                    value={formData.from_name}
-                                    onChange={(e) => setFormData({ ...formData, from_name: e.target.value })}
-                                    placeholder="Sender Name"
-                                    className="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium">From Email</label>
-                                <Input
-                                    type="email"
-                                    value={formData.from_email}
-                                    onChange={(e) => setFormData({ ...formData, from_email: e.target.value })}
-                                    placeholder="sender@example.com"
-                                    className="mt-1"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Reply To</label>
-                            <Input
-                                type="email"
-                                value={formData.reply_to}
-                                onChange={(e) => setFormData({ ...formData, reply_to: e.target.value })}
-                                placeholder="reply@example.com"
-                                className="mt-1"
-                            />
+                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <p className="text-xs text-muted-foreground">
+                                <strong>From:</strong> {DEFAULT_FROM_NAME} &lt;{DEFAULT_FROM_EMAIL}&gt;
+                                <br />
+                                <strong>Reply To:</strong> {DEFAULT_REPLY_TO}
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>
@@ -498,6 +568,7 @@ export function NewsletterManagement() {
                                 setIsEditDialogOpen(false);
                                 setEditingCampaign(null);
                             }}
+                            className="border-2"
                         >
                             Cancel
                         </Button>
@@ -517,58 +588,150 @@ export function NewsletterManagement() {
 
             {/* Subscriber Management Dialog */}
             <Dialog open={isSubscriberDialogOpen} onOpenChange={setIsSubscriberDialogOpen}>
-                <DialogContent>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Manage Subscribers</DialogTitle>
                         <DialogDescription>
-                            Add or remove subscribers from the newsletter list
+                            View, add, and remove newsletter subscribers
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div className="flex gap-2">
-                            <Button
-                                variant={subscriberAction === 'add' ? 'default' : 'outline'}
-                                onClick={() => setSubscriberAction('add')}
-                                className="flex-1"
-                            >
-                                <UserPlus className="w-4 h-4 mr-2" />
-                                Add Subscriber
-                            </Button>
-                            <Button
-                                variant={subscriberAction === 'remove' ? 'default' : 'outline'}
-                                onClick={() => setSubscriberAction('remove')}
-                                className="flex-1"
-                            >
-                                <UserMinus className="w-4 h-4 mr-2" />
-                                Remove Subscriber
-                            </Button>
+                        {/* Add/Remove Single Subscriber */}
+                        <div className="border-b pb-4">
+                            <h3 className="text-sm font-semibold mb-3">Add or Remove Subscriber</h3>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant={subscriberAction === 'add' ? 'default' : 'outline'}
+                                    onClick={() => setSubscriberAction('add')}
+                                    className="flex-1"
+                                >
+                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    Add Subscriber
+                                </Button>
+                                <Button
+                                    variant={subscriberAction === 'remove' ? 'default' : 'outline'}
+                                    onClick={() => setSubscriberAction('remove')}
+                                    className="flex-1"
+                                >
+                                    <UserMinus className="w-4 h-4 mr-2" />
+                                    Remove Subscriber
+                                </Button>
+                            </div>
+                            <div className="mt-3 flex gap-2">
+                                <Input
+                                    type="email"
+                                    value={subscriberEmail}
+                                    onChange={(e) => setSubscriberEmail(e.target.value)}
+                                    placeholder="user@example.com"
+                                    className="flex-1 border-2"
+                                />
+                                <Button onClick={handleSubscriberAction} disabled={subscriberLoading}>
+                                    {subscriberLoading ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : subscriberAction === 'add' ? (
+                                        'Add'
+                                    ) : (
+                                        'Remove'
+                                    )}
+                                </Button>
+                            </div>
                         </div>
+
+                        {/* Subscriber List */}
                         <div>
-                            <label className="text-sm font-medium">Email Address</label>
-                            <Input
-                                type="email"
-                                value={subscriberEmail}
-                                onChange={(e) => setSubscriberEmail(e.target.value)}
-                                placeholder="user@example.com"
-                                className="mt-1"
-                            />
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-semibold">
+                                    All Subscribers ({subscribers.length})
+                                </h3>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={toggleSelectAll}
+                                        disabled={loadingSubscribers || subscribers.length === 0}
+                                    >
+                                        {selectedSubscribers.size === subscribers.length && subscribers.length > 0 ? (
+                                            <>
+                                                <CheckSquare className="w-4 h-4 mr-2" />
+                                                Deselect All
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Square className="w-4 h-4 mr-2" />
+                                                Select All
+                                            </>
+                                        )}
+                                    </Button>
+                                    {selectedSubscribers.size > 0 && (
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={handleBulkRemove}
+                                            disabled={subscriberLoading}
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Remove Selected ({selectedSubscribers.size})
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={loadSubscribers}
+                                        disabled={loadingSubscribers}
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${loadingSubscribers ? 'animate-spin' : ''}`} />
+                                    </Button>
+                                </div>
+                            </div>
+                            {loadingSubscribers ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                                </div>
+                            ) : subscribers.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                    <p>No subscribers found</p>
+                                </div>
+                            ) : (
+                                <div className="border rounded-lg border-slate-200 max-h-96 overflow-y-auto">
+                                    <div className="divide-y divide-slate-200">
+                                        {subscribers.map((subscriber) => (
+                                            <div
+                                                key={subscriber.id}
+                                                className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer"
+                                                onClick={() => toggleSubscriber(subscriber.email)}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedSubscribers.has(subscriber.email)}
+                                                    onChange={() => toggleSubscriber(subscriber.email)}
+                                                    className="w-4 h-4 cursor-pointer"
+                                                />
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium">{subscriber.email}</p>
+                                                    {subscriber.subscribed_at && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Subscribed: {formatDate(subscriber.subscribed_at)}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span className={`px-2 py-1 rounded text-xs ${
+                                                    subscriber.status === 'active' || subscriber.status === 'subscribed'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                    {subscriber.status}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsSubscriberDialogOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSubscriberAction} disabled={subscriberLoading}>
-                            {subscriberLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Processing...
-                                </>
-                            ) : subscriberAction === 'add' ? (
-                                'Add Subscriber'
-                            ) : (
-                                'Remove Subscriber'
-                            )}
+                        <Button variant="outline" onClick={() => setIsSubscriberDialogOpen(false)} className="border-2">
+                            Close
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -576,4 +739,3 @@ export function NewsletterManagement() {
         </div>
     );
 }
-
