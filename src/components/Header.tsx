@@ -119,7 +119,20 @@ export const Header = () => {
               <Button
                 variant="ghost"
                 className="px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-md"
-                onClick={() => go("/newsletters")}
+                onClick={() => {
+                  if (location.pathname === '/' || location.pathname === '/cef') {
+                    // If on home page, scroll to newsletter section
+                    const newsletterSection = document.getElementById('newsletters');
+                    if (newsletterSection) {
+                      newsletterSection.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      go("/#newsletters");
+                    }
+                  } else {
+                    // Otherwise navigate to dashboard newsletters
+                    go("/newsletters");
+                  }
+                }}
               >
                 <Mail className="w-4 h-4 mr-1.5" />
                 Newsletters
