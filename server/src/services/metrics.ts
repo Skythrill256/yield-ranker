@@ -315,22 +315,11 @@ export function calculateDividendVolatility(
     normalizedAnnualAmounts.push(normalizedAnnual);
   }
 
-  // 5. Exclude highest and lowest dividends from DVI calculation (per CEO request)
-  //    "TAKE OUT HIGH AND LOW DIVIDEND FROM CALCULATION OVER 1 YEAR PERIOD"
-  //    This removes outliers that could skew volatility calculations
-  //    Applies to all asset types (CEFs and ETFs) when using 1-year period
-  //    Only apply this if we have at least 3 data points (need at least 1 after removing high/low)
-  let finalNormalizedAmounts: number[];
-  if (normalizedAnnualAmounts.length >= 3) {
-    // Create a copy to avoid mutating the original, sort ascending
-    const sorted = [...normalizedAnnualAmounts].sort((a, b) => a - b);
-    // Remove the lowest (first) and highest (last) values
-    const filtered = sorted.slice(1, -1);
-    finalNormalizedAmounts = filtered;
-  } else {
-    // If less than 3 data points, use all (can't remove high/low)
-    finalNormalizedAmounts = normalizedAnnualAmounts;
-  }
+  // 5. Use all normalized annual amounts for DVI calculation
+  //    CRITICAL: Using normalized (annualized) amounts ensures frequency changes don't skew volatility
+  //    All dividends are normalized to annual equivalents before calculating SD and CV
+  //    This handles cases like monthly (4 payments) where excluding high/low would leave too few data points
+  const finalNormalizedAmounts = normalizedAnnualAmounts;
   
   // Store raw payment details for detailed output
   const rawPaymentDetails = recentSeries.map((d, i) => {
