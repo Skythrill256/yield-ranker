@@ -438,7 +438,7 @@ export const ETFTable = ({
                         navigate(`/etf/${etf.symbol}/dividends`);
                       }
                     }}
-                    className="tabular-nums text-xs text-primary font-bold hover:underline cursor-pointer transition-colors"
+                    className="tabular-nums text-sm text-primary font-bold hover:underline cursor-pointer transition-colors"
                     title="Click to view dividend history"
                   >
                     {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
@@ -460,7 +460,7 @@ export const ETFTable = ({
                       : 'N/A';
                   })()}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-xs">
+                <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-sm">
                   {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">

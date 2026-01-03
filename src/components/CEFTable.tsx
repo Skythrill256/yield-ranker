@@ -623,7 +623,7 @@ export const CEFTable = ({
                         navigate(`/cef/${cef.symbol}/dividends`);
                       }
                     }}
-                    className="tabular-nums text-xs text-primary font-bold hover:underline cursor-pointer transition-colors"
+                    className="tabular-nums text-sm text-primary font-bold hover:underline cursor-pointer transition-colors"
                     title="Click to view dividend history"
                   >
                     {cef.lastDividend != null
@@ -639,7 +639,7 @@ export const CEFTable = ({
                     ? formatCurrency(cef.yearlyDividend)
                     : "N/A"}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-xs">
+                <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-sm">
                   {cef.forwardYield != null
                     ? `${cef.forwardYield.toFixed(1)}%`
                     : "N/A"}
