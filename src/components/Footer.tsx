@@ -21,14 +21,6 @@ export const Footer = () => {
               <p className="text-sm text-muted-foreground">
                 Get the latest ETF insights and market updates delivered to your inbox.
               </p>
-              {isPremium && (
-                <Link to="/newsletters">
-                  <Button variant="link" className="p-0 h-auto text-primary hover:underline text-sm mt-2">
-                    <Mail className="w-4 h-4 mr-1 inline" />
-                    View Newsletter Archive
-                  </Button>
-                </Link>
-              )}
             </div>
             <NewsletterSubscribe />
           </div>

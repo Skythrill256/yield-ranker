@@ -13,9 +13,7 @@ import { Label } from "@/components/ui/label";
 import { RotateCcw, X, Star, Lock, Sliders, Plus, Clock } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Footer } from "@/components/Footer";
-import { NewsletterSubscribe } from "@/components/NewsletterSubscribe";
 import { useAuth } from "@/contexts/AuthContext";
-import { Mail } from "lucide-react";
 import { UpgradeToPremiumModal } from "@/components/UpgradeToPremiumModal";
 import { useFavorites } from "@/hooks/useFavorites";
 import { supabase } from "@/lib/supabase";
@@ -832,48 +830,6 @@ const Index = () => {
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
       />
-
-      {/* Newsletter Section */}
-      <section id="newsletters" className="w-full bg-gradient-to-br from-slate-50 to-white border-t border-slate-200 py-16 md:py-24">
-        <div className="container max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Stay Updated with Our Newsletter
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Get the latest ETF insights, market updates, and investment strategies delivered directly to your inbox.
-            </p>
-          </div>
-          
-          <div className="max-w-2xl mx-auto">
-            <Card className="p-8 border-2 border-slate-200 bg-white shadow-lg">
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h3 className="text-xl font-semibold text-foreground mb-2">
-                    Subscribe to Our Newsletter
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Join our community of investors and stay informed about the latest market trends and opportunities.
-                  </p>
-                </div>
-                <NewsletterSubscribe />
-                {isPremium && (
-                  <div className="pt-4 border-t border-slate-200 text-center">
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate('/newsletters')}
-                      className="border-2"
-                    >
-                      <Mail className="w-4 h-4 mr-2" />
-                      View Newsletter Archive
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
 
       <Footer />
     </div>
