@@ -351,7 +351,7 @@ export const CEFTable = ({
                   onSort={handleSort}
                 >
                   <div className="whitespace-normal leading-tight">
-                    F<br />
+                    <span className="font-bold">F</span><br />
                     <span className="font-bold">Yield</span>
                   </div>
                 </SortButton>
