@@ -18,15 +18,14 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../../yield-ranker/server/.env') });
 dotenv.config(); // Try default location
 
-// Also try to load via config (which may have already loaded it)
-try {
-    // Import config to ensure .env is loaded (it may already be loaded)
-    await import('../src/config/index.js');
-} catch (error) {
-    // Config import may fail, but that's okay - we've already tried loading .env
-}
-
 async function verifyMailerLite() {
+    // Also try to load via config (which may have already loaded it)
+    try {
+        // Import config to ensure .env is loaded (it may already be loaded)
+        await import('../src/config/index.js');
+    } catch (error) {
+        // Config import may fail, but that's okay - we've already tried loading .env
+    }
     console.log('============================================');
     console.log('Verifying MailerLite Connection');
     console.log('============================================\n');
