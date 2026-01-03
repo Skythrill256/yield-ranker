@@ -12,25 +12,18 @@ import { existsSync } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Try multiple .env file paths
-const envPaths = [
-    path.resolve(__dirname, '../../.env'),  // Root .env
-    path.resolve(__dirname, '../.env'),     // Server .env
-    path.resolve(process.cwd(), '.env'),    // Current directory .env
-];
+// Load environment variables - matching config/index.ts pattern exactly
+// Try multiple paths, but don't override if already loaded
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../yield-ranker/server/.env') });
+dotenv.config(); // Try default location
 
-let envFileFound = false;
-for (const envPath of envPaths) {
-    if (existsSync(envPath)) {
-        dotenv.config({ path: envPath });
-        envFileFound = true;
-        break;
-    }
-}
-
-// Also try default location
-if (!process.env.MAILERLITE_API_KEY) {
-    dotenv.config();
+// Also try to load via config (which may have already loaded it)
+try {
+    // Import config to ensure .env is loaded (it may already be loaded)
+    await import('../src/config/index.js');
+} catch (error) {
+    // Config import may fail, but that's okay - we've already tried loading .env
 }
 
 async function verifyMailerLite() {
@@ -38,21 +31,47 @@ async function verifyMailerLite() {
     console.log('Verifying MailerLite Connection');
     console.log('============================================\n');
 
-    if (!envFileFound) {
-        console.log('⚠️  .env file not found in common locations:');
-        envPaths.forEach(p => console.log(`   - ${p}`));
-        console.log('\n   Trying to load from environment anyway...\n');
+    // Check which .env files exist
+    const envPaths = [
+        path.resolve(__dirname, '../../.env'),
+        path.resolve(__dirname, '../../../yield-ranker/server/.env'),
+        path.resolve(process.cwd(), '.env'),
+    ];
+    
+    const existingEnvFiles = envPaths.filter(p => existsSync(p));
+    if (existingEnvFiles.length > 0) {
+        console.log('✅ Found .env file(s):');
+        existingEnvFiles.forEach(p => console.log(`   - ${p}`));
+        console.log('');
+    } else {
+        console.log('⚠️  No .env file found in common locations\n');
     }
 
-    const apiKey = process.env.MAILERLITE_API_KEY;
+    // Check for the API key with different possible names
+    const apiKey = process.env.MAILERLITE_API_KEY || 
+                   process.env.MAILERLITE_APIKEY || 
+                   process.env.MAILERLITE_KEY ||
+                   process.env.MAILER_API_KEY;
+    
     if (!apiKey) {
         console.log('❌ MAILERLITE_API_KEY not found in environment variables');
+        console.log('\n   Checked for:');
+        console.log('   - MAILERLITE_API_KEY');
+        console.log('   - MAILERLITE_APIKEY');
+        console.log('   - MAILERLITE_KEY');
+        console.log('   - MAILER_API_KEY');
         console.log('\n   To fix this:');
         console.log('   1. Create or edit .env file in the project root');
         console.log('   2. Add: MAILERLITE_API_KEY=your_api_key_here');
         console.log('   3. Get your API key from: MailerLite Dashboard → Integrations → API');
         console.log('\n   Example .env file location:');
-        console.log(`   ${path.resolve(__dirname, '../../.env')}\n`);
+        console.log(`   ${path.resolve(__dirname, '../../.env')}`);
+        console.log(`   ${path.resolve(__dirname, '../.env')}`);
+        console.log('\n   All environment variables containing "MAILER":');
+        Object.keys(process.env)
+            .filter(key => key.toUpperCase().includes('MAILER'))
+            .forEach(key => console.log(`   - ${key}`));
+        console.log('');
         return;
     }
 
@@ -61,7 +80,8 @@ async function verifyMailerLite() {
     try {
         // Dynamic import to handle missing package gracefully
         // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const MailerLite = require('@mailerlite/mailerlite-nodejs');
+        const MailerLiteModule = await import('@mailerlite/mailerlite-nodejs');
+        const MailerLite = MailerLiteModule.default || MailerLiteModule;
         
         console.log('✅ MailerLite SDK loaded\n');
         console.log('Available SDK methods:');
