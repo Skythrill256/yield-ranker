@@ -57,11 +57,9 @@ import {
   getPriceHistory,
   batchUpdateETFMetricsPreservingCEFFields,
   getDividendHistory,
-  getLatestPriceDate,
-  getLatestDividendDate,
 } from "../src/services/database.js";
 import { formatDate } from "../src/utils/index.js";
-import { fetchPriceHistory, fetchDividendHistory } from "../src/services/tiingo.js";
+import { fetchPriceHistory } from "../src/services/tiingo.js";
 import type { TiingoPriceData } from "../src/types/index.js";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
@@ -72,8 +70,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // 15 years lookback for CEF metrics
 const LOOKBACK_DAYS = 5475; // 15 years = 15 * 365 = 5475 days
-// Extended dividend lookback to ensure split adjustments work correctly
-const DIVIDEND_LOOKBACK_DAYS = 5475; // 15 years for complete dividend history with splits
 
 function getDateDaysAgo(days: number): string {
   const date = new Date();
@@ -98,11 +94,20 @@ async function upsertPrices(
     // Try to insert a minimal record for NAV symbols
     const { error: insertError } = await supabase.from("etf_static").insert({
       ticker: ticker.toUpperCase(),
-      name: `NAV Symbol: ${ticker}`,
+      issuer: null,
       description: `Auto-created for NAV price data`,
-    });
+      pay_day_text: null,
+      payments_per_year: null,
+      ipo_price: null,
+      default_rank_weights: {},
+      // category is optional in most deployments; include if present
+      category: null,
+    } as any);
 
     if (insertError) {
+      console.error(
+        `    Error inserting missing etf_static record for ${ticker}: ${insertError.message}`
+      );
       return 0;
     } else {
     }
@@ -132,6 +137,70 @@ async function upsertPrices(
   }
 
   return records.length;
+}
+
+/**
+ * Extract dividend records from Tiingo price history response.
+ * This avoids a second Tiingo call because divCash and splitFactor are included in `/prices`.
+ */
+function extractDividendsFromPriceData(
+  prices: TiingoPriceData[]
+): Array<{
+  date: string;
+  dividend: number;
+  adjDividend: number;
+  scaledDividend: number;
+  recordDate: string | null;
+  paymentDate: string | null;
+  declarationDate: string | null;
+}> {
+  if (!prices || prices.length === 0) return [];
+
+  // Extract split events (chronological)
+  const splitEvents = prices
+    .filter((p) => p.splitFactor && p.splitFactor !== 1.0)
+    .map((p) => {
+      const dateStr = p.date.includes("T") ? p.date.split("T")[0] : p.date;
+      return { date: new Date(dateStr + "T00:00:00Z"), splitFactor: p.splitFactor };
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const dividends = prices
+    .filter((p) => p.divCash && p.divCash > 0)
+    .map((p) => {
+      const divCash = p.divCash || 0;
+      let exDateStr = p.date.includes("T") ? p.date.split("T")[0] : p.date;
+      const exDate = new Date(exDateStr + "T00:00:00Z");
+
+      // Splits AFTER this dividend date affect historical dividend amounts
+      const applicableSplits = splitEvents.filter((s) => s.date > exDate);
+      const cumulativeSplitFactor = applicableSplits.reduce(
+        (factor, s) => factor * s.splitFactor,
+        1.0
+      );
+
+      const adjDividend =
+        cumulativeSplitFactor > 0 ? divCash / cumulativeSplitFactor : divCash;
+
+      const close = p.close || 0;
+      const adjClose = p.adjClose || 0;
+      const scaledDividend =
+        close > 0 && adjClose > 0 ? divCash * (adjClose / close) : adjDividend;
+
+      return {
+        date: exDateStr,
+        dividend: divCash,
+        adjDividend,
+        scaledDividend,
+        recordDate: null,
+        paymentDate: null,
+        declarationDate: null,
+      };
+    });
+
+  // Ensure ascending for downstream logic (optional)
+  dividends.sort((a, b) => a.date.localeCompare(b.date));
+  return dividends;
 }
 
 /**
@@ -526,12 +595,20 @@ async function refreshCEF(ticker: string): Promise<void> {
     // Since rate limiting is fixed, we can fetch all data fresh every time
     const priceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
     const navPriceStartDate = getDateDaysAgo(LOOKBACK_DAYS);
-    const dividendStartDate = getDateDaysAgo(DIVIDEND_LOOKBACK_DAYS);
 
-    // PARALLELIZE all data fetching for maximum speed
+    // Fetch market + NAV prices from Tiingo.
+    // IMPORTANT: We do NOT make a separate Tiingo call for dividends.
+    // Dividends (divCash) and splits (splitFactor) are included in the price response,
+    // so we derive dividends from market price history and upsert them from that.
     const fetchPromises: Array<Promise<any>> = [
       fetchPriceHistory(ticker, priceStartDate)
-        .then(prices => upsertPrices(ticker, prices))
+        .then(async (prices) => {
+          const saved = await upsertPrices(ticker, prices);
+          // Derive and upsert dividends from the same price response
+          const derivedDividends = extractDividendsFromPriceData(prices);
+          await upsertDividends(ticker, derivedDividends);
+          return saved;
+        })
         .then(() => ({ type: 'market', ticker }))
         .catch(() => ({ type: 'market', ticker, error: true }))
     ];
@@ -544,13 +621,6 @@ async function refreshCEF(ticker: string): Promise<void> {
           .catch(() => ({ type: 'nav', ticker: navSymbolForCalc, error: true }))
       );
     }
-
-    fetchPromises.push(
-      fetchDividendHistory(ticker, dividendStartDate)
-        .then(dividends => upsertDividends(ticker, dividends))
-        .then(() => ({ type: 'dividends', ticker }))
-        .catch(() => ({ type: 'dividends', ticker, error: true }))
-    );
 
     // Wait for all data to be fetched and saved
     const fetchResults = await Promise.allSettled(fetchPromises);
