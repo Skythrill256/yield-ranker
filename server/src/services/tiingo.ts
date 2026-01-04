@@ -82,48 +82,6 @@ const state: RateLimitState = {
 let rateLimitMutex: Promise<void> = Promise.resolve();
 
 // ============================================================================
-// Rate Limiting
-// ============================================================================
-
-async function waitForRateLimit(): Promise<void> {
-    // Queue requests to prevent race conditions - ensure atomic check and increment
-    await new Promise<void>((resolve) => {
-        rateLimitMutex = rateLimitMutex.then(async () => {
-            const now = Date.now();
-            const { rateLimit } = config.tiingo;
-
-            // Reset hourly counter if hour has passed
-            if (now - state.hourStartTime > 3600000) {
-                state.hourlyRequestCount = 0;
-                state.hourStartTime = now;
-            }
-
-            // Check if we've hit hourly limit BEFORE incrementing
-            if (state.hourlyRequestCount >= rateLimit.requestsPerHour) {
-                const waitTime = 3600000 - (now - state.hourStartTime);
-                logger.warn('Tiingo', `Hourly rate limit reached. Waiting ${Math.ceil(waitTime / 1000 / 60)} minutes`);
-                await sleep(waitTime);
-                state.hourlyRequestCount = 0;
-                state.hourStartTime = Date.now();
-            }
-
-            // Ensure minimum delay between requests
-            const timeSinceLastRequest = now - state.lastRequestTime;
-            if (timeSinceLastRequest < rateLimit.minDelayMs) {
-                await sleep(rateLimit.minDelayMs - timeSinceLastRequest);
-            }
-
-            // Increment counters atomically - this must happen before the request is made
-            state.lastRequestTime = Date.now();
-            state.requestCount++;
-            state.hourlyRequestCount++;
-            
-            resolve();
-        });
-    });
-}
-
-// ============================================================================
 // API Request Handler
 // ============================================================================
 
@@ -131,80 +89,168 @@ async function tiingoRequest<T>(
     endpoint: string,
     params: Record<string, string> = {}
 ): Promise<T> {
-    await waitForRateLimit();
+    // Serialize entire request through mutex to prevent parallel API calls
+    return new Promise<T>((resolve, reject) => {
+        rateLimitMutex = rateLimitMutex.then(async () => {
+            try {
+                const now = Date.now();
+                const { rateLimit } = config.tiingo;
 
-    const url = new URL(`${config.tiingo.baseUrl}${endpoint}`);
-    // Add API token
-    url.searchParams.append('token', config.tiingo.apiKey);
-    // Add other params
-    Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
+                // Reset hourly counter if hour has passed
+                if (now - state.hourStartTime > 3600000) {
+                    state.hourlyRequestCount = 0;
+                    state.hourStartTime = now;
+                }
+
+                // Check if we've hit hourly limit BEFORE making request
+                if (state.hourlyRequestCount >= rateLimit.requestsPerHour) {
+                    const waitTime = 3600000 - (now - state.hourStartTime);
+                    logger.warn('Tiingo', `Hourly rate limit reached. Waiting ${Math.ceil(waitTime / 1000 / 60)} minutes`);
+                    await sleep(waitTime);
+                    state.hourlyRequestCount = 0;
+                    state.hourStartTime = Date.now();
+                }
+
+                // Ensure minimum delay between requests
+                const timeSinceLastRequest = now - state.lastRequestTime;
+                if (timeSinceLastRequest < rateLimit.minDelayMs) {
+                    await sleep(rateLimit.minDelayMs - timeSinceLastRequest);
+                }
+
+                // Increment counters BEFORE making request
+                state.lastRequestTime = Date.now();
+                state.requestCount++;
+                state.hourlyRequestCount++;
+
+                // Now make the actual API request
+                const url = new URL(`${config.tiingo.baseUrl}${endpoint}`);
+                url.searchParams.append('token', config.tiingo.apiKey);
+                Object.entries(params).forEach(([key, value]) => {
+                    url.searchParams.append(key, value);
+                });
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (response.status === 429) {
+                    const retryAfter = parseInt(response.headers.get('Retry-After') ?? '60', 10);
+                    logger.warn('Tiingo', `Rate limited. Retrying after ${retryAfter}s`);
+                    await sleep(retryAfter * 1000);
+                    // Decrement counter since this request failed
+                    state.hourlyRequestCount--;
+                    // Retry through mutex
+                    const result = await tiingoRequest<T>(endpoint, params);
+                    resolve(result);
+                    return;
+                }
+
+                if (response.status === 404) {
+                    logger.debug('Tiingo', `Ticker not found: ${endpoint}`);
+                    resolve([] as T);
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    reject(new Error(`Tiingo API error ${response.status}: ${errorText}`));
+                    return;
+                }
+
+                const data = await response.json() as T;
+                resolve(data);
+            } catch (error) {
+                reject(error);
+            }
+        });
     });
-
-    const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') ?? '60', 10);
-        logger.warn('Tiingo', `Rate limited. Retrying after ${retryAfter}s`);
-        await sleep(retryAfter * 1000);
-        return tiingoRequest<T>(endpoint, params);
-    }
-
-    if (response.status === 404) {
-        logger.debug('Tiingo', `Ticker not found: ${endpoint}`);
-        return [] as T;
-    }
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Tiingo API error ${response.status}: ${errorText}`);
-    }
-
-    return response.json() as Promise<T>;
 }
 
 async function tiingoIEXRequest<T>(
     endpoint: string,
     params: Record<string, string> = {}
 ): Promise<T> {
-    await waitForRateLimit();
+    // Serialize entire request through mutex to prevent parallel API calls
+    return new Promise<T>((resolve, reject) => {
+        rateLimitMutex = rateLimitMutex.then(async () => {
+            try {
+                const now = Date.now();
+                const { rateLimit } = config.tiingo;
 
-    const url = new URL(`${config.tiingo.iexBaseUrl}${endpoint}`);
-    url.searchParams.append('token', config.tiingo.apiKey);
-    Object.entries(params).forEach(([key, value]) => {
-        url.searchParams.append(key, value);
+                // Reset hourly counter if hour has passed
+                if (now - state.hourStartTime > 3600000) {
+                    state.hourlyRequestCount = 0;
+                    state.hourStartTime = now;
+                }
+
+                // Check if we've hit hourly limit BEFORE making request
+                if (state.hourlyRequestCount >= rateLimit.requestsPerHour) {
+                    const waitTime = 3600000 - (now - state.hourStartTime);
+                    logger.warn('Tiingo', `Hourly rate limit reached. Waiting ${Math.ceil(waitTime / 1000 / 60)} minutes`);
+                    await sleep(waitTime);
+                    state.hourlyRequestCount = 0;
+                    state.hourStartTime = Date.now();
+                }
+
+                // Ensure minimum delay between requests
+                const timeSinceLastRequest = now - state.lastRequestTime;
+                if (timeSinceLastRequest < rateLimit.minDelayMs) {
+                    await sleep(rateLimit.minDelayMs - timeSinceLastRequest);
+                }
+
+                // Increment counters BEFORE making request
+                state.lastRequestTime = Date.now();
+                state.requestCount++;
+                state.hourlyRequestCount++;
+
+                // Now make the actual API request
+                const url = new URL(`${config.tiingo.iexBaseUrl}${endpoint}`);
+                url.searchParams.append('token', config.tiingo.apiKey);
+                Object.entries(params).forEach(([key, value]) => {
+                    url.searchParams.append(key, value);
+                });
+
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (response.status === 429) {
+                    const retryAfter = parseInt(response.headers.get('Retry-After') ?? '60', 10);
+                    logger.warn('Tiingo', `IEX rate limited. Retrying after ${retryAfter}s`);
+                    await sleep(retryAfter * 1000);
+                    // Decrement counter since this request failed
+                    state.hourlyRequestCount--;
+                    // Retry through mutex
+                    const result = await tiingoIEXRequest<T>(endpoint, params);
+                    resolve(result);
+                    return;
+                }
+
+                if (response.status === 404) {
+                    logger.debug('Tiingo', `IEX ticker not found: ${endpoint}`);
+                    resolve([] as T);
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    reject(new Error(`Tiingo IEX API error ${response.status}: ${errorText}`));
+                    return;
+                }
+
+                const data = await response.json() as T;
+                resolve(data);
+            } catch (error) {
+                reject(error);
+            }
+        });
     });
-
-    const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('Retry-After') ?? '60', 10);
-        logger.warn('Tiingo', `IEX rate limited. Retrying after ${retryAfter}s`);
-        await sleep(retryAfter * 1000);
-        return tiingoIEXRequest<T>(endpoint, params);
-    }
-
-    if (response.status === 404) {
-        logger.debug('Tiingo', `IEX ticker not found: ${endpoint}`);
-        return [] as T;
-    }
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Tiingo IEX API error ${response.status}: ${errorText}`);
-    }
-
-    return response.json() as Promise<T>;
 }
 
 // ============================================================================
