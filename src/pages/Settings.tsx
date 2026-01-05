@@ -288,6 +288,17 @@ export default function Settings() {
                 <BookOpen className="w-5 h-5" />
                 {!sidebarCollapsed && "Notebook"}
               </button>
+              <button
+                onClick={() => navigate("/admin/newsletters")}
+                className={`w-full flex items-center ${sidebarCollapsed
+                  ? "justify-center px-0 py-2.5"
+                  : "gap-3 px-4 py-3"
+                  } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
+                title={sidebarCollapsed ? "Newsletters" : ""}
+              >
+                <Mail className="w-5 h-5" />
+                {!sidebarCollapsed && "Newsletters"}
+              </button>
             </>
           )}
           <button
@@ -328,10 +339,10 @@ export default function Settings() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden h-10 w-10"
+                className="lg:hidden h-12 w-12"
                 onClick={() => setMobileSidebarOpen(true)}
               >
-                <Menu className="h-6 w-6" />
+                <Menu className="h-7 w-7" />
               </Button>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 Settings

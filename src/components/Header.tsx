@@ -198,13 +198,13 @@ export const Header = () => {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden h-10 w-10 hover:bg-slate-100 transition-colors text-foreground rounded-lg"
+            className="md:hidden h-12 w-12 hover:bg-slate-100 transition-colors text-foreground rounded-lg"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
-              <X className="h-6 w-6 text-foreground" />
+              <X className="h-7 w-7 text-foreground" />
             ) : (
-              <Menu className="h-6 w-6 text-foreground" />
+              <Menu className="h-7 w-7 text-foreground" />
             )}
           </Button>
         </div>

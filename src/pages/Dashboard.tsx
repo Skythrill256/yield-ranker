@@ -1670,10 +1670,10 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden h-10 w-10"
+                  className="lg:hidden h-12 w-12"
                   onClick={() => setMobileSidebarOpen(true)}
                 >
-                  <Menu className="h-6 w-6" />
+                  <Menu className="h-7 w-7" />
                 </Button>
                 <Button
                   variant="ghost"
@@ -2889,10 +2889,10 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="lg:hidden h-10 w-10"
+                  className="lg:hidden h-12 w-12"
                   onClick={() => setMobileSidebarOpen(true)}
                 >
-                  <Menu className="h-6 w-6" />
+                  <Menu className="h-7 w-7" />
                 </Button>
                 <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                   Dashboard

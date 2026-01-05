@@ -201,32 +201,32 @@ export default function Newsletters() {
                     </div>
                 </aside>
                 <main className="flex-1 flex flex-col overflow-hidden">
-                    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
-                        <div className="flex items-center justify-between w-full gap-4">
-                            <div className="flex items-center gap-3">
+                    <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-4 md:px-6 lg:px-8 flex items-center flex-shrink-0">
+                        <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
+                            <div className="flex items-center gap-2 sm:gap-3">
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="lg:hidden h-10 w-10"
+                                    className="lg:hidden h-12 w-12"
                                     onClick={() => setMobileSidebarOpen(true)}
                                 >
-                                    <Menu className="h-6 w-6" />
+                                    <Menu className="h-7 w-7" />
                                 </Button>
-                                <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+                                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                                     Newsletter Archive
                                 </h1>
                             </div>
                         </div>
                     </header>
                     <div className="flex-1 overflow-y-auto">
-                        <div className="p-4 sm:p-6 lg:p-8">
-                            <Card className="p-12 text-center border-2 border-slate-200">
-                                <Lock className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                                <h1 className="text-2xl font-bold mb-2">Premium Access Required</h1>
-                                <p className="text-muted-foreground mb-6">
+                        <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+                            <Card className="p-6 sm:p-8 md:p-10 lg:p-12 text-center border-2 border-slate-200">
+                                <Lock className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Premium Access Required</h1>
+                                <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 px-4">
                                     You need a premium account to view newsletter archives.
                                 </p>
-                                <Button onClick={() => navigate('/dashboard')}>
+                                <Button onClick={() => navigate('/dashboard')} className="text-sm sm:text-base">
                                     Go to Dashboard
                                 </Button>
                             </Card>
@@ -386,90 +386,96 @@ export default function Newsletters() {
                 </div>
             </aside>
             <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
-                    <div className="flex items-center justify-between w-full gap-4">
-                        <div className="flex items-center gap-3">
+                <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-4 md:px-6 lg:px-8 flex items-center flex-shrink-0">
+                    <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="lg:hidden h-10 w-10"
+                                className="lg:hidden h-12 w-12"
                                 onClick={() => setMobileSidebarOpen(true)}
                             >
-                                <Menu className="h-6 w-6" />
+                                <Menu className="h-7 w-7" />
                             </Button>
-                            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+                            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
                                 Newsletter Archive
                             </h1>
                         </div>
                     </div>
                 </header>
                 <div className="flex-1 overflow-y-auto">
-                    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+                    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
                         {loading ? (
-                            <Card className="p-12 border-2 border-slate-200">
+                            <Card className="p-6 sm:p-8 md:p-12 border-2 border-slate-200">
                                 <div className="flex items-center justify-center">
-                                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                    <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
                                 </div>
                             </Card>
                         ) : selectedCampaign ? (
-                            <div className="space-y-4">
+                            <div className="space-y-3 sm:space-y-4">
                                 <Button
                                     variant="outline"
                                     onClick={() => setSelectedCampaign(null)}
-                                    className="border-2"
+                                    className="border-2 text-sm sm:text-base"
                                 >
                                     <ArrowLeft className="w-4 h-4 mr-2" />
-                                    Back to Archive
+                                    <span className="hidden sm:inline">Back to Archive</span>
+                                    <span className="sm:hidden">Back</span>
                                 </Button>
-                                <Card className="p-6 border-2 border-slate-200">
-                                    <div className="mb-4">
-                                        <h2 className="text-2xl font-bold mb-2">{selectedCampaign.name}</h2>
-                                        <p className="text-sm text-muted-foreground">
+                                <Card className="p-4 sm:p-5 md:p-6 lg:p-8 border-2 border-slate-200">
+                                    <div className="mb-3 sm:mb-4">
+                                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 break-words">{selectedCampaign.name}</h2>
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
                                             Sent: {formatDate(selectedCampaign.sent_at)}
                                         </p>
                                     </div>
                                     {selectedCampaign.content?.html ? (
                                         <div
-                                            className="prose max-w-none"
+                                            className="prose prose-sm sm:prose-base md:prose-lg max-w-none 
+                                                prose-headings:break-words prose-p:break-words 
+                                                prose-a:text-primary prose-a:break-all
+                                                prose-img:max-w-full prose-img:h-auto
+                                                prose-table:w-full prose-table:overflow-x-auto
+                                                [&_table]:block [&_table]:overflow-x-auto [&_table]:whitespace-nowrap"
                                             dangerouslySetInnerHTML={{ __html: selectedCampaign.content.html }}
                                         />
                                     ) : selectedCampaign.content?.plain ? (
-                                        <div className="whitespace-pre-wrap text-sm">
+                                        <div className="whitespace-pre-wrap text-xs sm:text-sm md:text-base break-words overflow-x-auto">
                                             {selectedCampaign.content.plain}
                                         </div>
                                     ) : (
-                                        <p className="text-muted-foreground">No content available</p>
+                                        <p className="text-sm sm:text-base text-muted-foreground">No content available</p>
                                     )}
                                 </Card>
                             </div>
                         ) : campaigns.length === 0 ? (
-                            <Card className="p-12 border-2 border-slate-200">
+                            <Card className="p-6 sm:p-8 md:p-12 border-2 border-slate-200">
                                 <div className="text-center">
-                                    <Mail className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                                    <p className="text-muted-foreground">No newsletters available yet</p>
+                                    <Mail className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                                    <p className="text-sm sm:text-base text-muted-foreground">No newsletters available yet</p>
                                 </div>
                             </Card>
                         ) : (
-                            <div className="space-y-4">
-                                <div className="mb-4">
-                                    <h2 className="text-lg font-semibold text-foreground">
+                            <div className="space-y-3 sm:space-y-4">
+                                <div className="mb-3 sm:mb-4">
+                                    <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
                                         Past Newsletters
                                     </h2>
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                                         Browse and read past newsletter issues
                                     </p>
                                 </div>
-                                <div className="grid gap-4">
+                                <div className="grid gap-3 sm:gap-4 md:gap-5">
                                     {campaigns.map((campaign) => (
                                         <Card
                                             key={campaign.id}
-                                            className="p-6 border-2 border-slate-200 hover:shadow-md transition-shadow cursor-pointer"
+                                            className="p-4 sm:p-5 md:p-6 border-2 border-slate-200 hover:shadow-md transition-shadow cursor-pointer"
                                             onClick={() => handleViewCampaign(campaign)}
                                         >
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <h3 className="text-lg font-semibold mb-2">{campaign.name}</h3>
-                                                    <p className="text-sm text-muted-foreground mb-2">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-1 sm:mb-2 break-words">{campaign.name}</h3>
+                                                    <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2 break-words">
                                                         {campaign.subject}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
@@ -477,7 +483,7 @@ export default function Newsletters() {
                                                     </p>
                                                 </div>
                                                 {loadingCampaign && selectedCampaign?.id === campaign.id && (
-                                                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-primary flex-shrink-0 mt-1" />
                                                 )}
                                             </div>
                                         </Card>
