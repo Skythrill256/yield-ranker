@@ -1,5 +1,8 @@
 import dotenv from 'dotenv';
-import MailerLite from '@mailerlite/mailerlite-nodejs';
+import MailerLiteSDK from '@mailerlite/mailerlite-nodejs';
+
+// Handle CJS/ESM interop
+const MailerLite = (MailerLiteSDK as any).default || MailerLiteSDK;
 
 dotenv.config();
 
@@ -10,6 +13,7 @@ if (!apiKey) {
   process.exit(1);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 const mailerlite = new MailerLite({
   api_key: apiKey
 });

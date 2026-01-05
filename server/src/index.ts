@@ -142,11 +142,12 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.use('/api/tiingo', tiingoRoutes);
 app.use('/api/etfs', etfRoutes);
 app.use('/api/cefs', cefRoutes);
+app.use('/api/admin/newsletters', adminNewsletterRoutes);  // MUST be before /api/admin
 app.use('/api/admin', etfRoutes); // legacy
 app.use('/api/user', userRoutes);
 app.use('/api/newsletter', newsletterRoutes);
-app.use('/api/admin/newsletters', adminNewsletterRoutes);
 app.use('/api', contactRoutes);
+
 
 // ============================================================================
 // 404 Handler

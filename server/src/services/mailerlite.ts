@@ -5,6 +5,11 @@
  */
 
 import { logger } from '../utils/index.js';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import MailerLiteSDK from '@mailerlite/mailerlite-nodejs';
+
+// Handle CJS/ESM interop - the module exports a class as default
+const MailerLite = (MailerLiteSDK as any).default || MailerLiteSDK;
 
 // ============================================================================
 // Types
@@ -59,7 +64,7 @@ export interface UnsubscribeResult {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let client: any = null;
 
-function getClient(): typeof client {
+function getClient(): any {
     if (client) return client;
 
     const apiKey = process.env.MAILERLITE_API_KEY;
@@ -69,12 +74,10 @@ function getClient(): typeof client {
     }
 
     try {
-        // Dynamic import to handle missing package gracefully
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const MailerLite = require('@mailerlite/mailerlite-nodejs');
-        // The SDK exports a class that should be instantiated with 'new'
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
+        // Initialize MailerLite client with the API key
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         client = new MailerLite({ api_key: apiKey });
+        logger.info('MailerLite', 'Client initialized successfully');
         return client;
     } catch (error) {
         logger.warn('MailerLite', `Failed to initialize MailerLite client: ${(error as Error).message}`);
@@ -193,7 +196,7 @@ export async function listSubscribers(limit: number = 1000, offset: number = 0):
 
     try {
         const response = await mailerlite.subscribers.get({ limit, offset });
-        
+
         const subscribers: Subscriber[] = (response.data?.data || []).map((sub: any) => ({
             id: sub.id || '',
             email: sub.email || '',

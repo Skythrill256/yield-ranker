@@ -162,35 +162,6 @@ router.get('/', verifyToken, requireAdmin, async (req: Request, res: Response): 
 });
 
 /**
- * GET /admin/newsletters/:id - Get a single campaign
- */
-router.get('/:id', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-
-        const result = await getCampaign(id);
-
-        if (result.success && result.campaign) {
-            res.json({
-                success: true,
-                campaign: result.campaign,
-            });
-        } else {
-            res.status(404).json({
-                success: false,
-                message: result.message || 'Campaign not found',
-            });
-        }
-    } catch (error) {
-        logger.error('Admin Newsletters', `Error getting campaign: ${(error as Error).message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-        });
-    }
-});
-
-/**
  * POST /admin/newsletters - Create a new campaign/newsletter
  */
 router.post('/', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
@@ -231,6 +202,140 @@ router.post('/', verifyToken, requireAdmin, async (req: Request, res: Response):
         }
     } catch (error) {
         logger.error('Admin Newsletters', `Error creating campaign: ${(error as Error).message}`);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+
+/**
+ * POST /admin/newsletters/subscribers - Add a subscriber (admin only)
+ */
+router.post('/subscribers', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email } = req.body;
+
+        if (!email || typeof email !== 'string') {
+            res.status(400).json({
+                success: false,
+                message: 'Email is required',
+            });
+            return;
+        }
+
+        const result = await addSubscriber(email.trim());
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: result.message,
+                subscriberId: result.subscriberId,
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: result.message,
+            });
+        }
+    } catch (error) {
+        logger.error('Admin Newsletters', `Error adding subscriber: ${(error as Error).message}`);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+
+/**
+ * GET /admin/newsletters/subscribers - List all subscribers (admin only)
+ */
+router.get('/subscribers', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const limit = parseInt(req.query.limit as string) || 1000;
+        const offset = parseInt(req.query.offset as string) || 0;
+
+        const result = await listSubscribers(limit, offset);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                subscribers: result.subscribers || [],
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: result.message || 'Failed to list subscribers',
+            });
+        }
+    } catch (error) {
+        logger.error('Admin Newsletters', `Error listing subscribers: ${(error as Error).message}`);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+
+/**
+ * DELETE /admin/newsletters/subscribers/:email - Remove a subscriber (admin only)
+ */
+router.delete('/subscribers/:email', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email } = req.params;
+
+        if (!email) {
+            res.status(400).json({
+                success: false,
+                message: 'Email is required',
+            });
+            return;
+        }
+
+        const result = await removeSubscriber(decodeURIComponent(email));
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: result.message,
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: result.message,
+            });
+        }
+    } catch (error) {
+        logger.error('Admin Newsletters', `Error removing subscriber: ${(error as Error).message}`);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+        });
+    }
+});
+
+/**
+ * GET /admin/newsletters/:id - Get a single campaign
+ */
+router.get('/:id', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const result = await getCampaign(id);
+
+        if (result.success && result.campaign) {
+            res.json({
+                success: true,
+                campaign: result.campaign,
+            });
+        } else {
+            res.status(404).json({
+                success: false,
+                message: result.message || 'Campaign not found',
+            });
+        }
+    } catch (error) {
+        logger.error('Admin Newsletters', `Error getting campaign: ${(error as Error).message}`);
         res.status(500).json({
             success: false,
             message: 'Internal server error',
@@ -301,111 +406,6 @@ router.post('/:id/send', verifyToken, requireAdmin, async (req: Request, res: Re
         }
     } catch (error) {
         logger.error('Admin Newsletters', `Error sending campaign: ${(error as Error).message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-        });
-    }
-});
-
-/**
- * POST /admin/newsletters/subscribers - Add a subscriber (admin only)
- */
-router.post('/subscribers', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { email } = req.body;
-
-        if (!email || typeof email !== 'string') {
-            res.status(400).json({
-                success: false,
-                message: 'Email is required',
-            });
-            return;
-        }
-
-        const result = await addSubscriber(email.trim());
-
-        if (result.success) {
-            res.json({
-                success: true,
-                message: result.message,
-                subscriberId: result.subscriberId,
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: result.message,
-            });
-        }
-    } catch (error) {
-        logger.error('Admin Newsletters', `Error adding subscriber: ${(error as Error).message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-        });
-    }
-});
-
-/**
- * DELETE /admin/newsletters/subscribers/:email - Remove a subscriber (admin only)
- */
-router.delete('/subscribers/:email', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { email } = req.params;
-
-        if (!email) {
-            res.status(400).json({
-                success: false,
-                message: 'Email is required',
-            });
-            return;
-        }
-
-        const result = await removeSubscriber(decodeURIComponent(email));
-
-        if (result.success) {
-            res.json({
-                success: true,
-                message: result.message,
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: result.message,
-            });
-        }
-    } catch (error) {
-        logger.error('Admin Newsletters', `Error removing subscriber: ${(error as Error).message}`);
-        res.status(500).json({
-            success: false,
-            message: 'Internal server error',
-        });
-    }
-});
-
-/**
- * GET /admin/newsletters/subscribers - List all subscribers (admin only)
- */
-router.get('/subscribers', verifyToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
-    try {
-        const limit = parseInt(req.query.limit as string) || 1000;
-        const offset = parseInt(req.query.offset as string) || 0;
-
-        const result = await listSubscribers(limit, offset);
-
-        if (result.success) {
-            res.json({
-                success: true,
-                subscribers: result.subscribers || [],
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: result.message || 'Failed to list subscribers',
-            });
-        }
-    } catch (error) {
-        logger.error('Admin Newsletters', `Error listing subscribers: ${(error as Error).message}`);
         res.status(500).json({
             success: false,
             message: 'Internal server error',

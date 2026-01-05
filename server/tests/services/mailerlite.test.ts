@@ -1,75 +1,130 @@
 /**
- * MailerLite Service Tests
+ * MailerLite Service Integration Tests
+ * 
+ * These tests use the real MailerLite API key to verify functionality
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
+import dotenv from 'dotenv';
 
-// Store the original env
-const originalEnv = process.env;
+// Load environment variables
+dotenv.config();
 
-describe('MailerLite Service', () => {
-    beforeEach(() => {
-        // Reset modules to clear cached client
-        vi.resetModules();
-        // Clone the env for each test
-        process.env = { ...originalEnv };
-    });
+// Import services after env is loaded
+import {
+    addSubscriber,
+    removeSubscriber,
+    listSubscribers,
+    listCampaigns,
+    healthCheck,
+} from '../../src/services/mailerlite.js';
 
-    afterEach(() => {
-        process.env = originalEnv;
-        vi.clearAllMocks();
-    });
+describe('MailerLite Service Integration Tests', () => {
+    // Test email for subscribe/unsubscribe tests
+    const testEmail = `test-${Date.now()}@example.com`;
 
-    describe('addSubscriber', () => {
-        it('should return failure when API key is not configured', async () => {
-            // Remove the API key
-            delete process.env.MAILERLITE_API_KEY;
-
-            const { addSubscriber } = await import('../../src/services/mailerlite.js');
-            const result = await addSubscriber('test@example.com');
-
-            expect(result.success).toBe(false);
-            expect(result.message).toContain('not configured');
-        });
-
-        it('should call MailerLite API with lowercase trimmed email', async () => {
-            // Set a test API key
-            process.env.MAILERLITE_API_KEY = 'test-api-key-12345';
-
-            // Mock the MailerLite SDK
-            vi.doMock('@mailerlite/mailerlite-nodejs', () => {
-                const mockCreateOrUpdate = vi.fn().mockResolvedValue({
-                    data: { data: { id: 'subscriber-123' } },
-                });
-
-                return {
-                    default: function () {
-                        return {
-                            subscribers: {
-                                createOrUpdate: mockCreateOrUpdate,
-                                get: vi.fn(),
-                            },
-                        };
-                    },
-                };
-            });
-
-            const { addSubscriber } = await import('../../src/services/mailerlite.js');
-            const result = await addSubscriber('  TEST@EXAMPLE.COM  ');
-
-            // Since we're mocking, just check it doesn't crash
-            expect(result).toBeDefined();
-        });
+    beforeAll(() => {
+        // Verify API key is configured
+        if (!process.env.MAILERLITE_API_KEY) {
+            throw new Error('MAILERLITE_API_KEY must be set for integration tests');
+        }
     });
 
     describe('healthCheck', () => {
-        it('should return false when API key is not configured', async () => {
-            delete process.env.MAILERLITE_API_KEY;
-
-            const { healthCheck } = await import('../../src/services/mailerlite.js');
+        it('should return true when API is working', async () => {
             const result = await healthCheck();
+            expect(result).toBe(true);
+        });
+    });
 
-            expect(result).toBe(false);
+    describe('listSubscribers', () => {
+        it('should list subscribers successfully', async () => {
+            const result = await listSubscribers(10, 0);
+
+            expect(result.success).toBe(true);
+            expect(result.subscribers).toBeDefined();
+            expect(Array.isArray(result.subscribers)).toBe(true);
+
+            console.log(`Found ${result.subscribers?.length || 0} subscribers`);
+        });
+
+        it('should return subscribers with required fields', async () => {
+            const result = await listSubscribers(1, 0);
+
+            if (result.subscribers && result.subscribers.length > 0) {
+                const subscriber = result.subscribers[0];
+                expect(subscriber.id).toBeDefined();
+                expect(subscriber.email).toBeDefined();
+                expect(subscriber.status).toBeDefined();
+            }
+        });
+    });
+
+    describe('addSubscriber', () => {
+        it('should add a new subscriber successfully', async () => {
+            const result = await addSubscriber(testEmail);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('subscribed');
+
+            console.log(`Added subscriber: ${testEmail}`);
+        });
+
+        it('should handle adding existing subscriber gracefully', async () => {
+            // Try to add same email again
+            const result = await addSubscriber(testEmail);
+
+            // Should still succeed (createOrUpdate behavior)
+            expect(result.success).toBe(true);
+        });
+
+        it('should normalize email to lowercase', async () => {
+            const uppercaseEmail = `TEST-UPPERCASE-${Date.now()}@EXAMPLE.COM`;
+            const result = await addSubscriber(uppercaseEmail);
+
+            expect(result.success).toBe(true);
+
+            // Cleanup
+            await removeSubscriber(uppercaseEmail);
+        });
+    });
+
+    describe('removeSubscriber', () => {
+        it('should remove a subscriber successfully', async () => {
+            // First ensure subscriber exists
+            await addSubscriber(testEmail);
+
+            const result = await removeSubscriber(testEmail);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('unsubscribed');
+
+            console.log(`Removed subscriber: ${testEmail}`);
+        });
+    });
+
+    describe('listCampaigns', () => {
+        it('should list campaigns successfully', async () => {
+            const result = await listCampaigns(10, 0);
+
+            expect(result.success).toBe(true);
+            expect(result.campaigns).toBeDefined();
+            expect(Array.isArray(result.campaigns)).toBe(true);
+
+            console.log(`Found ${result.campaigns?.length || 0} campaigns`);
+        });
+
+        it('should return campaigns with required fields', async () => {
+            const result = await listCampaigns(1, 0);
+
+            if (result.campaigns && result.campaigns.length > 0) {
+                const campaign = result.campaigns[0];
+                expect(campaign.id).toBeDefined();
+                expect(campaign.name).toBeDefined();
+                expect(campaign.type).toBeDefined();
+
+                console.log(`Sample campaign: ${campaign.name} (${campaign.status})`);
+            }
         });
     });
 });

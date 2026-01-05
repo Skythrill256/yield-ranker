@@ -52,15 +52,17 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
           NODE_ENV: production
+          INPUT_FORCE: ${{ inputs.force }}
+          INPUT_TICKER: ${{ inputs.ticker }}
         run: |
           set -e
           echo "Starting daily update at $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
           ARGS=""
-          if [ "${{ inputs.force }}" == "true" ]; then
+          if [ "$INPUT_FORCE" == "true" ]; then
             ARGS="$ARGS --force"
           fi
-          if [ -n "${{ inputs.ticker }}" ]; then
-            ARGS="$ARGS --ticker ${{ inputs.ticker }}"
+          if [ -n "$INPUT_TICKER" ]; then
+            ARGS="$ARGS --ticker $INPUT_TICKER"
           fi
           echo "Running: npx tsx scripts/daily_update.ts $ARGS"
           npx tsx scripts/daily_update.ts $ARGS
@@ -68,8 +70,10 @@ jobs:
 
       - name: Report status
         if: always()
+        env:
+          STEP_OUTCOME: ${{ steps.daily_update.outcome }}
         run: |
-          if [ "${{ steps.daily_update.outcome }}" == "success" ]; then
+          if [ "$STEP_OUTCOME" == "success" ]; then
             echo "Daily update completed successfully"
           else
             echo "Daily update failed - check logs above"
