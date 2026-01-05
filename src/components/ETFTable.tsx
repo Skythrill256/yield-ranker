@@ -421,7 +421,7 @@ export const ETFTable = ({
                   }`}>
                   {etf.ipoPrice != null ? `$${etf.ipoPrice.toFixed(2)}` : 'N/A'}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium text-foreground">
+                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-foreground">
                   ${etf.price.toFixed(2)}
                 </td>
                 <td className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${etf.priceChange != null && etf.priceChange >= 0 ? 'text-green-600' : 'text-red-600'

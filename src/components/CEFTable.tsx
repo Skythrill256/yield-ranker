@@ -544,14 +544,6 @@ export const CEFTable = ({
                 key={cef.symbol}
                 data-cef-symbol={cef.symbol}
                 className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
-                onClick={() => {
-                  onSelectionChange?.(cef.symbol);
-                  if (onSymbolClick) {
-                    onSymbolClick(cef.symbol);
-                  } else {
-                    navigate(`/cef/${cef.symbol}`);
-                  }
-                }}
               >
                 <td className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 bg-white border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
                   <button
@@ -605,12 +597,12 @@ export const CEFTable = ({
                 >
                   {cef.ipoPrice != null ? formatCurrency(cef.ipoPrice) : "N/A"}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium text-foreground">
+                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-foreground">
                   {cef.marketPrice != null
                     ? formatCurrency(cef.marketPrice)
                     : "N/A"}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium text-foreground">
+                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-foreground">
                   {cef.nav != null ? formatCurrency(cef.nav) : "N/A"}
                 </td>
                 <td className="py-1 px-1.5 align-middle text-center">
@@ -631,10 +623,10 @@ export const CEFTable = ({
                       : "N/A"}
                   </button>
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
                   {cef.numPayments || "N/A"}
                 </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs text-muted-foreground">
+                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
                   {cef.yearlyDividend != null
                     ? formatCurrency(cef.yearlyDividend)
                     : "N/A"}
@@ -655,7 +647,7 @@ export const CEFTable = ({
                     : "N/A"}
                 </td>
                 <td
-                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-medium ${cef.fiveYearZScore != null && cef.fiveYearZScore >= 0
+                  className={`py-1 px-1.5 align-middle text-center tabular-nums text-sm font-bold ${cef.fiveYearZScore != null && cef.fiveYearZScore >= 0
                       ? "text-green-600"
                       : "text-red-600"
                     }`}
