@@ -342,7 +342,7 @@ export default function Settings() {
                 className="lg:hidden h-12 w-12"
                 onClick={() => setMobileSidebarOpen(true)}
               >
-                <Menu className="h-7 w-7" />
+                <Menu className="h-8 w-8" />
               </Button>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                 Settings
