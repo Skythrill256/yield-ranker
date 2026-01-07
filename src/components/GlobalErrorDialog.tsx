@@ -9,6 +9,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { ERROR_DIALOG_EVENT } from '@/utils/errorHandler';
 
 interface ErrorDialogData {
@@ -16,6 +17,8 @@ interface ErrorDialogData {
     message: string;
     onConfirm?: () => void;
     onCancel?: () => void;
+    onResume?: () => void;
+    showResume?: boolean;
 }
 
 export function GlobalErrorDialog() {
@@ -61,12 +64,32 @@ export function GlobalErrorDialog() {
                         {dialogData?.message || ''}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                    {dialogData?.onCancel && (
-                        <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                    {dialogData?.showResume && dialogData?.onResume && (
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                if (dialogData.onResume) {
+                                    dialogData.onResume();
+                                }
+                                setOpen(false);
+                                setDialogData(null);
+                            }}
+                            className="w-full sm:w-auto"
+                        >
+                            Resume Where I Was
+                        </Button>
                     )}
-                    <AlertDialogAction onClick={handleConfirm}>
-                        {dialogData?.onConfirm ? 'Confirm' : 'OK'}
+                    {dialogData?.onCancel && (
+                        <AlertDialogCancel onClick={handleCancel} className="w-full sm:w-auto">
+                            Continue Anyway
+                        </AlertDialogCancel>
+                    )}
+                    <AlertDialogAction 
+                        onClick={handleConfirm}
+                        className="w-full sm:w-auto"
+                    >
+                        {dialogData?.onConfirm ? 'Reload Page' : 'OK'}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

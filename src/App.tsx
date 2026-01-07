@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,34 +9,70 @@ import { RequireAuth } from "@/auth/RequireAuth";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorDialog } from "@/components/GlobalErrorDialog";
-import { setupGlobalErrorHandlers } from "@/utils/errorHandler";
+import { setupGlobalErrorHandlers, restoreAppState } from "@/utils/errorHandler";
+import { useEffect } from "react";
 
 // Setup global error handlers on app initialization
 setupGlobalErrorHandlers();
+
+// Component to restore app state on mount
+function AppStateRestorer() {
+  useEffect(() => {
+    // Restore app state after component mounts
+    const timer = setTimeout(() => {
+      restoreAppState();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+  return null;
+}
 
 // Eagerly loaded (critical path)
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 
-// Retry function for failed module imports
+// Retry function for failed module imports with state saving
 const retryLazyImport = (
   importFn: () => Promise<any>,
   retries = 3,
   delay = 1000
 ): Promise<any> => {
+  // Import saveAppState function dynamically to avoid circular dependency
+  const saveState = () => {
+    try {
+      const state = {
+        pathname: window.location.pathname,
+        search: window.location.search,
+        hash: window.location.hash,
+        timestamp: Date.now(),
+        scrollY: window.scrollY,
+      };
+      localStorage.setItem('app_recovery_state', JSON.stringify(state));
+    } catch (e) {
+      // Ignore errors
+    }
+  };
+
   return new Promise((resolve, reject) => {
     const attempt = (remaining: number) => {
       importFn()
         .then(resolve)
         .catch((error) => {
+          // Save state before retrying
+          saveState();
+          
           if (remaining > 0) {
             console.warn(
               `[Lazy Import] Failed to load module, retrying... (${remaining} attempts left)`
             );
-            setTimeout(() => attempt(remaining - 1), delay);
+            // Exponential backoff
+            const backoffDelay = delay * (retries - remaining + 1);
+            setTimeout(() => attempt(remaining - 1), backoffDelay);
           } else {
             console.error("[Lazy Import] Failed to load module after retries:", error);
+            // Save state one more time before showing error
+            saveState();
             // Return a fallback component instead of crashing
             resolve({
               default: () => (
@@ -46,14 +82,34 @@ const retryLazyImport = (
                       Failed to Load Page
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      The page could not be loaded. Please try refreshing the page.
+                      The page could not be loaded after multiple attempts. This may be due to network issues or a deployment update.
                     </p>
-                    <button
-                      onClick={() => window.location.reload()}
-                      className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                    >
-                      Reload Page
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          // Clear cache and reload
+                          if ("caches" in window) {
+                            caches.keys().then((names) => {
+                              names.forEach((name) => {
+                                caches.delete(name);
+                              });
+                              window.location.reload();
+                            });
+                          } else {
+                            window.location.reload();
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                      >
+                        Reload Page
+                      </button>
+                      <button
+                        onClick={() => window.history.back()}
+                        className="flex-1 px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
+                      >
+                        Go Back
+                      </button>
+                    </div>
                   </div>
                 </div>
               ),
@@ -275,6 +331,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <GlobalErrorDialog />
+        <AppStateRestorer />
         <BrowserRouter>
           <ScrollToTop />
           <AuthProvider>
