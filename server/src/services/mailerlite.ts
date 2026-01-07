@@ -237,34 +237,59 @@ export async function createCampaign(campaign: Omit<Campaign, 'id' | 'status' | 
     }
 
     try {
-        // Prepare campaign data - for drafts, we don't need emails field
-        // MailerLite only requires emails when sending, not when creating
-        const campaignData: any = {
-            name: campaign.name,
-            subject: campaign.subject,
-            type: campaign.type || 'regular',
-            from_name: campaign.from_name,
-            from_email: campaign.from_email,
-            reply_to: campaign.reply_to,
-        };
+        // For regular campaigns, MailerLite REQUIRES the emails field
+        // Get all active subscribers to populate the emails field
+        let subscriberEmails: string[] = [];
+        
+        if (campaign.type === 'regular' || !campaign.type) {
+            try {
+                const subscribersResult = await listSubscribers(1000, 0);
+                if (subscribersResult.success && subscribersResult.subscribers) {
+                    // Filter for active/subscribed subscribers only
+                    subscriberEmails = subscribersResult.subscribers
+                        .filter(s => s.status === 'active' || s.status === 'subscribed')
+                        .map(s => s.email.toLowerCase().trim())
+                        .filter(email => email && email.includes('@')); // Validate email format
+                }
+            } catch (subError) {
+                logger.warn('MailerLite', `Failed to fetch subscribers for campaign: ${(subError as Error).message}`);
+                // If we can't get subscribers, use empty array - MailerLite might accept it for drafts
+                subscriberEmails = [];
+            }
+        }
 
-        // Format content properly - MailerLite expects content as an object with html/plain
-        // Make sure we don't structure it in a way that looks like content variations
+        // Format content properly - MailerLite expects content as a single object, not an array
+        // This is critical to avoid the "content variations" error
+        let contentObj: any;
         if (campaign.content) {
-            // Ensure content is properly formatted as a single content object
-            campaignData.content = {
+            // Ensure content is a single object, not an array or nested structure
+            contentObj = {
                 html: campaign.content.html || '',
                 plain: campaign.content.plain || (campaign.content.html ? campaign.content.html.replace(/<[^>]*>/g, '') : ''),
             };
         } else {
-            campaignData.content = {
+            contentObj = {
                 html: '',
                 plain: '',
             };
         }
 
-        // Do NOT include emails field when creating - this causes the "content variations" error
-        // Emails will be set when sending the campaign
+        // Prepare campaign data
+        const campaignData: any = {
+            name: campaign.name,
+            subject: campaign.subject,
+            type: campaign.type || 'regular',
+            content: contentObj, // Single content object, not array
+            from_name: campaign.from_name,
+            from_email: campaign.from_email,
+            reply_to: campaign.reply_to,
+        };
+
+        // Add emails field for regular campaigns (REQUIRED by MailerLite API)
+        // Must be a simple array of email strings
+        if (campaign.type === 'regular' || !campaign.type) {
+            campaignData.emails = subscriberEmails; // Simple array of strings
+        }
 
         const response = await mailerlite.campaigns.create(campaignData);
 
