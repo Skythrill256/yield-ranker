@@ -2,8 +2,8 @@ name: Daily ETF Data Update
 
 on:
   schedule:
-    # Run at 8 PM EST (1 AM UTC next day) Monday to Friday
-    - cron: '0 1 * * 2-6'
+    # Run at 8:30 PM EST (1:30 AM UTC next day) Monday to Friday
+    - cron: '30 1 * * 2-6'
   workflow_dispatch:  # Allow manual trigger
     inputs:
       force:

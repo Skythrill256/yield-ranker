@@ -10,7 +10,6 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GlobalErrorDialog } from "@/components/GlobalErrorDialog";
 import { setupGlobalErrorHandlers, restoreAppState } from "@/utils/errorHandler";
-import { useEffect } from "react";
 
 // Setup global error handlers on app initialization
 setupGlobalErrorHandlers();
@@ -61,7 +60,7 @@ const retryLazyImport = (
         .catch((error) => {
           // Save state before retrying
           saveState();
-          
+
           if (remaining > 0) {
             console.warn(
               `[Lazy Import] Failed to load module, retrying... (${remaining} attempts left)`
@@ -96,7 +95,7 @@ const retryLazyImport = (
                               window.location.reload();
                             });
                           } else {
-                            window.location.reload();
+                            globalThis.location.reload();
                           }
                         }}
                         className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
