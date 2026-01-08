@@ -767,6 +767,8 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Year</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap" title="Original dividend amount paid">Amount</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap" title="Split-adjusted dividend">Adj. Amount</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap" title="Annualized dividend (adjAmount × frequencyNum)">Annualized</TableHead>
+                <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap" title="Normalized weekly equivalent rate">Normalized</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Dividend Type</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Frequency</TableHead>
                 <TableHead className="font-semibold text-xs sm:text-sm px-2 sm:px-4 whitespace-nowrap">Ex-Div Date</TableHead>
@@ -860,6 +862,16 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                             <TableCell className="font-mono text-muted-foreground text-xs sm:text-sm px-2 sm:px-4 py-2">
                               ${(div.adjAmount ?? div.amount).toFixed(4)}
                             </TableCell>
+                            <TableCell className="font-mono text-blue-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
+                              {div.annualized !== null && div.annualized !== undefined && !isNaN(div.annualized) && isFinite(div.annualized)
+                                ? `$${div.annualized.toFixed(4)}`
+                                : '_'}
+                            </TableCell>
+                            <TableCell className="font-mono text-purple-600 text-xs sm:text-sm px-2 sm:px-4 py-2">
+                              {div.normalizedDiv !== null && div.normalizedDiv !== undefined && !isNaN(div.normalizedDiv) && isFinite(div.normalizedDiv)
+                                ? `$${div.normalizedDiv.toFixed(4)}`
+                                : '_'}
+                            </TableCell>
                             <TableCell className="px-2 sm:px-4 py-2">
                               <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs ${typeLabel === 'Special'
                                 ? 'bg-amber-100 text-amber-700'
@@ -900,11 +912,11 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                                 <TableCell className="font-semibold font-mono text-green-600 text-xs sm:text-sm px-2 sm:px-4 py-3">
                                   ${yearTotalAdj.toFixed(4)}
                                 </TableCell>
-                                <TableCell colSpan={5} className="px-2 sm:px-4 py-3"></TableCell>
+                                <TableCell colSpan={7} className="px-2 sm:px-4 py-3"></TableCell>
                               </TableRow>
                               {!isLastYear && (
                                 <TableRow className="border-b-4 border-transparent">
-                                  <TableCell colSpan={8} className="py-4 px-2 sm:px-4 bg-transparent"></TableCell>
+                                  <TableCell colSpan={10} className="py-4 px-2 sm:px-4 bg-transparent"></TableCell>
                                 </TableRow>
                               )}
                             </>
