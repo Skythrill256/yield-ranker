@@ -321,8 +321,9 @@ const Favorites = () => {
           ) : (
             <>
               {etfFavorites.size > 0 && (
-                <section className="w-full space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <Card className="border-2 border-slate-200">
+                  <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <h2 className="text-3xl font-bold tracking-tight text-foreground">
                         CC ETF Favorites
@@ -382,12 +383,14 @@ const Favorites = () => {
                       onToggleFavorite={toggleETFFavorite}
                     />
                   </div>
-                </section>
+                  </div>
+                </Card>
               )}
 
               {cefFavorites.size > 0 && (
-                <section className="w-full space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <Card className="border-2 border-slate-200">
+                  <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
                       <h2 className="text-3xl font-bold tracking-tight text-foreground">
                         CEF Favorites

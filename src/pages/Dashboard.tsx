@@ -2882,7 +2882,7 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden">
+      <div className={`flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'} transition-all duration-300`}>
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
             <div className="flex items-center justify-between w-full gap-4">
@@ -2960,8 +2960,8 @@ export default function Dashboard() {
             </div>
           </header>
 
-          <div className="flex-1 overflow-auto min-h-0">
-            <div className="h-full p-2 sm:p-3 lg:p-4 flex flex-col gap-2 sm:gap-3">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-6">
               {adminSection === "users" ? (
                 <div className="flex-1 overflow-auto">
                   <div className="p-2 sm:p-3 lg:p-4 space-y-4">
@@ -3302,7 +3302,7 @@ export default function Dashboard() {
                   </Card>
                 </div>
               ) : (
-                <>
+                <div>
                   {((isGuest && guestMessage) || (isPremium && premiumMessage)) && (
                     <div className="w-full">
                       <Card className="p-4 border-2 border-primary/20 bg-primary/5">
@@ -3314,9 +3314,8 @@ export default function Dashboard() {
                   )}
                   {/* Covered Call Option ETFs Section - Only show when CC category is selected */}
                   {selectedCategory === "cc" && (
-                    <div className="space-y-6">
-                      <Card className="p-6">
-                        <div className="space-y-4">
+                    <Card className="border-2 border-slate-200">
+                      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                             <div className="flex flex-col gap-1">
                               <h2 className="text-2xl font-bold text-foreground">
@@ -3430,16 +3429,14 @@ export default function Dashboard() {
                               />
                             )}
                           </div>
-                        </div>
-                      </Card>
-                    </div>
+                      </div>
+                    </Card>
                   )}
 
                   {/* Closed End Funds Section - Only show when CEF category is selected */}
                   {selectedCategory === "cef" && (
-                    <div className="space-y-6">
-                      <Card className="p-6">
-                        <div className="space-y-4">
+                    <Card className="border-2 border-slate-200">
+                      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                             <div className="flex flex-col gap-1">
                               <h2 className="text-2xl font-bold text-foreground">
@@ -3526,9 +3523,8 @@ export default function Dashboard() {
                               />
                             )}
                           </div>
-                        </div>
-                      </Card>
-                    </div>
+                      </div>
+                    </Card>
                   )}
 
                   {showRankingPanel && isPremium && (
@@ -3818,7 +3814,7 @@ export default function Dashboard() {
                   )}
 
                   {/* Only use UpgradeToPremiumModal for upgrade prompts */}
-                </>
+                </div>
               )}
             </div>
           </div>
