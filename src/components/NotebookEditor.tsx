@@ -31,6 +31,23 @@ import {
     Palette,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // Types
 export type BlockType = 'text' | 'heading1' | 'heading2' | 'heading3' | 'table' | 'formula' | 'comment';
@@ -117,6 +134,18 @@ export const NotebookEditor: React.FC<NotebookEditorProps> = ({
         blocksRef.current = blocks;
     }, [blocks]);
 
+    // Drag and drop sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     const addBlock = useCallback((type: BlockType, afterBlockId?: string) => {
         const newBlock: NotebookBlock = {
             id: generateId(),
@@ -133,15 +162,18 @@ export const NotebookEditor: React.FC<NotebookEditorProps> = ({
         setBlocks(prev => {
             let newBlocks: NotebookBlock[];
             if (afterBlockId) {
+                // If inserting after a specific block, find it and insert after
                 const index = prev.findIndex(b => b.id === afterBlockId);
                 if (index !== -1) {
                     newBlocks = [...prev];
                     newBlocks.splice(index + 1, 0, newBlock);
                 } else {
-                    newBlocks = [...prev, newBlock];
+                    // If block not found, add at top
+                    newBlocks = [newBlock, ...prev];
                 }
             } else {
-                newBlocks = [...prev, newBlock];
+                // Always add new blocks at the top
+                newBlocks = [newBlock, ...prev];
             }
             // Update ref immediately for immediate save access
             blocksRef.current = newBlocks;
@@ -182,21 +214,19 @@ export const NotebookEditor: React.FC<NotebookEditorProps> = ({
         setHasChanges(true);
     }, []);
 
-    const moveBlock = useCallback((id: string, direction: 'up' | 'down') => {
-        setBlocks(prev => {
-            const index = prev.findIndex(b => b.id === id);
-            if (index === -1) return prev;
-            if (direction === 'up' && index === 0) return prev;
-            if (direction === 'down' && index === prev.length - 1) return prev;
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
 
-            const newBlocks = [...prev];
-            const targetIndex = direction === 'up' ? index - 1 : index + 1;
-            [newBlocks[index], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[index]];
-            // Update ref immediately for immediate save access
-            blocksRef.current = newBlocks;
-            return newBlocks;
-        });
-        setHasChanges(true);
+        if (over && active.id !== over.id) {
+            setBlocks((items) => {
+                const oldIndex = items.findIndex((item) => item.id === active.id);
+                const newIndex = items.findIndex((item) => item.id === over.id);
+                const newBlocks = arrayMove(items, oldIndex, newIndex);
+                blocksRef.current = newBlocks;
+                return newBlocks;
+            });
+            setHasChanges(true);
+        }
     }, []);
 
     const handleSave = useCallback(async () => {
@@ -235,82 +265,86 @@ export const NotebookEditor: React.FC<NotebookEditorProps> = ({
     }
 
     return (
-        <div className="space-y-4">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 rounded-lg border">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-muted-foreground">Add block:</span>
-                    {BLOCK_TYPES.map(({ type, label, icon: Icon }) => (
-                        <Button
-                            key={type}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addBlock(type)}
-                            className="h-8"
-                        >
-                            <Icon className="w-4 h-4 mr-1" />
-                            <span className="hidden sm:inline">{label}</span>
-                        </Button>
-                    ))}
+        <div className="space-y-3 sm:space-y-4 w-full">
+            {/* Toolbar - Responsive */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-50 rounded-lg border w-full">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <span className="text-xs sm:text-sm font-medium text-muted-foreground whitespace-nowrap">Add block:</span>
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                        {BLOCK_TYPES.map(({ type, label, icon: Icon }) => (
+                            <Button
+                                key={type}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addBlock(type)}
+                                className="h-7 sm:h-8 text-xs sm:text-sm"
+                            >
+                                <Icon className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                                <span className="hidden xs:inline sm:inline">{label}</span>
+                            </Button>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 justify-end sm:justify-start">
                     {hasChanges && (
-                        <span className="text-xs text-amber-600 font-medium">Unsaved changes</span>
+                        <span className="text-xs text-amber-600 font-medium whitespace-nowrap">Unsaved changes</span>
                     )}
                     <Button
                         onClick={handleSave}
                         disabled={saving || !hasChanges}
                         size="sm"
+                        className="text-xs sm:text-sm h-7 sm:h-8"
                     >
                         {saving ? 'Saving...' : 'Save Notebook'}
                     </Button>
                 </div>
             </div>
 
-            {/* Blocks */}
-            <div className="space-y-3">
-                <AnimatePresence mode="popLayout">
-                    {blocks.map((block, index) => (
-                        <motion.div
-                            key={block.id}
-                            layout
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <BlockEditor
-                                block={block}
-                                onUpdate={(updates) => updateBlock(block.id, updates)}
-                                onDelete={() => deleteBlock(block.id)}
-                                onMoveUp={() => moveBlock(block.id, 'up')}
-                                onMoveDown={() => moveBlock(block.id, 'down')}
-                                onAddAfter={(type) => addBlock(type, block.id)}
-                                isFirst={index === 0}
-                                isLast={index === blocks.length - 1}
-                            />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
+            {/* Blocks with Drag and Drop */}
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext
+                    items={blocks.map(block => block.id)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <div className="space-y-2 sm:space-y-3 w-full">
+                        <AnimatePresence mode="popLayout">
+                            {blocks.map((block, index) => (
+                                <SortableBlockItem
+                                    key={block.id}
+                                    block={block}
+                                    index={index}
+                                    total={blocks.length}
+                                    onUpdate={(updates) => updateBlock(block.id, updates)}
+                                    onDelete={() => deleteBlock(block.id)}
+                                    onAddAfter={(type) => addBlock(type, block.id)}
+                                />
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                </SortableContext>
+            </DndContext>
 
             {/* Empty state */}
             {blocks.length === 0 && (
-                <Card className="p-8 text-center border-dashed border-2">
+                <Card className="p-6 sm:p-8 text-center border-dashed border-2">
                     <div className="text-muted-foreground mb-4">
-                        <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p className="text-lg font-medium">Your notebook is empty</p>
-                        <p className="text-sm">Add blocks using the toolbar above to start documenting.</p>
+                        <MessageSquare className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-base sm:text-lg font-medium">Your notebook is empty</p>
+                        <p className="text-xs sm:text-sm mt-1">Add blocks using the toolbar above to start documenting.</p>
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => addBlock('heading1')}>
-                            <Heading1 className="w-4 h-4 mr-1" /> Add Heading
+                        <Button variant="outline" size="sm" onClick={() => addBlock('heading1')} className="text-xs sm:text-sm">
+                            <Heading1 className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Add Heading
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => addBlock('text')}>
-                            <Type className="w-4 h-4 mr-1" /> Add Text
+                        <Button variant="outline" size="sm" onClick={() => addBlock('text')} className="text-xs sm:text-sm">
+                            <Type className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Add Text
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => addBlock('table')}>
-                            <Table className="w-4 h-4 mr-1" /> Add Table
+                        <Button variant="outline" size="sm" onClick={() => addBlock('table')} className="text-xs sm:text-sm">
+                            <Table className="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Add Table
                         </Button>
                     </div>
                 </Card>
@@ -319,46 +353,182 @@ export const NotebookEditor: React.FC<NotebookEditorProps> = ({
     );
 };
 
+// Sortable Block Item Component
+interface SortableBlockItemProps {
+    block: NotebookBlock;
+    index: number;
+    total: number;
+    onUpdate: (updates: Partial<NotebookBlock>) => void;
+    onDelete: () => void;
+    onAddAfter: (type: BlockType) => void;
+}
+
+const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
+    block,
+    index,
+    total,
+    onUpdate,
+    onDelete,
+    onAddAfter,
+}) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: block.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+        <motion.div
+            ref={setNodeRef}
+            style={style}
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+        >
+            <BlockEditor
+                block={block}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onAddAfter={onAddAfter}
+                isFirst={index === 0}
+                isLast={index === total - 1}
+                dragHandleProps={{ ...attributes, ...listeners }}
+                isDragging={isDragging}
+            />
+        </motion.div>
+    );
+};
+
 // Individual block editor
 interface BlockEditorProps {
     block: NotebookBlock;
     onUpdate: (updates: Partial<NotebookBlock>) => void;
     onDelete: () => void;
-    onMoveUp: () => void;
-    onMoveDown: () => void;
     onAddAfter: (type: BlockType) => void;
     isFirst: boolean;
     isLast: boolean;
+    dragHandleProps?: any;
+    isDragging?: boolean;
 }
 
 const BlockEditor: React.FC<BlockEditorProps> = ({
     block,
     onUpdate,
     onDelete,
-    onMoveUp,
-    onMoveDown,
     onAddAfter,
     isFirst,
     isLast,
+    dragHandleProps,
+    isDragging = false,
 }) => {
     const contentRef = useRef<HTMLDivElement>(null);
+    const [isFocused, setIsFocused] = useState(false);
+    const [showDaysFormulaToolbar, setShowDaysFormulaToolbar] = useState(false);
+    const toolbarRef = useRef<HTMLDivElement>(null);
+
+    // Check if content starts with "DAYS FORMULA"
+    useEffect(() => {
+        const textContent = contentRef.current?.textContent?.trim().toUpperCase() || '';
+        const shouldShow = isFocused && textContent.startsWith('DAYS FORMULA');
+        setShowDaysFormulaToolbar(shouldShow);
+    }, [block.content, isFocused]);
+
+    // Position toolbar when visible
+    useEffect(() => {
+        if (showDaysFormulaToolbar && contentRef.current && toolbarRef.current) {
+            const updateToolbarPosition = () => {
+                const contentRect = contentRef.current?.getBoundingClientRect();
+                const toolbar = toolbarRef.current;
+                if (contentRect && toolbar) {
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                    
+                    let top = contentRect.top + scrollTop - 45;
+                    let left = contentRect.left + scrollLeft;
+                    
+                    // Ensure toolbar stays within viewport on mobile
+                    const toolbarWidth = toolbar.offsetWidth || 200;
+                    const viewportWidth = window.innerWidth;
+                    
+                    if (left + toolbarWidth > viewportWidth) {
+                        left = viewportWidth - toolbarWidth - 10;
+                    }
+                    if (left < 10) {
+                        left = 10;
+                    }
+                    
+                    toolbar.style.top = `${top}px`;
+                    toolbar.style.left = `${left}px`;
+                }
+            };
+            
+            updateToolbarPosition();
+            window.addEventListener('scroll', updateToolbarPosition, true);
+            window.addEventListener('resize', updateToolbarPosition);
+            
+            return () => {
+                window.removeEventListener('scroll', updateToolbarPosition, true);
+                window.removeEventListener('resize', updateToolbarPosition);
+            };
+        }
+    }, [showDaysFormulaToolbar, block.content]);
 
     const getBlockStyles = () => {
         switch (block.type) {
             case 'heading1':
-                return 'text-2xl font-bold';
+                return 'text-xl sm:text-2xl font-bold';
             case 'heading2':
-                return 'text-xl font-semibold';
+                return 'text-lg sm:text-xl font-semibold';
             case 'heading3':
-                return 'text-lg font-medium';
+                return 'text-base sm:text-lg font-medium';
             case 'formula':
-                return 'font-mono bg-slate-900 text-green-400 p-4 rounded-lg';
+                return 'font-mono bg-slate-900 text-green-400 p-3 sm:p-4 rounded-lg text-sm sm:text-base';
             case 'comment': {
                 const colorConfig = COMMENT_COLORS.find(c => c.value === (block.metadata?.color || 'yellow'));
-                return `${colorConfig?.bg} ${colorConfig?.border} border-l-4 p-4 rounded-r-lg`;
+                return `${colorConfig?.bg} ${colorConfig?.border} border-l-4 p-3 sm:p-4 rounded-r-lg`;
             }
             default:
                 return '';
+        }
+    };
+
+    const handleContentChange = (html: string) => {
+        onUpdate({ content: html });
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        // Prevent Enter from creating a new paragraph if at start with "DAYS FORMULA"
+        if (e.key === 'Enter' && showDaysFormulaToolbar) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const textContent = contentRef.current?.textContent?.trim() || '';
+                if (textContent.toUpperCase() === 'DAYS FORMULA') {
+                    e.preventDefault();
+                    // Move cursor after "DAYS FORMULA "
+                    if (contentRef.current) {
+                        const textNode = contentRef.current.firstChild;
+                        if (textNode) {
+                            const newRange = document.createRange();
+                            newRange.setStart(textNode, textContent.length);
+                            newRange.collapse(true);
+                            selection.removeAllRanges();
+                            selection.addRange(newRange);
+                        }
+                    }
+                }
+            }
         }
     };
 
@@ -373,49 +543,108 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
         }
 
         return (
-            <div
-                ref={contentRef}
-                contentEditable
-                suppressContentEditableWarning
-                className={`min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/20 rounded px-2 py-1 ${getBlockStyles()}`}
-                onBlur={(e) => onUpdate({ content: e.currentTarget.innerHTML })}
-                dangerouslySetInnerHTML={{ __html: block.content || getPlaceholder(block.type) }}
-                data-placeholder={getPlaceholder(block.type)}
-            />
+            <div className="relative">
+                {/* Contextual Toolbar for DAYS FORMULA */}
+                {showDaysFormulaToolbar && (
+                    <motion.div
+                        ref={toolbarRef}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="fixed z-50 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg p-1.5 sm:p-2 flex items-center gap-1.5 sm:gap-2"
+                        style={{ pointerEvents: 'auto', maxWidth: 'calc(100vw - 20px)' }}
+                    >
+                        <span className="text-xs sm:text-sm text-muted-foreground px-1 sm:px-2 whitespace-nowrap">Text</span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3"
+                            onClick={() => {
+                                // Add text button functionality if needed
+                                if (contentRef.current) {
+                                    const selection = window.getSelection();
+                                    if (selection && selection.rangeCount > 0) {
+                                        const range = selection.getRangeAt(0);
+                                        const textNode = document.createTextNode(' + ');
+                                        range.insertNode(textNode);
+                                        range.setStartAfter(textNode);
+                                        range.collapse(true);
+                                        selection.removeAllRanges();
+                                        selection.addRange(range);
+                                        handleContentChange(contentRef.current.innerHTML);
+                                    }
+                                }
+                            }}
+                        >
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            <span className="hidden xs:inline">Button</span>
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 sm:h-8 w-7 sm:w-8 p-0 text-destructive hover:text-destructive flex-shrink-0"
+                            onClick={onDelete}
+                            title="Delete block"
+                        >
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                        </Button>
+                    </motion.div>
+                )}
+
+                <div
+                    ref={contentRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    className={`min-h-[32px] sm:min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/20 rounded px-2 py-1 ${getBlockStyles()}`}
+                    onBlur={(e) => {
+                        setIsFocused(false);
+                        handleContentChange(e.currentTarget.innerHTML);
+                    }}
+                    onFocus={() => setIsFocused(true)}
+                    onInput={(e) => {
+                        const html = e.currentTarget.innerHTML;
+                        handleContentChange(html);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    dangerouslySetInnerHTML={{ __html: block.content || getPlaceholder(block.type) }}
+                    data-placeholder={getPlaceholder(block.type)}
+                />
+            </div>
         );
     };
 
     return (
-        <Card className="group relative border hover:border-primary/30 transition-colors">
-            {/* Block controls */}
-            <div className="absolute -left-1 top-1/2 -translate-y-1/2 -translate-x-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1">
+        <Card className={`group relative border hover:border-primary/30 transition-colors ${isDragging ? 'shadow-lg' : ''}`}>
+            {/* Block controls - Responsive positioning */}
+            <div className="absolute -left-2 sm:-left-1 top-1/2 -translate-y-1/2 -translate-x-full opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-10">
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={onMoveUp}
+                    className="h-6 w-6 p-0 hidden sm:flex"
                     disabled={isFirst}
                 >
                     <ChevronUp className="h-4 w-4" />
                 </Button>
-                <div className="h-6 w-6 flex items-center justify-center cursor-grab">
+                <div
+                    {...dragHandleProps}
+                    className="h-6 w-6 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+                >
                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={onMoveDown}
+                    className="h-6 w-6 p-0 hidden sm:flex"
                     disabled={isLast}
                 >
                     <ChevronDown className="h-4 w-4" />
                 </Button>
             </div>
 
-            <div className="p-3">
-                {/* Block header */}
-                <div className="flex items-center justify-between mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex items-center gap-2">
+            <div className="p-2 sm:p-3 relative">
+                {/* Block header - Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 opacity-0 group-hover:opacity-100 transition-opacity gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-muted-foreground uppercase tracking-wide">
                             {BLOCK_TYPES.find(t => t.type === block.type)?.label || block.type}
                         </span>
@@ -426,7 +655,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                                     onUpdate({ metadata: { ...block.metadata, color } })
                                 }
                             >
-                                <SelectTrigger className="h-6 w-24 text-xs">
+                                <SelectTrigger className="h-6 w-20 sm:w-24 text-xs">
                                     <Palette className="w-3 h-3 mr-1" />
                                     <SelectValue />
                                 </SelectTrigger>
@@ -526,17 +755,17 @@ const TableBlock: React.FC<TableBlockProps> = ({ data, onUpdate }) => {
 
     return (
         <div className="space-y-2">
-            <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border-collapse">
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <table className="min-w-full text-xs sm:text-sm border-collapse">
                     <thead>
                         <tr className="bg-slate-100">
                             {data.headers.map((header, i) => (
-                                <th key={i} className="border border-slate-300 px-3 py-2 text-left relative group/header">
+                                <th key={i} className="border border-slate-300 px-2 sm:px-3 py-2 text-left relative group/header">
                                     <input
                                         type="text"
                                         value={header}
                                         onChange={(e) => updateHeader(i, e.target.value)}
-                                        className="w-full bg-transparent font-semibold focus:outline-none focus:ring-1 focus:ring-primary rounded px-1"
+                                        className="w-full bg-transparent font-semibold focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 text-xs sm:text-sm"
                                     />
                                     {data.headers.length > 1 && (
                                         <button
@@ -548,7 +777,7 @@ const TableBlock: React.FC<TableBlockProps> = ({ data, onUpdate }) => {
                                     )}
                                 </th>
                             ))}
-                            <th className="border border-slate-300 w-10">
+                            <th className="border border-slate-300 w-8 sm:w-10">
                                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={addColumn}>
                                     <Plus className="h-3 w-3" />
                                 </Button>
@@ -559,17 +788,17 @@ const TableBlock: React.FC<TableBlockProps> = ({ data, onUpdate }) => {
                         {data.rows.map((row, rowIndex) => (
                             <tr key={rowIndex} className={rowIndex % 2 === 1 ? 'bg-slate-50' : ''}>
                                 {row.map((cell, colIndex) => (
-                                    <td key={colIndex} className="border border-slate-300 px-3 py-2">
+                                    <td key={colIndex} className="border border-slate-300 px-2 sm:px-3 py-2">
                                         <input
                                             type="text"
                                             value={cell}
                                             onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                                            className="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-primary rounded px-1"
+                                            className="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-primary rounded px-1 text-xs sm:text-sm"
                                             placeholder="..."
                                         />
                                     </td>
                                 ))}
-                                <td className="border border-slate-300 w-10">
+                                <td className="border border-slate-300 w-8 sm:w-10">
                                     {data.rows.length > 1 && (
                                         <Button
                                             variant="ghost"
@@ -586,7 +815,7 @@ const TableBlock: React.FC<TableBlockProps> = ({ data, onUpdate }) => {
                     </tbody>
                 </table>
             </div>
-            <Button variant="outline" size="sm" onClick={addRow}>
+            <Button variant="outline" size="sm" onClick={addRow} className="text-xs sm:text-sm">
                 <Plus className="h-3 w-3 mr-1" /> Add Row
             </Button>
         </div>
