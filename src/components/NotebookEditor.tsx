@@ -29,6 +29,16 @@ import {
     ChevronDown,
     MoreVertical,
     Palette,
+    Bold,
+    Italic,
+    Underline,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    AlignJustify,
+    List,
+    ListOrdered,
+    Minus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -434,55 +444,139 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
 }) => {
     const contentRef = useRef<HTMLDivElement>(null);
     const [isFocused, setIsFocused] = useState(false);
-    const [showDaysFormulaToolbar, setShowDaysFormulaToolbar] = useState(false);
+    const [showFormatToolbar, setShowFormatToolbar] = useState(false);
     const toolbarRef = useRef<HTMLDivElement>(null);
+    const [formatState, setFormatState] = useState({
+        bold: false,
+        italic: false,
+        underline: false,
+        fontSize: '',
+        alignment: 'left',
+    });
 
-    // Check if content starts with "DAYS FORMULA"
+    // Show toolbar only when actively editing text blocks (not tables or formulas)
     useEffect(() => {
-        const textContent = contentRef.current?.textContent?.trim().toUpperCase() || '';
-        const shouldShow = isFocused && textContent.startsWith('DAYS FORMULA');
-        setShowDaysFormulaToolbar(shouldShow);
-    }, [block.content, isFocused]);
+        const shouldShow = isFocused && block.type !== 'table' && block.type !== 'formula';
+        setShowFormatToolbar(shouldShow);
+    }, [isFocused, block.type]);
 
-    // Position toolbar when visible
+    // Update format state based on current selection - simplified
     useEffect(() => {
-        if (showDaysFormulaToolbar && contentRef.current && toolbarRef.current) {
-            const updateToolbarPosition = () => {
+        if (!isFocused || !contentRef.current) return;
+        
+        const updateFormatState = () => {
+            try {
+                const selection = window.getSelection();
+                if (!selection || selection.rangeCount === 0) return;
+                
+                const range = selection.getRangeAt(0);
+                if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
+                
+                setFormatState(prev => ({
+                    ...prev,
+                    bold: document.queryCommandState('bold'),
+                    italic: document.queryCommandState('italic'),
+                    underline: document.queryCommandState('underline'),
+                    alignment: contentRef.current?.style.textAlign || 'left',
+                }));
+            } catch (error) {
+                // Silently handle errors
+                console.error('Error updating format state:', error);
+            }
+        };
+        
+        const handleSelectionChange = () => {
+            if (isFocused) {
+                setTimeout(updateFormatState, 50);
+            }
+        };
+        
+        document.addEventListener('selectionchange', handleSelectionChange);
+        updateFormatState();
+        
+        return () => {
+            document.removeEventListener('selectionchange', handleSelectionChange);
+        };
+    }, [isFocused]);
+
+    // Position toolbar when visible - simplified and safer
+    useEffect(() => {
+        if (!showFormatToolbar || !contentRef.current || !toolbarRef.current) return;
+        
+        const updateToolbarPosition = () => {
+            try {
                 const contentRect = contentRef.current?.getBoundingClientRect();
                 const toolbar = toolbarRef.current;
-                if (contentRect && toolbar) {
-                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
-                    
-                    let top = contentRect.top + scrollTop - 45;
-                    let left = contentRect.left + scrollLeft;
-                    
-                    // Ensure toolbar stays within viewport on mobile
-                    const toolbarWidth = toolbar.offsetWidth || 200;
-                    const viewportWidth = window.innerWidth;
-                    
-                    if (left + toolbarWidth > viewportWidth) {
-                        left = viewportWidth - toolbarWidth - 10;
+                if (!contentRect || !toolbar) return;
+                
+                const selection = window.getSelection();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                
+                let top = contentRect.top + scrollTop - 50;
+                let left = contentRect.left + scrollLeft;
+                
+                // Try to position above selection if available
+                if (selection && selection.rangeCount > 0) {
+                    try {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        if (rect.top > 60) {
+                            top = rect.top + scrollTop - 50;
+                            left = rect.left + scrollLeft;
+                        }
+                    } catch (e) {
+                        // Use content position if selection fails
                     }
-                    if (left < 10) {
-                        left = 10;
-                    }
-                    
-                    toolbar.style.top = `${top}px`;
-                    toolbar.style.left = `${left}px`;
                 }
-            };
-            
-            updateToolbarPosition();
-            window.addEventListener('scroll', updateToolbarPosition, true);
-            window.addEventListener('resize', updateToolbarPosition);
-            
-            return () => {
-                window.removeEventListener('scroll', updateToolbarPosition, true);
-                window.removeEventListener('resize', updateToolbarPosition);
-            };
+                
+                // Ensure toolbar stays within viewport
+                const toolbarWidth = toolbar.offsetWidth || 300;
+                const viewportWidth = window.innerWidth;
+                
+                if (left + toolbarWidth > viewportWidth - 10) {
+                    left = viewportWidth - toolbarWidth - 10;
+                }
+                if (left < 10) {
+                    left = 10;
+                }
+                
+                if (top < scrollTop + 10) {
+                    top = contentRect.bottom + scrollTop + 5;
+                }
+                
+                toolbar.style.top = `${top}px`;
+                toolbar.style.left = `${left}px`;
+            } catch (error) {
+                console.error('Error positioning toolbar:', error);
+            }
+        };
+        
+        updateToolbarPosition();
+        const interval = setInterval(updateToolbarPosition, 200);
+        window.addEventListener('scroll', updateToolbarPosition, true);
+        window.addEventListener('resize', updateToolbarPosition);
+        
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('scroll', updateToolbarPosition, true);
+            window.removeEventListener('resize', updateToolbarPosition);
+        };
+    }, [showFormatToolbar]);
+
+    // Format command helpers
+    const execCommand = (command: string, value?: string) => {
+        try {
+            document.execCommand(command, false, value);
+            contentRef.current?.focus();
+            // Update content after formatting
+            if (contentRef.current) {
+                handleContentChange(contentRef.current.innerHTML);
+            }
+        } catch (error) {
+            console.error('Error executing command:', error);
         }
-    }, [showDaysFormulaToolbar, block.content]);
+    };
 
     const getBlockStyles = () => {
         switch (block.type) {
@@ -507,31 +601,6 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
         onUpdate({ content: html });
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-        // Prevent Enter from creating a new paragraph if at start with "DAYS FORMULA"
-        if (e.key === 'Enter' && showDaysFormulaToolbar) {
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                const textContent = contentRef.current?.textContent?.trim() || '';
-                if (textContent.toUpperCase() === 'DAYS FORMULA') {
-                    e.preventDefault();
-                    // Move cursor after "DAYS FORMULA "
-                    if (contentRef.current) {
-                        const textNode = contentRef.current.firstChild;
-                        if (textNode) {
-                            const newRange = document.createRange();
-                            newRange.setStart(textNode, textContent.length);
-                            newRange.collapse(true);
-                            selection.removeAllRanges();
-                            selection.addRange(newRange);
-                        }
-                    }
-                }
-            }
-        }
-    };
-
     const renderContent = () => {
         if (block.type === 'table') {
             return (
@@ -544,50 +613,197 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
 
         return (
             <div className="relative">
-                {/* Contextual Toolbar for DAYS FORMULA */}
-                {showDaysFormulaToolbar && (
+                {/* Rich Text Formatting Toolbar - Word-style */}
+                {showFormatToolbar && (
                     <motion.div
                         ref={toolbarRef}
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="fixed z-50 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg p-1.5 sm:p-2 flex items-center gap-1.5 sm:gap-2"
-                        style={{ pointerEvents: 'auto', maxWidth: 'calc(100vw - 20px)' }}
+                        className="fixed z-50 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-xl p-1 sm:p-1.5 flex items-center gap-0.5 sm:gap-1 flex-wrap justify-center sm:justify-start"
+                        style={{ pointerEvents: 'auto', maxWidth: 'calc(100vw - 20px)', minWidth: '280px' }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                        }}
+                        onMouseDown={(e) => e.preventDefault()}
                     >
-                        <span className="text-xs sm:text-sm text-muted-foreground px-1 sm:px-2 whitespace-nowrap">Text</span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 sm:h-8 text-xs sm:text-sm px-2 sm:px-3"
-                            onClick={() => {
-                                // Add text button functionality if needed
-                                if (contentRef.current) {
-                                    const selection = window.getSelection();
-                                    if (selection && selection.rangeCount > 0) {
-                                        const range = selection.getRangeAt(0);
-                                        const textNode = document.createTextNode(' + ');
-                                        range.insertNode(textNode);
-                                        range.setStartAfter(textNode);
-                                        range.collapse(true);
-                                        selection.removeAllRanges();
-                                        selection.addRange(range);
+                        {/* Text Formatting */}
+                        <div className="flex items-center gap-0.5 border-r border-slate-300 dark:border-slate-600 pr-0.5 sm:pr-1 mr-0.5 sm:mr-1">
+                            <Button
+                                variant={formatState.bold ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => execCommand('bold')}
+                                title="Bold"
+                            >
+                                <Bold className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                                variant={formatState.italic ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => execCommand('italic')}
+                                title="Italic"
+                            >
+                                <Italic className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                                variant={formatState.underline ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => execCommand('underline')}
+                                title="Underline"
+                            >
+                                <Underline className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                        </div>
+
+                        {/* Font Size */}
+                        <div className="flex items-center gap-0.5 border-r border-slate-300 dark:border-slate-600 pr-0.5 sm:pr-1 mr-0.5 sm:mr-1">
+                            <Select
+                                value={formatState.fontSize || '16px'}
+                                onValueChange={(value) => {
+                                    try {
+                                        if (contentRef.current) {
+                                            execCommand('fontSize', '7');
+                                            const selection = window.getSelection();
+                                            if (selection && selection.rangeCount > 0) {
+                                                const range = selection.getRangeAt(0);
+                                                const element = range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+                                                    ? range.commonAncestorContainer.parentElement
+                                                    : (range.commonAncestorContainer as HTMLElement);
+                                                
+                                                if (element && element !== contentRef.current) {
+                                                    element.style.fontSize = value;
+                                                    setFormatState(prev => ({ ...prev, fontSize: value }));
+                                                    handleContentChange(contentRef.current.innerHTML);
+                                                    contentRef.current.focus();
+                                                }
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.error('Error changing font size:', error);
+                                    }
+                                }}
+                            >
+                                <SelectTrigger className="h-7 w-14 sm:h-8 sm:w-18 text-xs border-0 shadow-none px-1 sm:px-2">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10px">10px</SelectItem>
+                                    <SelectItem value="12px">12px</SelectItem>
+                                    <SelectItem value="14px">14px</SelectItem>
+                                    <SelectItem value="16px">16px</SelectItem>
+                                    <SelectItem value="18px">18px</SelectItem>
+                                    <SelectItem value="20px">20px</SelectItem>
+                                    <SelectItem value="24px">24px</SelectItem>
+                                    <SelectItem value="28px">28px</SelectItem>
+                                    <SelectItem value="32px">32px</SelectItem>
+                                    <SelectItem value="36px">36px</SelectItem>
+                                    <SelectItem value="48px">48px</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Text Alignment */}
+                        <div className="flex items-center gap-0.5 border-r border-slate-300 dark:border-slate-600 pr-0.5 sm:pr-1 mr-0.5 sm:mr-1">
+                            <Button
+                                variant={formatState.alignment === 'left' ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => {
+                                    execCommand('justifyLeft');
+                                    if (contentRef.current) {
+                                        contentRef.current.style.textAlign = 'left';
                                         handleContentChange(contentRef.current.innerHTML);
                                     }
-                                }
-                            }}
-                        >
-                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                            <span className="hidden xs:inline">Button</span>
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 sm:h-8 w-7 sm:w-8 p-0 text-destructive hover:text-destructive flex-shrink-0"
-                            onClick={onDelete}
-                            title="Delete block"
-                        >
-                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                        </Button>
+                                }}
+                                title="Align Left"
+                            >
+                                <AlignLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                                variant={formatState.alignment === 'center' ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => {
+                                    execCommand('justifyCenter');
+                                    if (contentRef.current) {
+                                        contentRef.current.style.textAlign = 'center';
+                                        handleContentChange(contentRef.current.innerHTML);
+                                    }
+                                }}
+                                title="Align Center"
+                            >
+                                <AlignCenter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                                variant={formatState.alignment === 'right' ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => {
+                                    execCommand('justifyRight');
+                                    if (contentRef.current) {
+                                        contentRef.current.style.textAlign = 'right';
+                                        handleContentChange(contentRef.current.innerHTML);
+                                    }
+                                }}
+                                title="Align Right"
+                            >
+                                <AlignRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                                variant={formatState.alignment === 'justify' ? "secondary" : "ghost"}
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 hidden sm:flex"
+                                onClick={() => {
+                                    execCommand('justifyFull');
+                                    if (contentRef.current) {
+                                        contentRef.current.style.textAlign = 'justify';
+                                        handleContentChange(contentRef.current.innerHTML);
+                                    }
+                                }}
+                                title="Justify"
+                            >
+                                <AlignJustify className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                        </div>
+
+                        {/* Lists */}
+                        <div className="flex items-center gap-0.5 border-r border-slate-300 dark:border-slate-600 pr-0.5 sm:pr-1 mr-0.5 sm:mr-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => execCommand('insertUnorderedList')}
+                                title="Bullet List"
+                            >
+                                <List className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                                onClick={() => execCommand('insertOrderedList')}
+                                title="Numbered List"
+                            >
+                                <ListOrdered className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                        </div>
+
+                        {/* Delete Block */}
+                        <div className="flex items-center gap-0.5">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={onDelete}
+                                title="Delete block"
+                            >
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            </Button>
+                        </div>
                     </motion.div>
                 )}
 
@@ -597,17 +813,29 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                     suppressContentEditableWarning
                     className={`min-h-[32px] sm:min-h-[40px] focus:outline-none focus:ring-2 focus:ring-primary/20 rounded px-2 py-1 ${getBlockStyles()}`}
                     onBlur={(e) => {
-                        setIsFocused(false);
-                        handleContentChange(e.currentTarget.innerHTML);
+                        // Delay to allow toolbar clicks
+                        setTimeout(() => {
+                            try {
+                                if (!toolbarRef.current?.contains(document.activeElement)) {
+                                    setIsFocused(false);
+                                    handleContentChange(e.currentTarget.innerHTML);
+                                }
+                            } catch (error) {
+                                setIsFocused(false);
+                                handleContentChange(e.currentTarget.innerHTML);
+                            }
+                        }, 150);
                     }}
                     onFocus={() => setIsFocused(true)}
                     onInput={(e) => {
                         const html = e.currentTarget.innerHTML;
                         handleContentChange(html);
                     }}
-                    onKeyDown={handleKeyDown}
                     dangerouslySetInnerHTML={{ __html: block.content || getPlaceholder(block.type) }}
                     data-placeholder={getPlaceholder(block.type)}
+                    style={{ 
+                        textAlign: formatState.alignment as any,
+                    }}
                 />
             </div>
         );
