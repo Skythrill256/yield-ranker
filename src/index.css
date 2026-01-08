@@ -150,15 +150,20 @@ All colors MUST be HSL.
   input[type="search"],
   input[type="tel"],
   input[type="url"],
-  textarea,
-  [contenteditable="true"],
-  [contenteditable] {
+  textarea {
     direction: ltr !important;
     text-align: left !important;
     unicode-bidi: embed !important;
   }
 
-  /* Force LTR on all contentEditable elements and their children */
+  /* Force LTR on contentEditable elements (but allow text-align to be set by user) */
+  [contenteditable="true"],
+  [contenteditable] {
+    direction: ltr !important;
+    unicode-bidi: embed !important;
+  }
+
+  /* Force LTR on all contentEditable child elements */
   [contenteditable="true"] *,
   [contenteditable] * {
     direction: ltr !important;

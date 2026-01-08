@@ -460,90 +460,39 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
         setIsMounted(true);
     }, []);
 
-    // Enforce LTR direction on contentEditable element and all child elements
+    // Enforce LTR direction on contentEditable element - simple and non-intrusive
     useEffect(() => {
         if (!contentRef.current) return;
         
-        // Aggressively enforce LTR direction
-        const enforceLTR = (element: HTMLElement) => {
-            element.setAttribute('dir', 'ltr');
-            element.style.direction = 'ltr';
-            element.style.unicodeBidi = 'embed';
-            element.style.textAlign = 'left';
-            
-            // Force LTR on all child elements recursively
-            const children = element.querySelectorAll('*');
-            children.forEach((child) => {
-                if (child instanceof HTMLElement) {
-                    child.setAttribute('dir', 'ltr');
-                    child.style.direction = 'ltr';
-                    child.style.unicodeBidi = 'embed';
-                    child.style.textAlign = 'left';
-                }
-            });
-        };
+        // Set LTR direction on mount
+        contentRef.current.setAttribute('dir', 'ltr');
+        contentRef.current.style.direction = 'ltr';
+        contentRef.current.style.unicodeBidi = 'embed';
         
-        // Set LTR direction on the main contentEditable element immediately
-        enforceLTR(contentRef.current);
-        
-        // Monitor for changes and enforce LTR aggressively
+        // Simple observer to fix direction on new elements only (not style changes)
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
-                // Handle added nodes
+                // Only handle added nodes, not style/attribute changes
                 mutation.addedNodes.forEach((node) => {
                     if (node instanceof HTMLElement) {
-                        enforceLTR(node);
-                    } else if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
-                        enforceLTR(node.parentElement);
+                        node.setAttribute('dir', 'ltr');
+                        node.style.direction = 'ltr';
+                        node.style.unicodeBidi = 'embed';
                     }
                 });
-                
-                // Handle attribute changes (in case direction is changed)
-                if (mutation.type === 'attributes' && mutation.attributeName === 'dir') {
-                    if (mutation.target instanceof HTMLElement) {
-                        enforceLTR(mutation.target);
-                    }
-                }
-                
-                // Handle style changes
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    if (mutation.target instanceof HTMLElement) {
-                        enforceLTR(mutation.target);
-                    }
-                }
             });
-            
-            // Always enforce on the root element after any mutation
-            if (contentRef.current) {
-                enforceLTR(contentRef.current);
-            }
         });
         
         observer.observe(contentRef.current, {
             childList: true,
             subtree: true,
-            attributes: true,
-            attributeFilter: ['dir', 'style'],
+            // Don't watch attributes - that was causing interference
         });
-        
-        // Also enforce on focus/blur
-        const handleFocus = () => {
-            if (contentRef.current) {
-                enforceLTR(contentRef.current);
-            }
-        };
-        
-        contentRef.current.addEventListener('focus', handleFocus);
-        contentRef.current.addEventListener('blur', handleFocus);
         
         return () => {
             observer.disconnect();
-            if (contentRef.current) {
-                contentRef.current.removeEventListener('focus', handleFocus);
-                contentRef.current.removeEventListener('blur', handleFocus);
-            }
         };
-    }, [block.id, block.content]);
+    }, [block.id]);
 
     // Show toolbar only when actively editing text blocks (not tables or formulas)
     useEffect(() => {
@@ -1184,76 +1133,16 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                             }
                         }
                     }}
-                    onBeforeInput={(e) => {
-                        // Prevent RTL before input is processed
-                        if (contentRef.current) {
-                            contentRef.current.setAttribute('dir', 'ltr');
-                            contentRef.current.style.direction = 'ltr';
-                            contentRef.current.style.unicodeBidi = 'embed';
-                        }
-                    }}
                     onInput={(e) => {
                         const html = e.currentTarget.innerHTML;
-                        // Aggressively enforce LTR direction after input
+                        // Ensure LTR direction after input (simple, non-intrusive)
                         const element = e.currentTarget;
-                        element.setAttribute('dir', 'ltr');
-                        element.style.direction = 'ltr';
-                        element.style.unicodeBidi = 'embed';
-                        
-                        // Force LTR on all child elements
-                        const allElements = element.querySelectorAll('*');
-                        allElements.forEach((el) => {
-                            if (el instanceof HTMLElement) {
-                                el.setAttribute('dir', 'ltr');
-                                el.style.direction = 'ltr';
-                                el.style.unicodeBidi = 'embed';
-                            }
-                        });
-                        
+                        if (element.getAttribute('dir') !== 'ltr') {
+                            element.setAttribute('dir', 'ltr');
+                            element.style.direction = 'ltr';
+                            element.style.unicodeBidi = 'embed';
+                        }
                         handleContentChange(html);
-                    }}
-                    onKeyDown={(e) => {
-                        // Ensure LTR direction on every keystroke BEFORE the key is processed
-                        if (contentRef.current) {
-                            contentRef.current.setAttribute('dir', 'ltr');
-                            contentRef.current.style.direction = 'ltr';
-                            contentRef.current.style.unicodeBidi = 'embed';
-                        }
-                        
-                        // Remove RTL from any newly created elements
-                        const selection = window.getSelection();
-                        if (selection && selection.rangeCount > 0) {
-                            const range = selection.getRangeAt(0);
-                            if (range.commonAncestorContainer) {
-                                let element: HTMLElement | null = null;
-                                if (range.commonAncestorContainer.nodeType === Node.TEXT_NODE) {
-                                    element = range.commonAncestorContainer.parentElement;
-                                } else {
-                                    element = range.commonAncestorContainer as HTMLElement;
-                                }
-                                if (element && element !== contentRef.current) {
-                                    element.setAttribute('dir', 'ltr');
-                                    element.style.direction = 'ltr';
-                                    element.style.unicodeBidi = 'embed';
-                                }
-                            }
-                        }
-                    }}
-                    onKeyPress={(e) => {
-                        // Force LTR immediately when a key is pressed
-                        if (contentRef.current) {
-                            contentRef.current.setAttribute('dir', 'ltr');
-                            contentRef.current.style.direction = 'ltr';
-                            contentRef.current.style.unicodeBidi = 'embed';
-                        }
-                    }}
-                    onCompositionStart={(e) => {
-                        // Prevent RTL during IME composition (for languages like Chinese, Japanese)
-                        if (contentRef.current) {
-                            contentRef.current.setAttribute('dir', 'ltr');
-                            contentRef.current.style.direction = 'ltr';
-                            contentRef.current.style.unicodeBidi = 'embed';
-                        }
                     }}
                     dangerouslySetInnerHTML={{ __html: block.content || getPlaceholder(block.type) }}
                     data-placeholder={getPlaceholder(block.type)}
