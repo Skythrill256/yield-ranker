@@ -1663,8 +1663,8 @@ export default function Dashboard() {
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
+        <main className={`flex-1 flex flex-col overflow-hidden ${sidebarCollapsed ? 'ml-16' : 'ml-64'} lg:ml-0`}>
+          <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0 z-20">
             <div className="flex items-center justify-between w-full gap-4">
               <div className="flex items-center gap-2 sm:gap-4">
                 <Button
@@ -2585,8 +2585,8 @@ export default function Dashboard() {
         </aside>
 
         <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-hidden">
-          <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
+          <main className={`flex-1 flex flex-col min-h-0 overflow-hidden ${sidebarCollapsed ? 'ml-16' : 'ml-64'} lg:ml-0`}>
+            <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0 z-20">
               <div className="flex items-center justify-between w-full gap-4">
                 <div className="flex items-center gap-3">
                   <Button
@@ -2703,7 +2703,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
       {mobileSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-[90] lg:hidden"
@@ -2713,7 +2713,7 @@ export default function Dashboard() {
 
       <aside
         className={`${sidebarCollapsed ? "w-16" : "w-64"
-          } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-[100]" : "hidden lg:flex"
+          } bg-white border-r border-slate-200 flex flex-col h-screen fixed left-0 top-0 transition-all duration-300 ${mobileSidebarOpen ? "z-[100]" : "hidden lg:flex z-30"
           }`}
       >
         <div

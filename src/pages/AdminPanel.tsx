@@ -765,7 +765,7 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen bg-slate-50 flex overflow-hidden">
       {mobileSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -774,7 +774,7 @@ const AdminPanel = () => {
       )}
       <aside
         className={`${sidebarCollapsed ? "w-16" : "w-64"
-          } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
+          } bg-white border-r border-slate-200 flex flex-col h-screen fixed left-0 top-0 transition-all duration-300 ${mobileSidebarOpen ? "z-50" : "hidden lg:flex z-30"
           }`}
       >
         <div
@@ -942,8 +942,8 @@ const AdminPanel = () => {
           </button>
         </div>
       </aside>
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0">
+      <main className={`flex-1 flex flex-col overflow-hidden ${sidebarCollapsed ? 'ml-16' : 'ml-64'} lg:ml-0`}>
+        <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center flex-shrink-0 z-20">
           <div className="flex items-center justify-between w-full gap-4">
             <div className="flex items-center gap-3">
               <Button
@@ -983,7 +983,7 @@ const AdminPanel = () => {
             </div>
           </div>
         </header>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="p-4 sm:p-6 lg:p-8 space-y-6">
             {activeTab === "users" && (
               <>

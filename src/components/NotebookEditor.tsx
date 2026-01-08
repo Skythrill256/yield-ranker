@@ -564,17 +564,56 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                     return;
                 }
                 
-                const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0;
-                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft || 0;
+                // Position toolbar near cursor/selection position
+                let top = 0;
+                let left = contentRect.left;
                 
-                // Always position at top of block
-                let top = contentRect.top + scrollTop - 50;
-                let left = contentRect.left + scrollLeft;
+                // Try to get selection position first
+                try {
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        if (range) {
+                            const rect = range.getBoundingClientRect();
+                            if (rect && rect.height > 0) {
+                                // Position above or below selection based on available space
+                                const selectionTop = rect.top;
+                                const selectionBottom = rect.bottom;
+                                const spaceAbove = selectionTop;
+                                const spaceBelow = window.innerHeight - selectionBottom;
+                                
+                                if (spaceAbove > 60 || spaceAbove > spaceBelow) {
+                                    // Position above selection
+                                    top = selectionTop - 50;
+                                } else {
+                                    // Position below selection
+                                    top = selectionBottom + 5;
+                                }
+                                left = rect.left;
+                            } else {
+                                // Cursor position (collapsed range)
+                                const rangeRect = range.getBoundingClientRect();
+                                top = rangeRect.top - 50;
+                                left = rangeRect.left;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Fallback to content top if selection fails
+                    top = contentRect.top - 50;
+                }
+                
+                // Fallback to content position if no selection
+                if (top === 0 || top < 0) {
+                    top = contentRect.top - 50;
+                }
                 
                 // Ensure toolbar stays within viewport
                 const toolbarWidth = toolbar.offsetWidth || 300;
                 const viewportWidth = window.innerWidth || 800;
+                const viewportHeight = window.innerHeight || 600;
                 
+                // Adjust horizontal position
                 if (left + toolbarWidth > viewportWidth - 10) {
                     left = Math.max(10, viewportWidth - toolbarWidth - 10);
                 }
@@ -582,9 +621,12 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                     left = 10;
                 }
                 
-                // If too close to top, position below
-                if (top < scrollTop + 10) {
-                    top = contentRect.bottom + scrollTop + 5;
+                // Adjust vertical position
+                if (top < 10) {
+                    top = Math.min(contentRect.bottom + 5, viewportHeight - 60);
+                }
+                if (top + 60 > viewportHeight) {
+                    top = Math.max(10, contentRect.top - 50);
                 }
                 
                 toolbar.style.top = `${top}px`;
