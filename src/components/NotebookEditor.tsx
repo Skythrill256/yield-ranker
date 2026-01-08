@@ -464,43 +464,84 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
     useEffect(() => {
         if (!contentRef.current) return;
         
-        // Set LTR direction on the main contentEditable element
-        contentRef.current.style.direction = 'ltr';
-        contentRef.current.setAttribute('dir', 'ltr');
-        
-        // Ensure all child elements are also LTR
+        // Aggressively enforce LTR direction
         const enforceLTR = (element: HTMLElement) => {
-            element.style.direction = 'ltr';
             element.setAttribute('dir', 'ltr');
+            element.style.direction = 'ltr';
+            element.style.unicodeBidi = 'embed';
+            element.style.textAlign = 'left';
+            
+            // Force LTR on all child elements recursively
             const children = element.querySelectorAll('*');
             children.forEach((child) => {
                 if (child instanceof HTMLElement) {
-                    child.style.direction = 'ltr';
                     child.setAttribute('dir', 'ltr');
+                    child.style.direction = 'ltr';
+                    child.style.unicodeBidi = 'embed';
+                    child.style.textAlign = 'left';
                 }
             });
         };
         
+        // Set LTR direction on the main contentEditable element immediately
         enforceLTR(contentRef.current);
         
-        // Monitor for changes and enforce LTR
+        // Monitor for changes and enforce LTR aggressively
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
+                // Handle added nodes
                 mutation.addedNodes.forEach((node) => {
                     if (node instanceof HTMLElement) {
                         enforceLTR(node);
+                    } else if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
+                        enforceLTR(node.parentElement);
                     }
                 });
+                
+                // Handle attribute changes (in case direction is changed)
+                if (mutation.type === 'attributes' && mutation.attributeName === 'dir') {
+                    if (mutation.target instanceof HTMLElement) {
+                        enforceLTR(mutation.target);
+                    }
+                }
+                
+                // Handle style changes
+                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                    if (mutation.target instanceof HTMLElement) {
+                        enforceLTR(mutation.target);
+                    }
+                }
             });
+            
+            // Always enforce on the root element after any mutation
+            if (contentRef.current) {
+                enforceLTR(contentRef.current);
+            }
         });
         
         observer.observe(contentRef.current, {
             childList: true,
             subtree: true,
+            attributes: true,
+            attributeFilter: ['dir', 'style'],
         });
+        
+        // Also enforce on focus/blur
+        const handleFocus = () => {
+            if (contentRef.current) {
+                enforceLTR(contentRef.current);
+            }
+        };
+        
+        contentRef.current.addEventListener('focus', handleFocus);
+        contentRef.current.addEventListener('blur', handleFocus);
         
         return () => {
             observer.disconnect();
+            if (contentRef.current) {
+                contentRef.current.removeEventListener('focus', handleFocus);
+                contentRef.current.removeEventListener('blur', handleFocus);
+            }
         };
     }, [block.id, block.content]);
 
@@ -1143,17 +1184,42 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                             }
                         }
                     }}
+                    onBeforeInput={(e) => {
+                        // Prevent RTL before input is processed
+                        if (contentRef.current) {
+                            contentRef.current.setAttribute('dir', 'ltr');
+                            contentRef.current.style.direction = 'ltr';
+                            contentRef.current.style.unicodeBidi = 'embed';
+                        }
+                    }}
                     onInput={(e) => {
                         const html = e.currentTarget.innerHTML;
-                        // Ensure direction is always LTR after input
-                        e.currentTarget.style.direction = 'ltr';
+                        // Aggressively enforce LTR direction after input
+                        const element = e.currentTarget;
+                        element.setAttribute('dir', 'ltr');
+                        element.style.direction = 'ltr';
+                        element.style.unicodeBidi = 'embed';
+                        
+                        // Force LTR on all child elements
+                        const allElements = element.querySelectorAll('*');
+                        allElements.forEach((el) => {
+                            if (el instanceof HTMLElement) {
+                                el.setAttribute('dir', 'ltr');
+                                el.style.direction = 'ltr';
+                                el.style.unicodeBidi = 'embed';
+                            }
+                        });
+                        
                         handleContentChange(html);
                     }}
                     onKeyDown={(e) => {
-                        // Ensure LTR direction on every keystroke
+                        // Ensure LTR direction on every keystroke BEFORE the key is processed
                         if (contentRef.current) {
+                            contentRef.current.setAttribute('dir', 'ltr');
                             contentRef.current.style.direction = 'ltr';
+                            contentRef.current.style.unicodeBidi = 'embed';
                         }
+                        
                         // Remove RTL from any newly created elements
                         const selection = window.getSelection();
                         if (selection && selection.rangeCount > 0) {
@@ -1166,9 +1232,27 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                                     element = range.commonAncestorContainer as HTMLElement;
                                 }
                                 if (element && element !== contentRef.current) {
+                                    element.setAttribute('dir', 'ltr');
                                     element.style.direction = 'ltr';
+                                    element.style.unicodeBidi = 'embed';
                                 }
                             }
+                        }
+                    }}
+                    onKeyPress={(e) => {
+                        // Force LTR immediately when a key is pressed
+                        if (contentRef.current) {
+                            contentRef.current.setAttribute('dir', 'ltr');
+                            contentRef.current.style.direction = 'ltr';
+                            contentRef.current.style.unicodeBidi = 'embed';
+                        }
+                    }}
+                    onCompositionStart={(e) => {
+                        // Prevent RTL during IME composition (for languages like Chinese, Japanese)
+                        if (contentRef.current) {
+                            contentRef.current.setAttribute('dir', 'ltr');
+                            contentRef.current.style.direction = 'ltr';
+                            contentRef.current.style.unicodeBidi = 'embed';
                         }
                     }}
                     dangerouslySetInnerHTML={{ __html: block.content || getPlaceholder(block.type) }}
@@ -1177,6 +1261,7 @@ const BlockEditor: React.FC<BlockEditorProps> = ({
                     style={{ 
                         textAlign: formatState.alignment as any,
                         direction: 'ltr', // Always left-to-right
+                        unicodeBidi: 'embed', // Prevent automatic RTL detection
                     }}
                 />
             </div>
@@ -1437,3 +1522,4 @@ const getPlaceholder = (type: BlockType): string => {
 };
 
 export default NotebookEditor;
+
