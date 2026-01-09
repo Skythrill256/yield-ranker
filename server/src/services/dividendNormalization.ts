@@ -48,6 +48,229 @@ export interface NormalizedDividend {
     normalized_div: number | null;
 }
 
+// ============================================================================
+// CEF-Specific Normalization (Frequency + Special detection)
+// ============================================================================
+
+export type CEFDividendFrequencyLabel =
+    | 'Weekly'
+    | 'Monthly'
+    | 'Quarterly'
+    | 'Semi-Annual'
+    | 'Annual'
+    | 'Irregular';
+
+export interface NormalizedDividendCEF {
+    id: number;
+    days_since_prev: number | null;
+    pmt_type: 'Regular' | 'Special' | 'Initial';
+    frequency_num: number | null; // null = Irregular/unknown
+    frequency_label: CEFDividendFrequencyLabel;
+    annualized: number | null;
+    normalized_div: number | null;
+}
+
+/**
+ * CEF dividend frequency mapping (Gap Days → Frequency)
+ *
+ * Gap (days)   Frequency
+ * 5–13         Weekly
+ * 20–45        Monthly
+ * 46–100       Quarterly
+ * 101–200      Semiannual
+ * 201–400      Annual
+ * > 400        Irregular / Special
+ */
+export function getCEFFrequencyFromDays(days: number): { label: CEFDividendFrequencyLabel; frequencyNum: number | null } {
+    if (!isFinite(days) || days <= 0) return { label: 'Irregular', frequencyNum: null };
+
+    if (days >= 5 && days <= 13) return { label: 'Weekly', frequencyNum: 52 };
+    if (days >= 20 && days <= 45) return { label: 'Monthly', frequencyNum: 12 };
+    if (days >= 46 && days <= 100) return { label: 'Quarterly', frequencyNum: 4 };
+    if (days >= 101 && days <= 200) return { label: 'Semi-Annual', frequencyNum: 2 };
+    if (days >= 201 && days <= 400) return { label: 'Annual', frequencyNum: 1 };
+    if (days > 400) return { label: 'Irregular', frequencyNum: null };
+
+    // Gaps outside known ranges (e.g. 14–19, 1–4) start as "Irregular" and may be overridden by history rules
+    return { label: 'Irregular', frequencyNum: null };
+}
+
+function median(values: number[]): number | null {
+    const nums = values.filter(v => typeof v === 'number' && isFinite(v) && v > 0).sort((a, b) => a - b);
+    if (nums.length === 0) return null;
+    const mid = Math.floor(nums.length / 2);
+    if (nums.length % 2 === 1) return nums[mid];
+    return (nums[mid - 1] + nums[mid]) / 2;
+}
+
+function isApproximatelyEqual(a: number, b: number, relTol: number): boolean {
+    if (!isFinite(a) || !isFinite(b)) return false;
+    const scale = Math.max(Math.abs(a), Math.abs(b), 1e-9);
+    return Math.abs(a - b) <= scale * relTol;
+}
+
+function isRoundNumberSpecial(amount: number): boolean {
+    // Rule 3: Round-number specials (common for year-end / cap gains)
+    // Compare after rounding to cents to avoid float noise
+    const rounded = Math.round(amount * 100) / 100;
+    const rounds = [0.25, 0.5, 1.0, 2.0, 3.0];
+    return rounds.some(r => Math.abs(rounded - r) < 1e-9);
+}
+
+function determinePatternFrequencyLabel(recentGapsToNext: number[]): CEFDividendFrequencyLabel | null {
+    // Use the last 3–6 gaps (to next) of NON-special dividends to infer a "dominant" frequency
+    const labels = recentGapsToNext
+        .filter(d => typeof d === 'number' && isFinite(d) && d > 0)
+        .slice(-6)
+        .map(d => getCEFFrequencyFromDays(d).label)
+        .filter(l => l !== 'Irregular');
+
+    if (labels.length < 3) return null;
+
+    const counts = new Map<CEFDividendFrequencyLabel, number>();
+    for (const l of labels) counts.set(l, (counts.get(l) || 0) + 1);
+
+    // Winner must be majority of observed labels
+    let best: { label: CEFDividendFrequencyLabel; count: number } | null = null;
+    for (const [label, count] of counts.entries()) {
+        if (!best || count > best.count) best = { label, count };
+    }
+
+    if (!best) return null;
+    return best.count >= Math.ceil(labels.length * 0.6) ? best.label : null; // >=60% dominance
+}
+
+/**
+ * CEF-only: Calculate normalized dividend fields with:
+ * - Frequency primarily by gap-days table (above)
+ * - Holiday-adjusted weekly/monthly for ambiguous 14–19 day gaps when amount is unchanged
+ * - Special dividends detected by AMOUNT deviation (not date)
+ *
+ * Notes:
+ * - We still use a "look-ahead" gap (to next dividend) to label a dividend's frequency for history,
+ *   but the newest dividend (last in series) is classified strictly by days since previous.
+ * - For CEFs we prefer `adj_amount` if present, otherwise `div_cash` for amount-based rules.
+ */
+export function calculateNormalizedDividendsForCEFs(
+    dividends: DividendInput[],
+    options?: {
+        specialMultiplier?: number;         // Rule 1
+        roundNumberMultiplier?: number;      // Rule 3
+        amountStabilityRelTol?: number;      // "unchanged" threshold
+    }
+): NormalizedDividendCEF[] {
+    const specialMultiplier = options?.specialMultiplier ?? 1.75;
+    const roundNumberMultiplier = options?.roundNumberMultiplier ?? 1.5;
+    const amountStabilityRelTol = options?.amountStabilityRelTol ?? 0.02; // 2% default
+
+    if (!dividends || dividends.length === 0) return [];
+
+    // Ensure oldest -> newest
+    const sorted = [...dividends].sort((a, b) => a.ex_date.localeCompare(b.ex_date));
+
+    const results: NormalizedDividendCEF[] = [];
+
+    // Rolling history of "regular-like" amounts and gaps (we exclude specials once detected)
+    const rollingRegularAmounts: number[] = [];
+    const rollingRegularGapsToNext: number[] = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+        const current = sorted[i];
+        const prev = i > 0 ? sorted[i - 1] : null;
+        const next = i < sorted.length - 1 ? sorted[i + 1] : null;
+
+        const currentDate = new Date(current.ex_date);
+        const prevDate = prev ? new Date(prev.ex_date) : null;
+        const nextDate = next ? new Date(next.ex_date) : null;
+
+        const daysSincePrev =
+            prevDate ? Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+        // Per requirement: classify newest dividend strictly by gap days (look-back).
+        // For earlier dividends, use look-ahead to next dividend to label that period.
+        const gapDays =
+            nextDate ? Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
+                : (daysSincePrev !== null ? daysSincePrev : 0);
+
+        const amount = (current.adj_amount !== null && current.adj_amount > 0)
+            ? Number(current.adj_amount)
+            : (current.div_cash > 0 ? Number(current.div_cash) : 0);
+
+        const medianAmount = median(rollingRegularAmounts.slice(-6));
+
+        // Step 1: Strict frequency from gap table
+        const raw = getCEFFrequencyFromDays(gapDays);
+        let frequencyLabel: CEFDividendFrequencyLabel = raw.label;
+        let frequencyNum: number | null = raw.frequencyNum;
+
+        // Step 2: History-based holiday adjustment for ambiguous short gaps (14–19)
+        // If amount is unchanged and the prior 3–6 dividends were monthly/weekly, treat as holiday-adjusted.
+        if (frequencyLabel === 'Irregular' && gapDays >= 14 && gapDays <= 19 && medianAmount !== null && amount > 0) {
+            const pattern = determinePatternFrequencyLabel(rollingRegularGapsToNext);
+            const amountStable = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
+            if (amountStable && (pattern === 'Monthly' || pattern === 'Weekly')) {
+                frequencyLabel = pattern;
+                frequencyNum = pattern === 'Monthly' ? 12 : 52;
+            }
+        }
+
+        // Step 3: Special detection by AMOUNT deviation (not date)
+        let pmtType: 'Regular' | 'Special' | 'Initial' = 'Regular';
+        if (daysSincePrev === null) {
+            pmtType = 'Initial';
+        } else if (medianAmount !== null && medianAmount > 0 && amount > 0) {
+            const amountStable = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
+
+            // Rule 1 — Amount spike vs median
+            if (amount > specialMultiplier * medianAmount) {
+                pmtType = 'Special';
+            }
+
+            // Rule 2 — Irregular gap + different amount
+            // (If gap is irregular AND amount deviates, it's likely special)
+            if (pmtType !== 'Special' && frequencyLabel === 'Irregular' && !amountStable) {
+                pmtType = 'Special';
+            }
+
+            // Rule 3 — Round-number specials
+            if (pmtType !== 'Special' && isRoundNumberSpecial(amount) && amount > roundNumberMultiplier * medianAmount) {
+                pmtType = 'Special';
+            }
+        }
+
+        // If it’s Special, we don’t want to annualize/normalize it (per CEF requirement).
+        let annualized: number | null = null;
+        let normalizedDiv: number | null = null;
+
+        if (pmtType !== 'Special' && amount > 0 && frequencyNum !== null && frequencyNum > 0) {
+            const annualizedRaw = amount * frequencyNum;
+            annualized = Number(annualizedRaw.toFixed(6));
+            normalizedDiv = Number((annualizedRaw / 52).toFixed(6));
+        }
+
+        results.push({
+            id: current.id,
+            days_since_prev: daysSincePrev,
+            pmt_type: pmtType,
+            frequency_num: pmtType === 'Special' ? null : frequencyNum,
+            frequency_label: pmtType === 'Special' ? 'Irregular' : frequencyLabel,
+            annualized,
+            normalized_div: normalizedDiv,
+        });
+
+        // Update rolling history only for non-special dividends (so specials don't distort median/pattern)
+        if (pmtType !== 'Special' && amount > 0) {
+            rollingRegularAmounts.push(amount);
+            // For pattern detection we want "gap to next" (frequency confirmation). Only add if next exists.
+            if (nextDate && gapDays > 0) {
+                rollingRegularGapsToNext.push(gapDays);
+            }
+        }
+    }
+
+    return results;
+}
+
 /**
  * Determine frequency based on days between payments
  * Using ranges to account for weekends/holidays

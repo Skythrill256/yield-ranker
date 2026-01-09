@@ -686,8 +686,8 @@ async function refreshCEF(ticker: string): Promise<void> {
       calculateDividendHistory,
     } = await import("../src/routes/cefs.js");
     
-    // Import normalized dividend calculation
-    const { calculateNormalizedDividends } = await import("../src/services/dividendNormalization.js");
+    // Import CEF-specific normalized dividend calculation
+    const { calculateNormalizedDividendsForCEFs } = await import("../src/services/dividendNormalization.js");
 
     const updateData: any = {};
 
@@ -773,7 +773,7 @@ async function refreshCEF(ticker: string): Promise<void> {
 
     // Calculate and update normalized dividends (silently)
     try {
-      const { calculateNormalizedDividends } = await import("../src/services/dividendNormalization.js");
+      const { calculateNormalizedDividendsForCEFs } = await import("../src/services/dividendNormalization.js");
       const dividendsForNormalization = await getDividendHistory(ticker.toUpperCase(), "2009-01-01");
       
       if (dividendsForNormalization.length > 0) {
@@ -787,19 +787,16 @@ async function refreshCEF(ticker: string): Promise<void> {
             adj_amount: d.adj_amount ? Number(d.adj_amount) : null,
           }));
         
-        const normalizedResults = calculateNormalizedDividends(dividendInputs);
+        const normalizedResults = calculateNormalizedDividendsForCEFs(dividendInputs);
         const updates = normalizedResults.map(result => {
-          // Set frequency string field: "Special" if pmt_type is Special, otherwise based on frequency_num
+          // CEF rules:
+          // - frequency is derived from gap-days + history override (see calculateNormalizedDividendsForCEFs)
+          // - Special dividends are detected by AMOUNT deviation, not date
           let frequencyStr: string | null = null;
           if (result.pmt_type === 'Special') {
             frequencyStr = 'Special';
-          } else if (result.frequency_num !== null && result.frequency_num !== undefined) {
-            // Map frequency_num to string representation
-            if (result.frequency_num === 52) frequencyStr = 'Weekly';
-            else if (result.frequency_num === 12) frequencyStr = 'Monthly';
-            else if (result.frequency_num === 4) frequencyStr = 'Quarterly';
-            else if (result.frequency_num === 2) frequencyStr = 'Semi-Annual';
-            else if (result.frequency_num === 1) frequencyStr = 'Annual';
+          } else if (result.frequency_label) {
+            frequencyStr = result.frequency_label === 'Irregular' ? 'Irregular' : result.frequency_label;
           }
           
           return {
