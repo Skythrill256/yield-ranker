@@ -849,7 +849,16 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   const volMetrics = calculateDividendVolatility(dividends, 12, upperTicker);
 
   // Get regular dividends for last dividend and payment count
+  // IMPORTANT: Prefer database-calculated `pmt_type` when present (CEFs/normalized dividends),
+  // because `div_type` is often null for Tiingo-derived dividends_detail rows.
   const regularDivs = dividends.filter(d => {
+    const anyD = d as any;
+    const pmtType = anyD?.pmt_type as string | undefined;
+    if (pmtType) {
+      return pmtType === 'Regular' || pmtType === 'Initial';
+    }
+
+    // Fallback to legacy div_type logic
     if (!d.div_type) return true;
     const dtype = d.div_type.toLowerCase();
     return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
@@ -875,23 +884,33 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   // the current frequency from the most recent payments, not count all payments in the year
   let actualPaymentsPerYear: number;
 
-  if (sortedRegular.length >= 2) {
-    // Detect current frequency from most recent payments
-    const mostRecent = sortedRegular[0];
-    const secondMostRecent = sortedRegular[1];
-    const daysBetween = (new Date(mostRecent.ex_date).getTime() - new Date(secondMostRecent.ex_date).getTime()) / (1000 * 60 * 60 * 24);
+  if (sortedRegular.length >= 1) {
+    // Prefer frequency_num from normalization if available (most accurate, handles holiday shifts)
+    const freqNum = Number((sortedRegular[0] as any)?.frequency_num);
+    if (isFinite(freqNum) && freqNum > 0) {
+      actualPaymentsPerYear = freqNum;
+    } else if (sortedRegular.length >= 2) {
+      // Otherwise detect current frequency from most recent payments
+      const mostRecent = sortedRegular[0];
+      const secondMostRecent = sortedRegular[1];
+      const daysBetween = (new Date(mostRecent.ex_date).getTime() - new Date(secondMostRecent.ex_date).getTime()) / (1000 * 60 * 60 * 24);
 
-    // Determine frequency based on days between most recent payments
-    if (daysBetween <= 10) {
-      actualPaymentsPerYear = 52; // Weekly
-    } else if (daysBetween <= 35) {
-      actualPaymentsPerYear = 12; // Monthly
-    } else if (daysBetween <= 95) {
-      actualPaymentsPerYear = 4; // Quarterly
-    } else if (daysBetween <= 185) {
-      actualPaymentsPerYear = 2; // Semi-Annual
+      // Determine frequency based on days between most recent payments
+      if (daysBetween <= 10) {
+        actualPaymentsPerYear = 52; // Weekly
+      } else if (daysBetween <= 35) {
+        actualPaymentsPerYear = 12; // Monthly
+      } else if (daysBetween <= 95) {
+        actualPaymentsPerYear = 4; // Quarterly
+      } else if (daysBetween <= 185) {
+        actualPaymentsPerYear = 2; // Semi-Annual
+      } else {
+        actualPaymentsPerYear = 1; // Annual
+      }
+    } else if (paymentsPerYear > 0) {
+      actualPaymentsPerYear = paymentsPerYear;
     } else {
-      actualPaymentsPerYear = 1; // Annual
+      actualPaymentsPerYear = 12;
     }
   } else if (paymentsPerYear > 0) {
     // Use database value if we don't have enough recent data

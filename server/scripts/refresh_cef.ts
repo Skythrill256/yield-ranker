@@ -701,6 +701,8 @@ async function refreshCEF(ticker: string): Promise<void> {
       updateData.last_dividend = metrics.lastDividend;
       updateData.forward_yield = metrics.forwardYield;
       updateData.annual_dividend = metrics.annualizedDividend;
+      // Keep payments_per_year in sync with detected current cadence (important for homepage "period")
+      updateData.payments_per_year = metrics.paymentsPerYear;
       
       // Update short-term returns (1W, 1M, 3M, 6M, 12M) - these are price-based returns
       updateData.tr_drip_1w = metrics.totalReturnDrip['1W'];
