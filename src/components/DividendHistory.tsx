@@ -797,8 +797,9 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
             </TableHeader>
             <TableBody>
               {recordsByYear.map(({ year, records }, yearIndex) => {
-                // Expand combined CEF payments (Regular + Special) into two display rows
-                // so users see the regular cadence dividend AND the special component separately.
+                // Table: ONLY show regular payments (same as bar chart)
+                // For CEF split specials: show ONLY the regular component row (not the special component)
+                // This matches bar chart behavior - tables and bars should only show regular payments
                 const displayRecords: DividendRecord[] = [];
                 records.forEach((r) => {
                   const regularComp = r.regularComponent ?? null;
@@ -811,34 +812,23 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                     specialComp !== undefined &&
                     specialComp > 0;
 
-                  if (!isSplit) {
+                  if (isSplit) {
+                    // Split special: show ONLY the regular component row (exclude special component from table)
+                    const freqNum = r.frequencyNum ?? null;
+                    displayRecords.push({
+                      ...r,
+                      amount: Number(regularComp),
+                      adjAmount: Number(regularComp),
+                      pmtType: 'Regular',
+                      type: 'Regular',
+                      annualized: freqNum && regularComp !== null ? Number((Number(regularComp) * freqNum).toFixed(4)) : null,
+                      normalizedDiv: regularComp !== null ? Number(Number(regularComp).toFixed(4)) : null,
+                    });
+                  } else if (r.pmtType !== 'Special') {
+                    // Regular or Initial dividend: show as-is
                     displayRecords.push(r);
-                    return;
                   }
-
-                  const freqNum = r.frequencyNum ?? null;
-
-                  // Regular component row
-                  displayRecords.push({
-                    ...r,
-                    amount: Number(regularComp),
-                    adjAmount: Number(regularComp),
-                    pmtType: 'Regular',
-                    type: 'Regular',
-                    annualized: freqNum && regularComp !== null ? Number((Number(regularComp) * freqNum).toFixed(4)) : null,
-                    normalizedDiv: regularComp !== null ? Number(Number(regularComp).toFixed(4)) : null,
-                  });
-
-                  // Special component row
-                  displayRecords.push({
-                    ...r,
-                    amount: Number(specialComp),
-                    adjAmount: Number(specialComp),
-                    pmtType: 'Special',
-                    type: 'Special',
-                    annualized: null,
-                    normalizedDiv: null,
-                  });
+                  // For non-split specials: skip entirely (don't show in table)
                 });
 
                 const sortedRecords = [...displayRecords].sort((a, b) =>
