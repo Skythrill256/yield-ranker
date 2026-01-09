@@ -848,20 +848,54 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   // Pass ticker for accurate weekly payer detection
   const volMetrics = calculateDividendVolatility(dividends, 12, upperTicker);
 
+  // Helper: get a usable cash amount for comparisons
+  const getDivAmount = (d: any): number => {
+    const a = Number(d?.adj_amount);
+    if (isFinite(a) && a > 0) return a;
+    const c = Number(d?.div_cash);
+    if (isFinite(c) && c > 0) return c;
+    return 0;
+  };
+
+  // Helper: median for basic special-vs-regular heuristic fallback
+  const median = (values: number[]): number | null => {
+    const nums = values.filter(v => isFinite(v) && v > 0).sort((x, y) => x - y);
+    if (nums.length === 0) return null;
+    const mid = Math.floor(nums.length / 2);
+    return nums.length % 2 === 1 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+  };
+
   // Get regular dividends for last dividend and payment count
   // IMPORTANT: Prefer database-calculated `pmt_type` when present (CEFs/normalized dividends),
   // because `div_type` is often null for Tiingo-derived dividends_detail rows.
+  // Heuristic fallback: if we don't have pmt_type/div_type, treat big spikes as special (avoid polluting lastDividend)
+  const baselineAmounts = dividends
+    .filter(d => {
+      const anyD = d as any;
+      const pmtType = anyD?.pmt_type as string | undefined;
+      if (pmtType) return pmtType === 'Regular' || pmtType === 'Initial';
+      if (d.div_type) return !d.div_type.toLowerCase().includes('special');
+      return false;
+    })
+    .map(d => getDivAmount(d))
+    .filter(v => v > 0)
+    .slice(0, 12);
+  const baselineMedian = median(baselineAmounts.slice(0, 6));
+
   const regularDivs = dividends.filter(d => {
     const anyD = d as any;
     const pmtType = anyD?.pmt_type as string | undefined;
-    if (pmtType) {
-      return pmtType === 'Regular' || pmtType === 'Initial';
-    }
+    if (pmtType) return pmtType === 'Regular' || pmtType === 'Initial';
 
-    // Fallback to legacy div_type logic
-    if (!d.div_type) return true;
-    const dtype = d.div_type.toLowerCase();
-    return dtype.includes('regular') || dtype === 'cash' || dtype === '' || !dtype.includes('special');
+    // Fallback to legacy div_type logic if present
+    if (d.div_type) return !d.div_type.toLowerCase().includes('special');
+
+    // Last-resort: div_type null and pmt_type null -> use amount spike heuristic
+    const amt = getDivAmount(d);
+    if (baselineMedian !== null && baselineMedian > 0 && amt > 1.75 * baselineMedian) {
+      return false; // likely special
+    }
+    return true; // assume regular if we can't disprove
   });
 
   // Sort by manual flag first (manual dividends take priority), then by date descending
