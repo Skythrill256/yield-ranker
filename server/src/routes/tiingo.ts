@@ -291,14 +291,30 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     }
 
     // Last dividend (for homepage/summary use):
-    // If the most recent record is a combined "Regular + Special" CEF payout, prefer the regular component
-    // so we don't inflate "last dividend" with a one-time year-end special spike.
-    let lastDividend: number | null = dividends.length > 0 ? dividends[0].div_cash : null;
-    if (dividends.length > 0) {
-      const latest: any = dividends[0] as any;
-      if (latest?.pmt_type === 'Special' && latest?.regular_component !== null && latest?.regular_component !== undefined) {
-        const rc = Number(latest.regular_component);
-        if (isFinite(rc) && rc > 0) lastDividend = rc;
+    // MUST use the most recent REGULAR dividend only (exclude special dividends).
+    // This ensures "last dividend" reflects the recurring payment cadence, not one-time special spikes.
+    let lastDividend: number | null = null;
+    for (const div of dividends) {
+      const divAny = div as any;
+      const pmtType = divAny?.pmt_type || 'Regular';
+      
+      // Only use Regular or Initial dividends (skip Special)
+      if (pmtType === 'Regular' || pmtType === 'Initial') {
+        // For split specials that were converted to Regular in table, regular_component might exist
+        if (divAny?.regular_component !== null && divAny?.regular_component !== undefined) {
+          const rc = Number(divAny.regular_component);
+          if (isFinite(rc) && rc > 0) {
+            lastDividend = rc;
+            break;
+          }
+        } else {
+          // Regular dividend: use div_cash
+          const amount = div.div_cash || 0;
+          if (amount > 0) {
+            lastDividend = amount;
+            break;
+          }
+        }
       }
     }
     const annualizedDividend = lastDividend ? lastDividend * actualPaymentsPerYear : null;
