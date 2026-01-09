@@ -198,23 +198,42 @@ export function calculateNormalizedDividendsForCEFs(
 
         const medianAmount = median(rollingRegularAmounts.slice(-6));
 
-        // Step 1: Strict frequency from gap table
+        // Step 1: Strict frequency from gap table (initial classification)
         const raw = getCEFFrequencyFromDays(gapDays);
         let frequencyLabel: CEFDividendFrequencyLabel = raw.label;
         let frequencyNum: number | null = raw.frequencyNum;
 
-        // Step 2: History-based holiday adjustment for ambiguous short gaps (14–19)
+        // Step 2: If amount is stable (matches historical pattern), use dominant historical frequency
+        // CRITICAL: When amount is unchanged across dividends, they should have CONSISTENT frequency
+        // This prevents frequency jumping (Monthly → Quarterly → Semi-Annual) when gaps vary but amount stays same
+        const amountStable = medianAmount !== null && amount > 0 && isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
+        if (amountStable && rollingRegularGapsToNext.length >= 3) {
+            const historicalPattern = determinePatternFrequencyLabel(rollingRegularGapsToNext);
+            if (historicalPattern && historicalPattern !== 'Irregular') {
+                // Override gap-based frequency with historical pattern when amount is stable
+                // This ensures all $0.4625 dividends get the same frequency, not different ones based on gaps
+                frequencyLabel = historicalPattern;
+                frequencyNum = historicalPattern === 'Weekly' ? 52
+                    : historicalPattern === 'Monthly' ? 12
+                    : historicalPattern === 'Quarterly' ? 4
+                    : historicalPattern === 'Semi-Annual' ? 2
+                    : historicalPattern === 'Annual' ? 1
+                    : null;
+            }
+        }
+
+        // Step 3: History-based holiday adjustment for ambiguous short gaps (14–19)
         // If amount is unchanged and the prior 3–6 dividends were monthly/weekly, treat as holiday-adjusted.
         if (frequencyLabel === 'Irregular' && gapDays >= 14 && gapDays <= 19 && medianAmount !== null && amount > 0) {
             const pattern = determinePatternFrequencyLabel(rollingRegularGapsToNext);
-            const amountStable = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
-            if (amountStable && (pattern === 'Monthly' || pattern === 'Weekly')) {
+            const amountStableForHoliday = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
+            if (amountStableForHoliday && (pattern === 'Monthly' || pattern === 'Weekly')) {
                 frequencyLabel = pattern;
                 frequencyNum = pattern === 'Monthly' ? 12 : 52;
             }
         }
 
-        // Step 3: Special detection by AMOUNT deviation (not date)
+        // Step 4: Special detection by AMOUNT deviation (not date)
         let pmtType: 'Regular' | 'Special' | 'Initial' = 'Regular';
         if (daysSincePrev === null) {
             pmtType = 'Initial';
