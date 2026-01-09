@@ -856,6 +856,20 @@ async function refreshCEF(ticker: string): Promise<void> {
       // Silent fail
     }
 
+    // IMPORTANT: Recalculate general metrics AFTER normalized dividend fields are updated.
+    // Many CEF rows have `div_type` null; we rely on `pmt_type` + `frequency_num` written above
+    // to correctly identify the latest REGULAR dividend and the current cadence (payments_per_year).
+    try {
+      const { calculateMetrics } = await import("../src/services/metrics.js");
+      const metrics = await calculateMetrics(ticker);
+      updateData.last_dividend = metrics.lastDividend;
+      updateData.forward_yield = metrics.forwardYield;
+      updateData.annual_dividend = metrics.annualizedDividend;
+      updateData.payments_per_year = metrics.paymentsPerYear;
+    } catch (error) {
+      // Keep the previously computed values if this fails
+    }
+
     // Calculate DVI (silently)
     try {
       const { calculateDividendVolatility } = await import("../src/services/metrics.js");
