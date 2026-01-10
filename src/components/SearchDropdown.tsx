@@ -118,7 +118,7 @@ export const SearchDropdown = () => {
       navigate(`${pathname}?highlight=${symbol}`, { replace: true });
       setQuery("");
       setIsOpen(false);
-      
+
       // Force the highlighted ETF to be the TOP row, then scroll the TABLE CONTAINER to the top and highlight.
       // We retry briefly because the table re-renders after we update the URL query param.
       const MAX_ATTEMPTS = 40; // ~2s
