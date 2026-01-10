@@ -156,10 +156,8 @@ export function calculateDividendVolatility(
     dataPoints: 0,
   };
 
-  // 1. Filter to regular dividends only (exclude specials) and filter out zero/null amounts.
-  //    IMPORTANT for CEFs:
-  //    - Many rows have div_type null; we rely on pmt_type + regular_component to exclude specials
-  //    - Some “special” rows are combined (regular + special in one record); in that case use regular_component
+  // 1. Filter to REGULAR dividends only (exclude specials) and filter out zero/null amounts.
+  // CEO requirement: DVI and dividend stability should be based on the regular distribution stream.
   const regularDivs = dividends.filter(d => {
     if (!d.ex_date) return false;
     const exDateObj = new Date(d.ex_date);
@@ -167,17 +165,9 @@ export function calculateDividendVolatility(
     const anyD = d as any;
 
     const pmtType = String(anyD?.pmt_type ?? '').trim();
-    const regularComponent = Number(anyD?.regular_component);
+    if (pmtType && pmtType.toLowerCase() === 'special') return false;
 
-    // Exclude pure specials, but KEEP “combined” rows where a regular run-rate component exists.
-    if (pmtType.toLowerCase() === 'special' && !(isFinite(regularComponent) && regularComponent > 0)) {
-      return false;
-    }
-
-    const amount =
-      (pmtType.toLowerCase() === 'special' && isFinite(regularComponent) && regularComponent > 0)
-        ? regularComponent
-        : (d.adj_amount ?? (d as any).scaled_amount ?? d.div_cash);
+    const amount = d.adj_amount ?? (d as any).scaled_amount ?? d.div_cash;
 
     return isFinite(amount) && Number(amount) > 0;
   });
@@ -851,12 +841,6 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
 
   // Helper: get a usable cash amount for comparisons
   const getDivAmount = (d: any): number => {
-    // If this is a “combined” special row (regular + special in one record),
-    // use the regular run-rate component for “last dividend” and annualization.
-    const pmtType = String(d?.pmt_type ?? '').trim().toLowerCase();
-    const regComp = Number(d?.regular_component);
-    if (pmtType === 'special' && isFinite(regComp) && regComp > 0) return regComp;
-
     const a = Number(d?.adj_amount);
     if (isFinite(a) && a > 0) return a;
     const c = Number(d?.div_cash);
@@ -881,12 +865,8 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
       const anyD = d as any;
       const pmtType = anyD?.pmt_type as string | undefined;
       if (pmtType) {
-        if (pmtType === 'Regular' || pmtType === 'Initial') return true;
-        if (pmtType === 'Special') {
-          const regComp = Number(anyD?.regular_component);
-          return isFinite(regComp) && regComp > 0;
-        }
-        return false;
+        // CEO requirement: baseline/last dividend should be REGULAR only (specials excluded)
+        return pmtType === 'Regular' || pmtType === 'Initial';
       }
       if (d.div_type) return !d.div_type.toLowerCase().includes('special');
       return false;
@@ -900,12 +880,8 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     const anyD = d as any;
     const pmtType = anyD?.pmt_type as string | undefined;
     if (pmtType) {
-      if (pmtType === 'Regular' || pmtType === 'Initial') return true;
-      if (pmtType === 'Special') {
-        const regComp = Number(anyD?.regular_component);
-        return isFinite(regComp) && regComp > 0;
-      }
-      return false;
+      // CEO requirement: REGULAR only for last div / cadence detection
+      return pmtType === 'Regular' || pmtType === 'Initial';
     }
 
     // Fallback to legacy div_type logic if present
@@ -931,7 +907,7 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
 
   let lastDividend: number | null = null;
   if (sortedRegular.length > 0) {
-    lastDividend = sortedRegular[0].adj_amount ?? sortedRegular[0].div_cash;
+    lastDividend = getDivAmount(sortedRegular[0]);
   }
 
   // Determine actual payments per year based on CURRENT payment frequency

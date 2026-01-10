@@ -121,6 +121,8 @@ async function recalcOne(ticker: string) {
       frequency_num: result.frequency_num,
       annualized: result.annualized,
       normalized_div: result.normalized_div,
+      regular_component: (result as any).regular_component ?? null,
+      special_component: (result as any).special_component ?? null,
     };
   });
 
@@ -130,17 +132,33 @@ async function recalcOne(ticker: string) {
     const batch = updates.slice(i, i + BATCH_SIZE);
     await Promise.all(
       batch.map(async (u) => {
-        const { error: updErr } = await supabase
+        const baseUpdate: any = {
+          days_since_prev: u.days_since_prev,
+          pmt_type: u.pmt_type,
+          frequency: u.frequency,
+          frequency_num: u.frequency_num,
+          annualized: u.annualized,
+          normalized_div: u.normalized_div,
+        };
+
+        // Try to update component-split columns too (if present in this DB)
+        const { error: fullErr } = await supabase
           .from("dividends_detail")
           .update({
-            days_since_prev: u.days_since_prev,
-            pmt_type: u.pmt_type,
-            frequency: u.frequency,
-            frequency_num: u.frequency_num,
-            annualized: u.annualized,
-            normalized_div: u.normalized_div,
+            ...baseUpdate,
+            regular_component: u.regular_component,
+            special_component: u.special_component,
           })
           .eq("id", u.id);
+
+        if (!fullErr) return;
+
+        // Fallback: older schemas without component columns
+        const { error: updErr } = await supabase
+          .from("dividends_detail")
+          .update(baseUpdate)
+          .eq("id", u.id);
+
         if (updErr) throw new Error(`[${t}] dividends_detail update failed for id=${u.id}: ${updErr.message}`);
       })
     );

@@ -202,6 +202,10 @@ export function calculateNormalizedDividendsForCEFs(
             ? Number(current.adj_amount)
             : (current.div_cash > 0 ? Number(current.div_cash) : 0);
 
+        const nextAmount = next
+            ? ((next.adj_amount !== null && next.adj_amount > 0) ? Number(next.adj_amount) : (next.div_cash > 0 ? Number(next.div_cash) : 0))
+            : null;
+
         const medianAmount = median(rollingRegularAmounts.slice(-6));
 
         // Step 1: Strict frequency from gap table (initial classification)
@@ -246,33 +250,48 @@ export function calculateNormalizedDividendsForCEFs(
         } else if (medianAmount !== null && medianAmount > 0 && amount > 0) {
             const amountStable = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
 
-            // Rule 1 — Amount spike vs median
-            if (amount > specialMultiplier * medianAmount) {
+            // Guardrail: If a “spike” repeats in the next payment(s), it’s usually a REGULAR step-change,
+            // not a special one-off (e.g., SRV’s persistent 0.45 monthly distributions).
+            // We use a looser tolerance here because fund distributions can vary a bit month to month.
+            const repeatsNext = nextAmount !== null && nextAmount > 0 && isApproximatelyEqual(amount, nextAmount, 0.06);
+            const deviationRel = Math.abs(amount - medianAmount) / Math.max(medianAmount, 1e-9);
+
+            // Rule 1 — Amount spike vs median (one-off)
+            if (!repeatsNext && amount > specialMultiplier * medianAmount) {
                 pmtType = 'Special';
             }
 
-            // Rule 2 — Irregular gap + different amount
-            // (If gap is irregular AND amount deviates, it's likely special)
-            if (pmtType !== 'Special' && frequencyLabel === 'Irregular' && !amountStable) {
+            // Rule 2 (REMOVED): “Irregular gap + different amount” caused false positives for funds with
+            // calendar-driven gaps or cadence shifts. Specials are primarily amount-driven.
+            //
+            // Replacement: if the amount is a one-off outlier (higher OR lower) vs the recent median,
+            // and it does not repeat next period, classify as Special.
+            if (pmtType !== 'Special' && !repeatsNext && !amountStable && deviationRel >= 0.25) {
                 pmtType = 'Special';
             }
 
-            // Rule 3 — Round-number specials
-            if (pmtType !== 'Special' && isRoundNumberSpecial(amount) && amount > roundNumberMultiplier * medianAmount) {
+            // Rule 3 — Round-number specials (one-off)
+            if (pmtType !== 'Special' && !repeatsNext && isRoundNumberSpecial(amount) && amount > roundNumberMultiplier * medianAmount) {
                 pmtType = 'Special';
             }
         }
 
-        // Step 5: If Special, split into (regular_component + special_component) using stable median as baseline.
+        // Step 5: If Special, optionally split into (regular_component + special_component).
         // NOTE: This does NOT create a second database row (unique constraint on ticker+ex_date).
         // Instead we store the components for display/analysis.
         let regularComponent: number | null = null;
         let specialComponent: number | null = null;
 
         if (pmtType === 'Special' && medianAmount !== null && medianAmount > 0 && amount > 0) {
-            // Use the established regular cadence amount as the baseline “regular component”
-            regularComponent = Number(medianAmount);
-            specialComponent = Number(Math.max(0, amount - medianAmount));
+            // Positive special (spike): split using the established regular cadence amount as baseline.
+            // Negative “specials” (one-off low payment): do not invent a larger regular component than paid.
+            if (amount >= medianAmount) {
+                regularComponent = Number(medianAmount);
+                specialComponent = Number(Math.max(0, amount - medianAmount));
+            } else {
+                regularComponent = Number(amount);
+                specialComponent = 0;
+            }
         } else if (amount > 0) {
             // Non-special: entire amount is regular component
             regularComponent = Number(amount);
