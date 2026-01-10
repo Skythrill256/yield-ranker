@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ETF } from "@/types/etf";
 import { ArrowUpDown, Info, Star, LineChart, X, Lock, Sliders } from "lucide-react";
 import { Button } from "./ui/button";
@@ -71,6 +71,7 @@ export const ETFTable = ({
   onDividendClick,
 }: ETFTableProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useAuth();
   const [selectedSymbol, setSelectedSymbol] = useState<string>(
     etfs[0]?.symbol || ""
@@ -142,14 +143,87 @@ export const ETFTable = ({
   const sortedETFs = useMemo(() => {
     console.log('[ETFTable] Sorting by:', sortField, sortDirection, 'ETFs count:', etfs.length);
 
-    // If no sort field is selected, return the ranked order (default by weightedRank asc)
-    if (!sortField) {
+    // Check for highlight query parameter to bring selected ETF to top
+    const urlParams = new URLSearchParams(location.search);
+    const highlightSymbol = urlParams.get('highlight')?.toUpperCase();
+
+    // If no sort field is selected and no highlight, return the ranked order (default by weightedRank asc)
+    if (!sortField && !highlightSymbol) {
       console.log('[ETFTable] No sort field, returning unsorted etfs');
       return etfs;
     }
 
     // Create a stable sorted array - use symbol as secondary sort to ensure stability
-    const sorted = [...etfs].sort((a, b) => {
+    let sorted = [...etfs];
+    
+    // If highlight symbol is set, bring it to top
+    if (highlightSymbol) {
+      const highlightedIndex = sorted.findIndex(e => e.symbol.toUpperCase() === highlightSymbol);
+      if (highlightedIndex >= 0) {
+        const highlighted = sorted.splice(highlightedIndex, 1)[0];
+        sorted = [highlighted, ...sorted];
+      }
+      // If we're highlighting and have a sort field, sort the rest normally but keep highlighted at top
+      if (sortField && sortField !== 'symbol') {
+        const [highlighted, ...rest] = sorted;
+        rest.sort((a, b) => {
+          // Use existing sort logic for the rest
+          const aValue = a[sortField];
+          const bValue = b[sortField];
+
+          if (aValue === undefined || aValue === null) {
+            if (bValue === undefined || bValue === null) {
+              return a.symbol.localeCompare(b.symbol);
+            }
+            return 1;
+          }
+          if (bValue === undefined || bValue === null) return -1;
+
+          const parseNumeric = (val: any): number | null => {
+            if (typeof val === 'number') {
+              return isNaN(val) ? null : val;
+            }
+            if (typeof val === 'string') {
+              const clean = val.replace(/[$,%\s]/g, '');
+              if (clean === '') return null;
+              const num = Number(clean);
+              return isNaN(num) ? null : num;
+            }
+            return null;
+          };
+
+          const aNum = parseNumeric(aValue);
+          const bNum = parseNumeric(bValue);
+          const bothNumeric = aNum !== null && bNum !== null;
+          const textFields: (keyof ETF)[] = ['symbol', 'issuer', 'description', 'payDay', 'dataSource'];
+          const forceString = textFields.includes(sortField);
+
+          let comparison: number = 0;
+          if (bothNumeric && !forceString) {
+            comparison = aNum - bNum;
+          } else {
+            const aStr = String(aValue).toLowerCase();
+            const bStr = String(bValue).toLowerCase();
+            comparison = aStr.localeCompare(bStr);
+          }
+
+          if (comparison !== 0) {
+            return sortDirection === "asc" ? comparison : -comparison;
+          }
+          return a.symbol.localeCompare(b.symbol);
+        });
+        sorted = [highlighted, ...rest];
+      }
+      console.log('[ETFTable] Highlighted symbol:', highlightSymbol, '- brought to top');
+      return sorted;
+    }
+
+    // Normal sorting when no highlight (but sortField is set)
+    if (!sortField) {
+      return sorted; // Should not reach here due to early return, but safety check
+    }
+    
+    sorted = sorted.sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
@@ -209,7 +283,7 @@ export const ETFTable = ({
 
     console.log('[ETFTable] Sorted ETFs - first 3:', sorted.slice(0, 3).map(e => ({ symbol: e.symbol, [sortField]: e[sortField] })));
     return sorted;
-  }, [etfs, sortField, sortDirection]);
+  }, [etfs, sortField, sortDirection, location.search]);
 
 
 

@@ -114,16 +114,18 @@ export const SearchDropdown = () => {
     }
     
     if (isHomePage || isDashboard) {
-      const etfRow = document.getElementById(`etf-row-${symbol}`);
+      // Set query parameter to trigger table sort to bring ETF to top
+      navigate(`${pathname}?highlight=${symbol}`, { replace: true });
+      setQuery("");
+      setIsOpen(false);
       
-      if (etfRow) {
-        setQuery("");
-        setIsOpen(false);
-        
-        setTimeout(() => {
+      // Also scroll to the row if it exists
+      setTimeout(() => {
+        const etfRow = document.getElementById(`etf-row-${symbol}`);
+        if (etfRow) {
           etfRow.scrollIntoView({ 
             behavior: "smooth", 
-            block: "center",
+            block: "start",
             inline: "nearest" 
           });
           
@@ -133,13 +135,11 @@ export const SearchDropdown = () => {
           setTimeout(() => {
             etfRow.classList.remove("animate-pulse");
             etfRow.style.backgroundColor = "";
+            // Clear the highlight param after highlighting
+            navigate(pathname, { replace: true });
           }, 2000);
-        }, 100);
-      } else {
-        navigate(`/etf/${symbol}`);
-        setQuery("");
-        setIsOpen(false);
-      }
+        }
+      }, 100);
     } else {
       navigate(`/etf/${symbol}`);
       setQuery("");
