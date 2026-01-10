@@ -119,27 +119,45 @@ export const SearchDropdown = () => {
       setQuery("");
       setIsOpen(false);
       
-      // Also scroll to the row if it exists
-      setTimeout(() => {
+      // Force the highlighted ETF to be the TOP row, then scroll the TABLE CONTAINER to the top and highlight.
+      // We retry briefly because the table re-renders after we update the URL query param.
+      const MAX_ATTEMPTS = 40; // ~2s
+      const RETRY_MS = 50;
+      const HIGHLIGHT_MS = 2000;
+      let attempts = 0;
+
+      const tryScrollAndHighlight = () => {
+        const container = document.getElementById("etf-table-scroll");
+        if (container) container.scrollTop = 0;
+
         const etfRow = document.getElementById(`etf-row-${symbol}`);
         if (etfRow) {
-          etfRow.scrollIntoView({ 
-            behavior: "smooth", 
+          etfRow.scrollIntoView({
+            behavior: "smooth",
             block: "start",
-            inline: "nearest" 
+            inline: "nearest",
           });
-          
+
           etfRow.classList.add("animate-pulse");
           etfRow.style.backgroundColor = "rgba(59, 130, 246, 0.15)";
-          
+
           setTimeout(() => {
             etfRow.classList.remove("animate-pulse");
             etfRow.style.backgroundColor = "";
-            // Clear the highlight param after highlighting
             navigate(pathname, { replace: true });
-          }, 2000);
+          }, HIGHLIGHT_MS);
+          return;
         }
-      }, 100);
+
+        attempts++;
+        if (attempts >= MAX_ATTEMPTS) {
+          navigate(pathname, { replace: true });
+          return;
+        }
+        setTimeout(tryScrollAndHighlight, RETRY_MS);
+      };
+
+      setTimeout(tryScrollAndHighlight, RETRY_MS);
     } else {
       navigate(`/etf/${symbol}`);
       setQuery("");
