@@ -69,10 +69,10 @@ export const CEFTable = ({
 }: CEFTableProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [pinnedSymbol, setPinnedSymbol] = useState<string | null>(null);
-  const lastHighlightedElRef = useRef<HTMLElement | null>(null);
   const { user, profile } = useAuth();
   const isGuest = !profile;
+  const [pinnedSymbol, setPinnedSymbol] = useState<string | null>(null);
+  const lastHighlightedElRef = useRef<HTMLElement | null>(null);
   const [sortField, setSortField] = useState<SortField>("weightedRank");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -142,6 +142,7 @@ export const CEFTable = ({
 
     let sorted = [...cefs];
 
+    // Pinned: bring selected symbol to top
     if (pinnedSymbol) {
       const idx = sorted.findIndex((c) => c.symbol.toUpperCase() === pinnedSymbol);
       if (idx >= 0) {

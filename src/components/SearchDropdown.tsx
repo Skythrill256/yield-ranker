@@ -153,7 +153,7 @@ export const SearchDropdown = () => {
     }
     
     if (isCEFPage) {
-      // The table component will consume this param, pin the row to the top, scroll to top-left, and highlight.
+      // Let the CEF table consume ?highlight=SYMBOL, pin to top, scroll to top-left, and highlight until refresh
       navigate(`${pathname}?highlight=${symbol}`, { replace: true });
       setQuery("");
       setIsOpen(false);
