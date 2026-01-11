@@ -276,7 +276,8 @@ export function calculateNormalizedDividendsForCEFs(
         amountStabilityRelTol?: number;      // "unchanged" threshold
     }
 ): NormalizedDividendCEF[] {
-    const specialMultiplier = options?.specialMultiplier ?? 1.75;
+    // "Golden logic": only call something Special on a very strong amount signal by default (>= 300% of median).
+    const specialMultiplier = options?.specialMultiplier ?? 3.0;
     const roundNumberMultiplier = options?.roundNumberMultiplier ?? 1.5;
     const amountStabilityRelTol = options?.amountStabilityRelTol ?? 0.02; // 2% default
 
@@ -303,15 +304,26 @@ export function calculateNormalizedDividendsForCEFs(
         const daysSincePrev =
             prevDate ? Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
-        // Per requirement: classify newest dividend strictly by gap days (look-back).
-        // For earlier dividends, use look-ahead to next dividend to label that period.
+        // GOLDEN LOGIC: CEF cadence should be based on the *look-back* gap (ex-date to previous ex-date).
+        // Using look-ahead (to next) can misclassify December clusters where a regular payment is followed
+        // by a special just a few days later (e.g., DJIA/BST/SPE).
+        const daysToNext =
+            nextDate ? Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
         const gapDays =
-            nextDate ? Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
-                : (daysSincePrev !== null ? daysSincePrev : 0);
+            (daysSincePrev !== null && daysSincePrev > 0)
+                ? daysSincePrev
+                : (daysToNext !== null && daysToNext > 0 ? daysToNext : 0);
 
         const amount = (current.adj_amount !== null && current.adj_amount > 0)
             ? Number(current.adj_amount)
             : (current.div_cash > 0 ? Number(current.div_cash) : 0);
+
+        const prevAmount = prev
+            ? ((prev.adj_amount !== null && prev.adj_amount > 0)
+                ? Number(prev.adj_amount)
+                : (prev.div_cash > 0 ? Number(prev.div_cash) : 0))
+            : null;
 
         const nextAmount = next
             ? ((next.adj_amount !== null && next.adj_amount > 0) ? Number(next.adj_amount) : (next.div_cash > 0 ? Number(next.div_cash) : 0))
@@ -354,34 +366,35 @@ export function calculateNormalizedDividendsForCEFs(
             }
         }
 
-        // Step 4: Special detection by AMOUNT deviation (not date)
-        // Date-only rules (e.g. "1–4 days after previous") create false positives for
-        // weekly payers, holiday shifts, and cadence transitions. Specials are primarily amount-driven.
+        // Step 4: Special detection (Golden logic)
+        // Priority 1: Cadence is the look-back gap (gapDays).
+        // Priority 2: If amount is exactly the same as previous payment, it MUST be Regular.
+        // Priority 3: If amount is a >= specialMultiplier spike vs recent median AND it doesn't repeat next month, it's Special.
         let pmtType: 'Regular' | 'Special' | 'Initial' = 'Regular';
         if (daysSincePrev === null) {
             pmtType = 'Initial';
-        } else if (medianAmount !== null && medianAmount > 0 && amount > 0) {
-            const amountStable = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
+        } else if (amount > 0) {
+            // Priority 2: exact same amount as previous => Regular (even if gap is a bit off)
+            if (prevAmount !== null && prevAmount > 0) {
+                const a = Number(amount.toFixed(6));
+                const b = Number(prevAmount.toFixed(6));
+                if (a === b) {
+                    pmtType = 'Regular';
+                }
+            }
 
-            // Guardrail: If a “spike” repeats in the next payment(s), it’s usually a REGULAR step-change,
-            // not a special one-off (e.g., SRV’s persistent 0.45 monthly distributions).
-            // We use a looser tolerance here because fund distributions can vary a bit month to month.
-            const repeatsNext = nextAmount !== null && nextAmount > 0 && isApproximatelyEqual(amount, nextAmount, 0.06);
-            const deviationRel = Math.abs(amount - medianAmount) / Math.max(medianAmount, 1e-9);
-
-            // Rule 1 — Amount spike vs median (one-off)
-            if (!repeatsNext && amount > specialMultiplier * medianAmount) {
+            // Clustered payments (1–4 days) are always Special
+            if (pmtType !== 'Regular' && daysSincePrev !== null && daysSincePrev >= 1 && daysSincePrev <= 4) {
                 pmtType = 'Special';
             }
 
-            // Rule 2: one-off outlier (higher OR lower) vs recent median
-            if (pmtType !== 'Special' && !repeatsNext && !amountStable && deviationRel >= 0.25) {
-                pmtType = 'Special';
-            }
-
-            // Rule 3 — Round-number specials (one-off)
-            if (pmtType !== 'Special' && !repeatsNext && isRoundNumberSpecial(amount) && amount > roundNumberMultiplier * medianAmount) {
-                pmtType = 'Special';
+            // Priority 3: spike rule (default >= 300% of recent median) + non-repeat
+            if (pmtType !== 'Special' && medianAmount !== null && medianAmount > 0) {
+                const repeatsNext = nextAmount !== null && nextAmount > 0 && isApproximatelyEqual(amount, nextAmount, 0.05);
+                const isSpike = amount >= specialMultiplier * medianAmount;
+                if (isSpike && !repeatsNext) {
+                    pmtType = 'Special';
+                }
             }
         }
 
@@ -455,9 +468,13 @@ export function calculateNormalizedDividendsForCEFs(
         // Update rolling history only for non-special dividends (so specials don't distort median/pattern)
         if (pmtType !== 'Special' && amount > 0) {
             rollingRegularAmounts.push(amount);
-            // For pattern detection we want "gap to next" (frequency confirmation). Only add if next exists.
-            if (nextDate && gapDays > 0) {
-                rollingRegularGapsToNext.push(gapDays);
+            // For pattern detection we want "gap to next" (frequency confirmation),
+            // but skip clustered short gaps (likely specials) so they don't poison cadence.
+            if (daysToNext !== null && daysToNext > 0) {
+                const labelToNext = getCEFFrequencyFromDays(daysToNext).label;
+                if (labelToNext !== 'Irregular') {
+                    rollingRegularGapsToNext.push(daysToNext);
+                }
             }
         }
     }
