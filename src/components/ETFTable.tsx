@@ -315,8 +315,6 @@ export const ETFTable = ({
         comparison = aNum - bNum;
       } else {
         // Fallback to string comparison
-            const aStr = normalizeText(aValue);
-            const bStr = normalizeText(bValue);
         const aStr = normalizeText(aValue);
         const bStr = normalizeText(bValue);
         comparison = aStr.localeCompare(bStr);

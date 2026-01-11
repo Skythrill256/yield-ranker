@@ -72,7 +72,6 @@ export const CEFTable = ({
   const { user, profile } = useAuth();
   const isGuest = !profile;
   const [pinnedSymbol, setPinnedSymbol] = useState<string | null>(null);
-  const lastHighlightedElRef = useRef<HTMLElement | null>(null);
   const [sortField, setSortField] = useState<SortField>("weightedRank");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -110,6 +109,7 @@ export const CEFTable = ({
     setPinnedSymbol(highlight);
     navigate(location.pathname, { replace: true });
 
+    // Scroll to top when a symbol is highlighted
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const container = document.getElementById("cef-table-scroll");
@@ -117,22 +117,6 @@ export const CEFTable = ({
           container.scrollTop = 0;
           container.scrollLeft = 0;
         }
-
-        if (lastHighlightedElRef.current) {
-          lastHighlightedElRef.current.style.backgroundColor = "";
-          lastHighlightedElRef.current.style.outline = "";
-          lastHighlightedElRef.current.style.outlineOffset = "";
-        }
-
-        const row = document.getElementById(`cef-row-${highlight}`) as HTMLElement | null;
-        if (row) {
-          row.style.backgroundColor = "rgba(59, 130, 246, 0.15)";
-          row.style.outline = "2px solid rgba(59, 130, 246, 0.35)";
-          row.style.outlineOffset = "-2px";
-          lastHighlightedElRef.current = row;
-        }
-
-        if (container) container.scrollLeft = 0;
       });
     });
   }, [location.search, location.pathname, navigate]);
@@ -576,12 +560,21 @@ export const CEFTable = ({
             </tr>
           </thead>
           <tbody>
-            {sortedCEFs.map((cef, index) => (
+            {sortedCEFs.map((cef, index) => {
+              const isHighlighted = pinnedSymbol && cef.symbol.toUpperCase() === pinnedSymbol;
+              return (
               <tr
                 key={cef.symbol}
                 id={`cef-row-${cef.symbol}`}
                 data-cef-symbol={cef.symbol}
-                className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                className={`border-b border-slate-100 transition-colors ${
+                  isHighlighted ? "" : "hover:bg-slate-50/50"
+                }`}
+                style={isHighlighted ? {
+                  backgroundColor: "rgba(59, 130, 246, 0.15)",
+                  outline: "2px solid rgba(59, 130, 246, 0.35)",
+                  outlineOffset: "-2px"
+                } : undefined}
               >
                 <td className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 bg-white border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
                   <button
@@ -798,7 +791,8 @@ export const CEFTable = ({
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -394,7 +394,9 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       return `${actualPaymentsPerYear}x/Yr`;
     };
 
-    // Calculate normalized values for each dividend
+    // Build dividend records for response (date/amount metadata).
+    // NOTE: Normalization (pmtType/frequencyNum/daysSincePrev/annualized/normalizedDiv) is computed LIVE
+    // from the full series below to avoid stale DB classifications.
     const dividendRecords = dividends.map((d, idx) => {
       // Estimate record/pay dates if missing
       let recordDate = d.record_date;
@@ -421,48 +423,56 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       };
     });
 
-    // ALWAYS use database normalized values - they are calculated correctly by refresh_all.ts
-    // Create a map for quick lookup by ex_date to match dividendRecords with dividends
+    // Compute normalized fields LIVE from the series (prevents stale DB pmt_type/frequency issues).
+    // `calculateNormalizedForResponse` returns results in DESC order by exDate.
+    const liveNormalizedDesc = calculateNormalizedForResponse(dividendRecords);
+    const dividendRecordsDesc = [...dividendRecords].sort(
+      (a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
+    );
+
+    // Attach any component splits from DB if present (mostly relevant to CEF routes, but harmless here).
     const dividendsByDateMap = new Map<string, any>();
-    dividends.forEach((d, idx) => {
-      const exDate = d.ex_date.split('T')[0]; // Normalize date format
+    dividends.forEach((d) => {
+      const exDate = d.ex_date.split('T')[0];
       dividendsByDateMap.set(exDate, d);
     });
 
-    // Map dividendRecords to include normalized values from database
-    const dividendsWithNormalized = dividendRecords.map((d) => {
-      // Normalize exDate format to match the map key (remove time component if present)
+    const dividendsWithNormalized = dividendRecordsDesc.map((d, i) => {
       const normalizedExDate = d.exDate.split('T')[0];
       const dbDiv = dividendsByDateMap.get(normalizedExDate);
-      
-      // Always use database values if available (even if normalized_div is null)
-      // frequency_num should be returned even if normalized_div is null (e.g., first dividend)
-      if (dbDiv) {
-        return {
-          ...d,
-          pmtType: ((dbDiv as any).pmt_type ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
-          // IMPORTANT: don't default to 12 when DB has null (e.g., irregular/special cases)
-          frequencyNum: (dbDiv as any).frequency_num ?? null,
-          daysSincePrev: (dbDiv as any).days_since_prev ?? null,
-          annualized: (dbDiv as any).annualized ?? null,
-          normalizedDiv: (dbDiv as any).normalized_div ?? null, // Can be null for first dividend
-          // CEF-only: component split (optional)
-          regularComponent: (dbDiv as any).regular_component ?? null,
-          specialComponent: (dbDiv as any).special_component ?? null,
-        };
-      }
-      
-      // Fallback: if database record not found, return defaults
-      // This should not happen if refresh_all.ts has run
+      const live = liveNormalizedDesc[i];
+
       return {
         ...d,
-        pmtType: 'Regular' as const,
-        frequencyNum: 12,
-        daysSincePrev: null,
-        annualized: null,
-        normalizedDiv: null,
+        pmtType: (live?.pmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
+        frequencyNum: live?.frequencyNum ?? 12,
+        daysSincePrev: live?.daysSincePrev ?? null,
+        annualized: live?.annualized ?? null,
+        normalizedDiv: live?.normalizedDiv ?? null,
+        regularComponent: (dbDiv as any)?.regular_component ?? null,
+        specialComponent: (dbDiv as any)?.special_component ?? null,
       };
     });
+
+    // Recompute lastDividend using LIVE pmtType so special stubs don’t pollute the run-rate.
+    lastDividend = null;
+    for (const div of dividendsWithNormalized) {
+      if (div.pmtType === 'Regular' || div.pmtType === 'Initial') {
+        const rc = (div as any).regularComponent;
+        if (rc !== null && rc !== undefined) {
+          const v = Number(rc);
+          if (isFinite(v) && v > 0) {
+            lastDividend = v;
+            break;
+          }
+        }
+        const amount = Number(div.amount ?? 0);
+        if (isFinite(amount) && amount > 0) {
+          lastDividend = amount;
+          break;
+        }
+      }
+    }
 
     res.json({
       ticker: ticker.toUpperCase(),
