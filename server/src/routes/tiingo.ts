@@ -423,24 +423,51 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       };
     });
 
-    // Compute normalized fields LIVE from the series (prevents stale DB pmt_type/frequency issues).
-    // `calculateNormalizedForResponse` returns results in DESC order by exDate.
-    const liveNormalizedDesc = calculateNormalizedForResponse(dividendRecords);
-    const dividendRecordsDesc = [...dividendRecords].sort(
-      (a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
-    );
-
-    // Attach any component splits from DB if present (mostly relevant to CEF routes, but harmless here).
+    // Check if this is a CEF to use the correct normalization path
+    const isCEF = staticData?.category === 'CEF';
+    
+    // For CEFs, prefer database values (they're calculated with CEF-specific logic)
+    // For ETFs, recalculate to ensure freshness
     const dividendsByDateMap = new Map<string, any>();
     dividends.forEach((d) => {
       const exDate = d.ex_date.split('T')[0];
       dividendsByDateMap.set(exDate, d);
     });
 
-    const dividendsWithNormalized = dividendRecordsDesc.map((d, i) => {
+    const dividendRecordsDesc = [...dividendRecords].sort(
+      (a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
+    );
+
+    const dividendsWithNormalized = dividendRecordsDesc.map((d) => {
       const normalizedExDate = d.exDate.split('T')[0];
       const dbDiv = dividendsByDateMap.get(normalizedExDate);
-      const live = liveNormalizedDesc[i];
+
+      // For CEFs: Use database values directly (they're already calculated correctly)
+      if (isCEF && dbDiv) {
+        const dbPmtType = (dbDiv as any)?.pmt_type;
+        const dbFrequency = (dbDiv as any)?.frequency;
+        const dbFrequencyNum = (dbDiv as any)?.frequency_num;
+        const dbAnnualized = (dbDiv as any)?.annualized;
+        const dbNormalizedDiv = (dbDiv as any)?.normalized_div;
+        const dbDaysSincePrev = (dbDiv as any)?.days_since_prev;
+
+        return {
+          ...d,
+          pmtType: (dbPmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
+          frequency: dbFrequency ?? d.frequency,
+          frequencyNum: dbFrequencyNum ?? 12,
+          daysSincePrev: dbDaysSincePrev ?? null,
+          annualized: dbAnnualized ?? null,
+          normalizedDiv: dbNormalizedDiv ?? null,
+          regularComponent: (dbDiv as any)?.regular_component ?? null,
+          specialComponent: (dbDiv as any)?.special_component ?? null,
+        };
+      }
+
+      // For ETFs: Recalculate using ETF normalization logic
+      // Compute normalized fields LIVE from the series (prevents stale DB pmt_type/frequency issues).
+      const liveNormalizedDesc = calculateNormalizedForResponse([d]);
+      const live = liveNormalizedDesc[0];
 
       // Use database pmt_type if available (more reliable than live recalculation)
       const pmtType = (dbDiv as any)?.pmt_type ?? (live?.pmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial';
