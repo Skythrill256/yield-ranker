@@ -62,3 +62,4 @@ FROM public.etf_static;
 
 
 
+
