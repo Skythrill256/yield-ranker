@@ -302,22 +302,29 @@ export const ETFTable = ({
 
       const bothNumeric = aNum !== null && bNum !== null;
 
-      // If the sort field is explicitly a text field, prefer string sort
-      // unless parsing was requested. Ideally, we distinguish by column type.
-      // But here, let's assume if it PARSES as a number, we treat it as a number 
-      // UNLESS the field is 'symbol', 'issuer', 'description'.
-      const textFields: (keyof ETF)[] = ['symbol', 'issuer', 'description', 'payDay', 'dataSource'];
-      const forceString = textFields.includes(sortField);
-
       let comparison: number = 0;
 
-      if (bothNumeric && !forceString) {
-        comparison = aNum - bNum;
+      // Special case: issuer sorts by rank (weightedRank) instead of alphabetically
+      if (sortField === "issuer") {
+        const aRank = a.weightedRank ?? Infinity;
+        const bRank = b.weightedRank ?? Infinity;
+        comparison = aRank - bRank;
       } else {
-        // Fallback to string comparison
-        const aStr = normalizeText(aValue);
-        const bStr = normalizeText(bValue);
-        comparison = aStr.localeCompare(bStr);
+        // If the sort field is explicitly a text field, prefer string sort
+        // unless parsing was requested. Ideally, we distinguish by column type.
+        // But here, let's assume if it PARSES as a number, we treat it as a number 
+        // UNLESS the field is 'symbol', 'description'.
+        const textFields: (keyof ETF)[] = ['symbol', 'description', 'payDay', 'dataSource'];
+        const forceString = textFields.includes(sortField);
+
+        if (bothNumeric && !forceString) {
+          comparison = aNum - bNum;
+        } else {
+          // Fallback to string comparison
+          const aStr = normalizeText(aValue);
+          const bStr = normalizeText(bValue);
+          comparison = aStr.localeCompare(bStr);
+        }
       }
 
       if (comparison !== 0) {
