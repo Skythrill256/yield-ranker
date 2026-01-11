@@ -442,9 +442,19 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       const dbDiv = dividendsByDateMap.get(normalizedExDate);
       const live = liveNormalizedDesc[i];
 
+      // Use database pmt_type if available (more reliable than live recalculation)
+      const pmtType = (dbDiv as any)?.pmt_type ?? (live?.pmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial';
+      
+      // For Special dividends, use database frequency (should be "Other") instead of live calculation
+      let frequency = d.frequency;
+      if (pmtType === 'Special' && (dbDiv as any)?.frequency) {
+        frequency = (dbDiv as any).frequency;
+      }
+
       return {
         ...d,
-        pmtType: (live?.pmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
+        frequency, // Use database frequency for Specials, otherwise keep original
+        pmtType,
         frequencyNum: live?.frequencyNum ?? 12,
         daysSincePrev: live?.daysSincePrev ?? null,
         annualized: live?.annualized ?? null,
