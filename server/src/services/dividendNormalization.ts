@@ -385,6 +385,14 @@ export function calculateNormalizedDividendsForCEFs(
             }
         }
 
+        // CRITICAL: Override frequency for Special dividends
+        // Specials should NEVER show as "Annual", "Monthly", etc. - they're one-time events
+        // Force frequency_num = 1 and frequency_label = 'Irregular' for all Specials
+        if (pmtType === 'Special') {
+            frequencyNum = 1;
+            frequencyLabel = 'Irregular';
+        }
+
         // Step 5: If Special, optionally split into (regular_component + special_component).
         // NOTE: This does NOT create a second database row (unique constraint on ticker+ex_date).
         // Instead we store the components for display/analysis.
