@@ -15,7 +15,7 @@ import {
 } from '../services/database.js';
 import { fetchPriceHistory as fetchTiingoPrices, fetchDividendHistory as fetchTiingoDividends } from '../services/tiingo.js';
 import { calculateMetrics, getChartData, calculateRankings, calculateRealtimeReturns, calculateRealtimeReturnsBatch } from '../services/metrics.js';
-import { calculateNormalizedForResponse } from '../services/dividendNormalization.js';
+import { calculateNormalizedForResponse, calculateNormalizedDividendsForCEFs } from '../services/dividendNormalization.js';
 import { periodToStartDate, getDateYearsAgo, logger, formatDate } from '../utils/index.js';
 import type { ChartPeriod, RankingWeights, DividendRecord } from '../types/index.js';
 
@@ -424,7 +424,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     });
 
     // Check if this is a CEF to use the correct normalization path
-    const isCEF = staticData?.category === 'CEF';
+    const isCEF = String(staticData?.category ?? '').toUpperCase() === 'CEF';
     
     // For CEFs, prefer database values (they're calculated with CEF-specific logic)
     // For ETFs, recalculate to ensure freshness
@@ -442,29 +442,52 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     // CEFs: we will use DB-calculated values (see below).
     const liveNormalizedDesc = !isCEF ? calculateNormalizedForResponse(dividendRecords) : null;
 
+    // CEFs: compute normalization from CEF-specific rules at request time (avoids any stale/misclassified DB rows)
+    // and ensures extreme spikes (e.g., SPE 0.7000 vs 0.1098) are always shown as Special/Other.
+    const cefNormalizedByDate = new Map<string, any>();
+    if (isCEF && dividends.length > 0) {
+      const cefInputs = dividends
+        .filter((d: any) => d?.id !== null && d?.id !== undefined)
+        .map((d: any) => ({
+          id: Number(d.id),
+          ticker: ticker.toUpperCase(),
+          ex_date: String(d.ex_date).split('T')[0],
+          div_cash: Number(d.div_cash),
+          adj_amount: d.adj_amount !== null && d.adj_amount !== undefined ? Number(d.adj_amount) : null,
+        }));
+
+      const idToExDate = new Map<number, string>();
+      cefInputs.forEach((i: any) => idToExDate.set(i.id, i.ex_date));
+
+      const cefNorm = calculateNormalizedDividendsForCEFs(cefInputs);
+      cefNorm.forEach((n: any) => {
+        const ex = idToExDate.get(Number(n.id));
+        if (ex) cefNormalizedByDate.set(ex, n);
+      });
+    }
+
     const dividendsWithNormalized = dividendRecordsDesc.map((d, i) => {
       const normalizedExDate = d.exDate.split('T')[0];
       const dbDiv = dividendsByDateMap.get(normalizedExDate);
 
-      // For CEFs: Use database values directly (they're already calculated correctly)
-      if (isCEF && dbDiv) {
-        const dbPmtType = (dbDiv as any)?.pmt_type;
-        const dbFrequency = (dbDiv as any)?.frequency;
-        const dbFrequencyNum = (dbDiv as any)?.frequency_num;
-        const dbAnnualized = (dbDiv as any)?.annualized;
-        const dbNormalizedDiv = (dbDiv as any)?.normalized_div;
-        const dbDaysSincePrev = (dbDiv as any)?.days_since_prev;
+      // For CEFs: Use CEF normalization (live) + enforce UI display rules:
+      // - Specials show frequency="Other"
+      // - Specials DO NOT show annualized/normalized (null) to avoid misleading yield math
+      if (isCEF) {
+        const cefN = cefNormalizedByDate.get(normalizedExDate);
+        const pmtType = ((cefN?.pmt_type ?? (dbDiv as any)?.pmt_type ?? 'Regular') as 'Regular' | 'Special' | 'Initial');
+        const isSpecial = pmtType === 'Special';
 
         return {
           ...d,
-          pmtType: (dbPmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
-          frequency: dbFrequency ?? d.frequency,
-          frequencyNum: dbFrequencyNum ?? 12,
-          daysSincePrev: dbDaysSincePrev ?? null,
-          annualized: dbAnnualized ?? null,
-          normalizedDiv: dbNormalizedDiv ?? null,
-          regularComponent: (dbDiv as any)?.regular_component ?? null,
-          specialComponent: (dbDiv as any)?.special_component ?? null,
+          pmtType,
+          frequency: isSpecial ? 'Other' : (cefN?.frequency_label ?? (dbDiv as any)?.frequency ?? d.frequency),
+          frequencyNum: isSpecial ? null : (cefN?.frequency_num ?? (dbDiv as any)?.frequency_num ?? 12),
+          daysSincePrev: cefN?.days_since_prev ?? (dbDiv as any)?.days_since_prev ?? null,
+          annualized: isSpecial ? null : (cefN?.annualized ?? (dbDiv as any)?.annualized ?? null),
+          normalizedDiv: isSpecial ? null : (cefN?.normalized_div ?? (dbDiv as any)?.normalized_div ?? null),
+          regularComponent: (cefN?.regular_component ?? (dbDiv as any)?.regular_component ?? null),
+          specialComponent: (cefN?.special_component ?? (dbDiv as any)?.special_component ?? null),
         };
       }
 
