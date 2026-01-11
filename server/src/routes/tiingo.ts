@@ -438,7 +438,11 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       (a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
     );
 
-    const dividendsWithNormalized = dividendRecordsDesc.map((d) => {
+    // ETFs: compute normalized fields from the full series so daysSincePrev/frequency confirmation is consistent.
+    // CEFs: we will use DB-calculated values (see below).
+    const liveNormalizedDesc = !isCEF ? calculateNormalizedForResponse(dividendRecords) : null;
+
+    const dividendsWithNormalized = dividendRecordsDesc.map((d, i) => {
       const normalizedExDate = d.exDate.split('T')[0];
       const dbDiv = dividendsByDateMap.get(normalizedExDate);
 
@@ -464,10 +468,8 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         };
       }
 
-      // For ETFs: Recalculate using ETF normalization logic
-      // Compute normalized fields LIVE from the series (prevents stale DB pmt_type/frequency issues).
-      const liveNormalizedDesc = calculateNormalizedForResponse([d]);
-      const live = liveNormalizedDesc[0];
+      // For ETFs: Recalculate using ETF normalization logic from the full series.
+      const live = liveNormalizedDesc?.[i];
 
       // Use database pmt_type if available (more reliable than live recalculation)
       const pmtType = (dbDiv as any)?.pmt_type ?? (live?.pmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial';
