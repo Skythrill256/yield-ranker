@@ -938,14 +938,21 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
   let actualPaymentsPerYear: number;
 
   if (sortedRegular.length >= 1) {
+    // IMPORTANT: Do NOT let a Special row (which can be labeled "Other"/freq_num=1) define cadence.
+    // Use the most recent NON-special row to infer payments/year.
+    const mostRecentNonSpecial =
+      (sortedRegular.find((d: any) => String(d?.pmt_type ?? '').trim().toLowerCase() !== 'special') as any) ??
+      (sortedRegular[0] as any);
+
     // Prefer frequency_num from normalization if available (most accurate, handles holiday shifts)
-    const freqNum = Number((sortedRegular[0] as any)?.frequency_num);
+    const freqNum = Number(mostRecentNonSpecial?.frequency_num);
     if (isFinite(freqNum) && freqNum > 0) {
       actualPaymentsPerYear = freqNum;
     } else if (sortedRegular.length >= 2) {
       // Otherwise detect current frequency from most recent payments
-      const mostRecent = sortedRegular[0];
-      const secondMostRecent = sortedRegular[1];
+      const nonSpecial = sortedRegular.filter((d: any) => String(d?.pmt_type ?? '').trim().toLowerCase() !== 'special');
+      const mostRecent = (nonSpecial[0] ?? sortedRegular[0]) as any;
+      const secondMostRecent = (nonSpecial[1] ?? sortedRegular[1]) as any;
       const daysBetween = (new Date(mostRecent.ex_date).getTime() - new Date(secondMostRecent.ex_date).getTime()) / (1000 * 60 * 60 * 24);
 
       // Determine frequency based on days between most recent payments
