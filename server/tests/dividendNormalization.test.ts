@@ -37,6 +37,23 @@ describe('dividendNormalization (ETF/CCETF)', () => {
     expect(byDate.get('2025-03-13')!.frequency_num).toBe(52);
   });
 
+  test('Non-December extra distribution still classifies as Special (GIAX-like)', () => {
+    const divs = [
+      { id: 1, ticker: 'GIAX', ex_date: '2024-09-27', div_cash: 0.40, adj_amount: 0.40 },
+      { id: 2, ticker: 'GIAX', ex_date: '2024-10-29', div_cash: 0.40, adj_amount: 0.40 },
+      { id: 3, ticker: 'GIAX', ex_date: '2024-11-26', div_cash: 0.40, adj_amount: 0.40 }, // regular monthly
+      { id: 4, ticker: 'GIAX', ex_date: '2024-11-28', div_cash: 0.15, adj_amount: 0.15 }, // extra distribution in same month
+      { id: 5, ticker: 'GIAX', ex_date: '2024-12-27', div_cash: 0.40, adj_amount: 0.40 },
+    ];
+
+    const res = calculateNormalizedDividends(divs);
+    const byDate = new Map(res.map((r) => [divs.find((d) => d.id === r.id)!.ex_date, r]));
+
+    expect(byDate.get('2024-11-26')!.pmt_type).toBe('Regular');
+    expect(byDate.get('2024-11-26')!.frequency_num).toBe(12);
+    expect(byDate.get('2024-11-28')!.pmt_type).toBe('Special');
+  });
+
   test('Tiny special right before regular payment is flagged Special', () => {
     // Add a prior regular so the tiny payment isn't the "Initial" row.
     const divs2 = [

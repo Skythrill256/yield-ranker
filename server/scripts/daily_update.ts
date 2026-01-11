@@ -37,6 +37,7 @@ import {
 } from '../src/services/tiingo.js';
 import { calculateMetrics, calculateRankings } from '../src/services/metrics.js';
 import { batchUpdateETFMetrics } from '../src/services/database.js';
+import { calculateNormalizedDividends } from '../src/services/dividendNormalization.js';
 import type { TiingoPriceData } from '../src/types/index.js';
 
 // Type alias for dividend data from Tiingo
@@ -608,6 +609,79 @@ async function updateTicker(
 
     if (!dryRun) {
       await updateSyncLog(ticker, 'dividends', lastDividendDate, dividendsAdded, 'success');
+    }
+
+    // CRITICAL: Keep frequency consistent by recalculating normalized dividend columns whenever new dividends are saved.
+    // refresh_all.ts already does this; daily_update must do it too or frequency errors can reappear over time.
+    if (!dryRun && dividendsAdded > 0) {
+      console.log(`  Recalculating normalized dividend columns (frequency/type) after dividend update...`);
+      try {
+        const { data: allDividends, error: divError } = await supabase
+          .from('dividends_detail')
+          .select('id, ticker, ex_date, adj_amount, div_cash')
+          .eq('ticker', ticker.toUpperCase())
+          .order('ex_date', { ascending: true });
+
+        if (divError) {
+          console.error(`  ⚠ Error fetching dividends for normalization:`, divError.message);
+        } else if (allDividends && allDividends.length > 0) {
+          const normalized = calculateNormalizedDividends(
+            allDividends.map(d => ({
+              id: d.id,
+              ticker: d.ticker,
+              ex_date: d.ex_date,
+              div_cash: Number(d.div_cash),
+              adj_amount: d.adj_amount ? Number(d.adj_amount) : null,
+            }))
+          );
+
+          // Batch update to avoid many single-row updates
+          const updates = normalized.map(norm => {
+            let frequencyStr: string | null = null;
+            if (norm.pmt_type === 'Special') {
+              frequencyStr = 'Special';
+            } else if (norm.frequency_num !== null && norm.frequency_num !== undefined) {
+              if (norm.frequency_num === 52) frequencyStr = 'Weekly';
+              else if (norm.frequency_num === 12) frequencyStr = 'Monthly';
+              else if (norm.frequency_num === 4) frequencyStr = 'Quarterly';
+              else if (norm.frequency_num === 2) frequencyStr = 'Semi-Annual';
+              else if (norm.frequency_num === 1) frequencyStr = 'Annual';
+            }
+
+            return {
+              id: norm.id,
+              days_since_prev: norm.days_since_prev,
+              pmt_type: norm.pmt_type,
+              frequency: frequencyStr,
+              frequency_num: norm.frequency_num,
+              annualized: norm.annualized,
+              normalized_div: norm.normalized_div,
+            };
+          });
+
+          const NORM_BATCH = 250;
+          for (let i = 0; i < updates.length; i += NORM_BATCH) {
+            const batch = updates.slice(i, i + NORM_BATCH);
+            // Upsert by id is not supported here; do per-row update in parallel for this batch.
+            await Promise.all(
+              batch.map(async (u) => {
+                const { id, ...rest } = u;
+                const { error: updateError } = await supabase
+                  .from('dividends_detail')
+                  .update(rest)
+                  .eq('id', id);
+                if (updateError) {
+                  console.error(`  ⚠ Error updating dividend ID ${id}:`, updateError.message);
+                }
+              })
+            );
+          }
+
+          console.log(`  ✓ Normalized dividend columns updated for ${normalized.length} dividends`);
+        }
+      } catch (e) {
+        console.error(`  ⚠ Error recalculating normalized dividends:`, e instanceof Error ? e.message : e);
+      }
     }
 
     // Step 3: Recompute metrics (annualized dividend, SD/CV, returns)
