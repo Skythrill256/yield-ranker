@@ -470,6 +470,36 @@ export function calculateNormalizedDividendsForCEFs(
             special_component: specialComponent,
         });
 
+        // CRITICAL: Prevent back-to-back specials
+        // If the previous dividend was Special, only mark this as Special if it's an extreme spike (>300%)
+        // This prevents two consecutive Special flags which don't make sense (you can't have two "one-off" payments in a row)
+        if (pmtType === 'Special' && i > 0) {
+            const prevResult = results[results.length - 1];
+            if (prevResult && prevResult.pmt_type === 'Special') {
+                // Previous was Special - only keep this as Special if it's truly extreme (>300% of recent regular median)
+                const recentRegularMedian = median(rollingRegularAmounts.slice(-6));
+                if (recentRegularMedian !== null && recentRegularMedian > 0) {
+                    const isExtremeSpike = amount > 3.0 * recentRegularMedian;
+                    if (!isExtremeSpike) {
+                        // Not extreme enough - demote to Regular
+                        pmtType = 'Regular';
+                        // Also update the frequency_label if it was set to Irregular
+                        if (frequencyLabel === 'Irregular') {
+                            frequencyLabel = rollingRegularGapsToNext.length >= 3
+                                ? (determinePatternFrequencyLabel(rollingRegularGapsToNext) ?? 'Monthly')
+                                : 'Monthly';
+                            frequencyNum = frequencyLabel === 'Weekly' ? 52
+                                : frequencyLabel === 'Monthly' ? 12
+                                : frequencyLabel === 'Quarterly' ? 4
+                                : frequencyLabel === 'Semi-Annual' ? 2
+                                : frequencyLabel === 'Annual' ? 1
+                                : null;
+                        }
+                    }
+                }
+            }
+        }
+
         // Update rolling history only for non-special dividends (so specials don't distort median/pattern)
         if (pmtType !== 'Special' && amount > 0) {
             rollingRegularAmounts.push(amount);
