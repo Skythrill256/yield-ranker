@@ -363,14 +363,17 @@ export function calculateNormalizedDividendsForCEFs(
         } else if (medianAmount !== null && medianAmount > 0 && amount > 0) {
             const amountStable = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
 
-            // Guardrail: If a “spike” repeats in the next payment(s), it’s usually a REGULAR step-change,
-            // not a special one-off (e.g., SRV’s persistent 0.45 monthly distributions).
+            // Guardrail: If a "spike" repeats in the next payment(s), it's usually a REGULAR step-change,
+            // not a special one-off (e.g., SRV's persistent 0.45 monthly distributions).
             // We use a looser tolerance here because fund distributions can vary a bit month to month.
             const repeatsNext = nextAmount !== null && nextAmount > 0 && isApproximatelyEqual(amount, nextAmount, 0.06);
             const deviationRel = Math.abs(amount - medianAmount) / Math.max(medianAmount, 1e-9);
 
-            // Rule 1 — Amount spike vs median (one-off)
-            if (!repeatsNext && amount > specialMultiplier * medianAmount) {
+            // Rule 1 — Amount spike vs median (one-off OR extreme spike)
+            // CRITICAL: Extreme spikes (>3x median) are ALWAYS special, even if they repeat a few times,
+            // because true cadence changes are gradual, not sudden 3x+ jumps (e.g., $0.7 vs $0.11 = 6.4x).
+            const extremeSpike = amount > 3.0 * medianAmount;
+            if ((extremeSpike || !repeatsNext) && amount > specialMultiplier * medianAmount) {
                 pmtType = 'Special';
             }
 
@@ -639,6 +642,18 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
             modeFrequencyFromGaps(rollingRegularGaps) ??
             (rollingRegularGaps.length > 0 ? getFrequencyFromDays(rollingRegularGaps[rollingRegularGaps.length - 1]!) : null);
         const medianAmount = getMedianAmount(rollingRegularAmounts.slice(-6));
+
+        // AMOUNT-BASED SPIKE DETECTION (ETF/CCETF path now mirrors CEF logic)
+        // Check for extreme spikes (>3x median) BEFORE cadence rules - these are always special
+        // Example: $0.7000 vs $0.1098 median = 6.4x spike
+        if (medianAmount !== null && medianAmount > 0 && currentAmount > 0) {
+            const extremeSpike = currentAmount > 3.0 * medianAmount;
+            if (extremeSpike && currentAmount > 1.75 * medianAmount) {
+                // Extreme spike (>3x) detected - flag as Special regardless of repeatsNext
+                types.push('Special');
+                continue;
+            }
+        }
 
         const cadenceSpecial = shouldTreatAsSpecialByCadence({
             dominantFrequencyNum,
