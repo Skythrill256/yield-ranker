@@ -48,6 +48,109 @@ export interface NormalizedDividend {
     normalized_div: number | null;
 }
 
+function expectedMinGapDays(frequencyNum: number | null | undefined): number | null {
+    if (!frequencyNum) return null;
+    if (frequencyNum >= 52) return 5;
+    if (frequencyNum >= 12) return 20;
+    if (frequencyNum >= 4) return 60;
+    if (frequencyNum >= 2) return 150;
+    return 300;
+}
+
+function isInClearGapRange(days: number | null): boolean {
+    if (days === null) return false;
+    return (
+        (days >= 5 && days <= 10) ||   // weekly
+        (days >= 20 && days <= 40) ||  // monthly
+        (days >= 60 && days <= 110) || // quarterly
+        (days >= 150 && days <= 210) || // semi-annual
+        (days >= 300 && days <= 380)   // annual
+    );
+}
+
+function getMedianAmount(values: number[]): number | null {
+    return median(values);
+}
+
+function modeFrequencyFromGaps(gaps: number[]): number | null {
+    const usable = gaps.filter(g => typeof g === 'number' && isFinite(g) && g > 0).slice(-8);
+    if (usable.length < 3) return null;
+    const counts = new Map<number, number>();
+    for (const g of usable) {
+        const f = getFrequencyFromDays(g);
+        counts.set(f, (counts.get(f) || 0) + 1);
+    }
+    let best: { f: number; count: number } | null = null;
+    for (const [f, count] of counts.entries()) {
+        if (!best || count > best.count) best = { f, count };
+    }
+    if (!best) return null;
+    // Require a clear majority to avoid locking onto noise during regime changes
+    return best.count >= Math.ceil(usable.length * 0.6) ? best.f : null;
+}
+
+function shouldTreatAsSpecialByCadence(
+    {
+        dominantFrequencyNum,
+        daysSinceLastRegularLike,
+        daysToNext,
+        currentAmount,
+        nextAmount,
+        medianAmount,
+        currentExDate,
+    }: {
+        dominantFrequencyNum: number | null;
+        daysSinceLastRegularLike: number | null;
+        daysToNext: number | null;
+        currentAmount: number | null;
+        nextAmount: number | null;
+        medianAmount: number | null;
+        currentExDate: string;
+    }
+): boolean {
+    if (daysSinceLastRegularLike === null || daysSinceLastRegularLike <= 0) return false;
+
+    // If we don't have a stable dominant cadence yet, don't be aggressive.
+    if (!dominantFrequencyNum) return false;
+
+    // Weekly regimes naturally have short gaps; special detection is handled by tiny-amount rule.
+    if (dominantFrequencyNum >= 52) return false;
+
+    const expectedMin = expectedMinGapDays(dominantFrequencyNum);
+    if (!expectedMin) return false;
+
+    const shortGapThreshold = Math.max(5, Math.floor(expectedMin * 0.75)); // e.g. monthly(20) => 15
+    const isTooSoon = daysSinceLastRegularLike < shortGapThreshold;
+    if (!isTooSoon) return false;
+
+    // If it repeats next period (timing + amount), it's likely a real cadence change (monthly -> weekly),
+    // not a one-off special distribution.
+    const repeatsNext =
+        daysToNext !== null &&
+        daysToNext > 0 &&
+        daysToNext < shortGapThreshold &&
+        currentAmount !== null &&
+        currentAmount > 0 &&
+        nextAmount !== null &&
+        nextAmount > 0 &&
+        isApproximatelyEqual(currentAmount, nextAmount, 0.06); // allow modest variation
+    if (repeatsNext) return false;
+
+    // If amount is an outlier vs recent regular median, classify special.
+    if (medianAmount !== null && medianAmount > 0 && currentAmount !== null && currentAmount > 0) {
+        const deviationRel = Math.abs(currentAmount - medianAmount) / Math.max(medianAmount, 1e-9);
+        if (deviationRel >= 0.12) return true; // 12%+ divergence
+    }
+
+    // Year-end extra distributions (often cap-gains): if it's "too soon" for the dominant cadence,
+    // treat as special even when amount isn't wildly different.
+    const dt = new Date(currentExDate);
+    if (!isNaN(dt.getTime()) && dt.getMonth() === 11) return true; // December
+
+    // Otherwise be conservative and do not force special without an amount signal.
+    return false;
+}
+
 // ============================================================================
 // CEF-Specific Normalization (Frequency + Special detection)
 // ============================================================================
@@ -460,246 +563,161 @@ export function calculateNormalizedDividends(dividends: DividendInput[]): Normal
     }
 
     // Ensure sorted by date ascending
-    const sortedDividends = [...dividends].sort(
-        (a, b) => new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
-    );
+    const sortedDividends = [...dividends].sort((a, b) => new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime());
 
-    const results: NormalizedDividend[] = [];
-    const calculatedTypes: ('Regular' | 'Special' | 'Initial')[] = [];
+    // PASS 1: classify payment types using rolling history (so specials don't distort cadence inference)
+    const types: Array<'Regular' | 'Special' | 'Initial'> = [];
+    const rollingRegularAmounts: number[] = [];
+    const rollingRegularGaps: number[] = []; // gaps between regular-like dividends (non-special)
+    let lastRegularLikeIndex: number | null = null;
 
     for (let i = 0; i < sortedDividends.length; i++) {
         const current = sortedDividends[i];
-        const previous = i > 0 ? sortedDividends[i - 1] : null;
-
-        // Calculate days since previous dividend
-        let daysSincePrev: number | null = null;
-        if (previous) {
-            const currentDate = new Date(current.ex_date);
-            const prevDate = new Date(previous.ex_date);
-            daysSincePrev = Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-        }
-
-        // Find last Regular dividend to calculate days since last regular
-        // Special dividend rule: paid 1-4 days after LAST REGULAR dividend (not just previous)
-        let daysSinceLastRegular: number | null = null;
-        const lastRegular = findLastRegularDividend(sortedDividends, i, calculatedTypes);
-        if (lastRegular) {
-            const currentDate = new Date(current.ex_date);
-            const lastRegularDate = new Date(lastRegular.dividend.ex_date);
-            daysSinceLastRegular = Math.round((currentDate.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
-        } else if (daysSincePrev !== null) {
-            // No regular dividend found yet, use days since previous as fallback
-            daysSinceLastRegular = daysSincePrev;
-        }
-
-        // Get next dividend info for amount-based special detection
+        const prev = i > 0 ? sortedDividends[i - 1] : null;
         const next = i < sortedDividends.length - 1 ? sortedDividends[i + 1] : null;
-        let daysToNext: number | null = null;
-        if (next) {
-            const currentDate = new Date(current.ex_date);
-            const nextDate = new Date(next.ex_date);
-            daysToNext = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        const currentDate = new Date(current.ex_date);
+        const prevDate = prev ? new Date(prev.ex_date) : null;
+
+        const daysSincePrev = prevDate ? Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+        const lastReg = lastRegularLikeIndex !== null ? sortedDividends[lastRegularLikeIndex] : null;
+        const lastRegDate = lastReg ? new Date(lastReg.ex_date) : null;
+        const daysSinceLastRegularLike =
+            lastRegDate ? Math.round((currentDate.getTime() - lastRegDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+        const nextDate = next ? new Date(next.ex_date) : null;
+        const daysToNext = nextDate ? Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+        const currentAmount = (current.adj_amount ?? current.div_cash) || 0;
+        const nextAmount = next ? ((next.adj_amount ?? next.div_cash) || 0) : null;
+
+        if (daysSincePrev === null) {
+            // If the very first row is a tiny "stub" payment right before a much larger one,
+            // treat it as Special (not Initial) so it doesn't distort cadence and doesn't cause
+            // the next payment to be mislabeled as Special.
+            if (
+                currentAmount > 0 &&
+                nextAmount !== null &&
+                nextAmount > 0 &&
+                daysToNext !== null &&
+                daysToNext >= 1 &&
+                daysToNext <= 4 &&
+                (currentAmount / nextAmount) < 0.01
+            ) {
+                types.push('Special');
+                continue;
+            }
+
+            types.push('Initial');
+            lastRegularLikeIndex = i;
+            if (currentAmount > 0) rollingRegularAmounts.push(Number(currentAmount));
+            continue;
         }
-        const currentAmount = current.adj_amount ?? current.div_cash;
-        const nextAmount = next ? (next.adj_amount ?? next.div_cash) : null;
 
-        // Determine payment type: Special if 1-4 days after last Regular dividend
-        // OR if tiny amount (< 1% of next) that comes 1-4 days before next
-        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular, currentAmount, nextAmount, daysToNext);
-        calculatedTypes.push(pmtType);
+        // Existing "tiny special right before regular" rule (ULTY-type cases)
+        if (
+            currentAmount > 0 &&
+            nextAmount !== null &&
+            nextAmount > 0 &&
+            daysToNext !== null &&
+            daysToNext >= 1 &&
+            daysToNext <= 4 &&
+            (currentAmount / nextAmount) < 0.01
+        ) {
+            types.push('Special');
+            continue;
+        }
 
-        // Determine frequency using backward confirmation rule with transition detection:
-        // At frequency transition points (e.g., monthly to weekly), the last payment of the old
-        // frequency should use the gap FROM the previous dividend, not the gap TO the next dividend.
-        // This ensures the 3/6 monthly payment shows normalized value of 1.07, not 4.65.
-        let frequencyNum = 12; // Default to monthly
+        const dominantFrequencyNum =
+            modeFrequencyFromGaps(rollingRegularGaps) ??
+            (rollingRegularGaps.length > 0 ? getFrequencyFromDays(rollingRegularGaps[rollingRegularGaps.length - 1]!) : null);
+        const medianAmount = getMedianAmount(rollingRegularAmounts.slice(-6));
 
-        if (i < sortedDividends.length - 1) {
-            // Not the last dividend: check for frequency transition
-            const nextDiv = sortedDividends[i + 1];
-            const nextDate = new Date(nextDiv.ex_date);
-            const currentDate = new Date(current.ex_date);
-            const daysToNext = Math.round(
-                (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-            );
+        const cadenceSpecial = shouldTreatAsSpecialByCadence({
+            dominantFrequencyNum,
+            daysSinceLastRegularLike: daysSinceLastRegularLike ?? daysSincePrev,
+            daysToNext,
+            currentAmount,
+            nextAmount,
+            medianAmount,
+            currentExDate: current.ex_date,
+        });
 
-            // IMPORTANT (CCETF/ETF fix):
-            // Use the CURRENT dividend's own look-back gap when it's in a clear frequency range.
-            // This prevents rows like 10/16 (28 days since prev = Monthly) from being mislabeled as Weekly
-            // just because the NEXT dividend comes 7 days later (start of weekly regime).
-            const prevGapIsClear =
-                daysSincePrev !== null &&
-                ((daysSincePrev >= 5 && daysSincePrev <= 10) || // weekly
-                    (daysSincePrev >= 20 && daysSincePrev <= 40) || // monthly
-                    (daysSincePrev >= 60 && daysSincePrev <= 110) || // quarterly
-                    (daysSincePrev >= 150 && daysSincePrev <= 210) || // semi-annual
-                    (daysSincePrev >= 300 && daysSincePrev <= 380)); // annual
-            if (prevGapIsClear) {
-                frequencyNum = getFrequencyFromDays(daysSincePrev!);
-            } else {
+        if (cadenceSpecial) {
+            types.push('Special');
+            continue;
+        }
 
-            // Try to find the next Regular dividend (skip Special dividends)
-            let nextRegularDiv: DividendInput | null = null;
-            let daysToNextRegular: number | null = null;
-            for (let j = i + 1; j < sortedDividends.length; j++) {
-                const testDiv = sortedDividends[j];
-                const testPrev = j > 0 ? sortedDividends[j - 1] : null;
-                let testDaysSincePrev: number | null = null;
-                if (testPrev) {
-                    const testDate = new Date(testDiv.ex_date);
-                    const testPrevDate = new Date(testPrev.ex_date);
-                    testDaysSincePrev = Math.round((testDate.getTime() - testPrevDate.getTime()) / (1000 * 60 * 60 * 24));
-                }
-                const testPmtType = getPaymentType(testDaysSincePrev);
-                if (testPmtType === 'Regular') {
-                    nextRegularDiv = testDiv;
-                    const testDate = new Date(testDiv.ex_date);
-                    daysToNextRegular = Math.round((testDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
-                    break;
-                }
-            }
+        // Baseline rule (legacy): 1-4 days after last regular-like is special
+        // Only applies when we actually have a prior regular-like dividend identified.
+        if (lastRegDate !== null && daysSinceLastRegularLike !== null && daysSinceLastRegularLike >= 1 && daysSinceLastRegularLike <= 4) {
+            types.push('Special');
+            continue;
+        }
 
-            // CRITICAL FIX: Always prioritize the gap TO the next dividend for frequency determination
-            // The "backward confirmation rule" means we confirm frequency by looking ahead
-            // If the gap to next is clearly in a frequency range (5-10 = weekly, 20-40 = monthly, etc.),
-            // use that frequency regardless of transition detection
-            // Transition detection should only apply for ambiguous gaps (11-19 days, etc.)
-            
-            // PRIORITY 1: If gap to next is clearly weekly (5-10 days), ALWAYS use Weekly
-            // This ensures 7 days = Weekly, not Monthly
-            if (daysToNext >= 5 && daysToNext <= 10) {
-                frequencyNum = 52; // Weekly - clear and unambiguous
-            }
-            // PRIORITY 2: If gap to next is clearly monthly (20-40 days), ALWAYS use Monthly
-            else if (daysToNext >= 20 && daysToNext <= 40) {
-                frequencyNum = 12; // Monthly - clear and unambiguous
-            }
-            // PRIORITY 3: Check for frequency transition only for ambiguous gaps (11-19 days, etc.)
-            else if (daysSincePrev !== null && daysSincePrev > 4 && daysToNext > 4) {
-                const freqFromPrev = getFrequencyFromDays(daysSincePrev);
-                const freqFromNext = daysToNextRegular !== null && daysToNextRegular > 4
-                    ? getFrequencyFromDays(daysToNextRegular)
-                    : getFrequencyFromDays(daysToNext);
+        types.push('Regular');
+        // Update rolling history only for non-special dividends
+        if (currentAmount > 0) rollingRegularAmounts.push(Number(currentAmount));
+        if (lastRegularLikeIndex !== null) {
+            const gap = daysSinceLastRegularLike;
+            if (gap !== null && gap > 0) rollingRegularGaps.push(gap);
+        }
+        lastRegularLikeIndex = i;
+    }
 
-                // For ambiguous gaps, check if there's a clear transition
-                // Only use previous frequency if:
-                // 1. Previous gap is clearly in a frequency range (not ambiguous)
-                // 2. Next gap is ambiguous (11-19 days, 41-59 days, etc.)
-                // 3. Previous frequency is clearly established
-                const prevIsClear = (daysSincePrev >= 5 && daysSincePrev <= 10) || 
-                                   (daysSincePrev >= 20 && daysSincePrev <= 40) ||
-                                   (daysSincePrev >= 60 && daysSincePrev <= 110);
-                const nextIsAmbiguous = (daysToNext >= 11 && daysToNext < 20) ||
-                                       (daysToNext > 40 && daysToNext < 60);
-                
-                if (prevIsClear && nextIsAmbiguous && freqFromPrev !== freqFromNext) {
-                    // Use previous frequency for ambiguous transition periods
-                    frequencyNum = freqFromPrev;
-                } else {
-                    // Use gap to next (backward confirmation rule)
-                    if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 4) {
-                        frequencyNum = getFrequencyFromDays(daysToNextRegular);
-                    } else {
-                        frequencyNum = getFrequencyFromDays(daysToNext);
-                    }
-                }
-            } else if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 4) {
-                // Use gap to next Regular to determine frequency (backward confirmation rule)
-                frequencyNum = getFrequencyFromDays(daysToNextRegular);
-            } else if (daysToNext > 4) {
-                // Use gap to immediate next dividend (backward confirmation rule)
-                frequencyNum = getFrequencyFromDays(daysToNext);
-            } else if (daysToNext <= 4 && lastRegular) {
-                // Small gap (Special dividend): look back to last Regular dividend to determine frequency
-                const currentDate2 = new Date(current.ex_date);
-                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
-                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysFromLastRegular > 4) {
-                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
-                }
-            }
-            } // end prevGapIsClear else
+    // PASS 2: compute frequency using "next non-special" for confirmation, with transition guard:
+    // if the current dividend has a clear look-back gap, keep that frequency (prevents regime-change overwrites).
+    const results: NormalizedDividend[] = [];
+
+    const nextNonSpecialIndex = (fromIndex: number): number | null => {
+        for (let j = fromIndex + 1; j < sortedDividends.length; j++) {
+            if (types[j] !== 'Special') return j;
+        }
+        return null;
+    };
+    const prevNonSpecialIndex = (fromIndex: number): number | null => {
+        for (let j = fromIndex - 1; j >= 0; j--) {
+            if (types[j] !== 'Special') return j;
+        }
+        return null;
+    };
+
+    for (let i = 0; i < sortedDividends.length; i++) {
+        const current = sortedDividends[i];
+        const prev = i > 0 ? sortedDividends[i - 1] : null;
+        const currentDate = new Date(current.ex_date);
+        const prevDate = prev ? new Date(prev.ex_date) : null;
+
+        const daysSincePrev =
+            prevDate ? Math.round((currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+        const pmtType = types[i];
+
+        let frequencyNum = 12; // default
+        const lookbackClear = isInClearGapRange(daysSincePrev);
+
+        if (pmtType !== 'Special' && lookbackClear && daysSincePrev !== null) {
+            // Transition guard: trust the dividend's own look-back when it's clearly weekly/monthly/quarterly/etc.
+            frequencyNum = getFrequencyFromDays(daysSincePrev);
         } else {
-            // Last dividend: use gap from last Regular dividend if available, otherwise from previous
-            if (lastRegular) {
-                const currentDate2 = new Date(current.ex_date);
-                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
-                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysFromLastRegular > 4) {
-                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
-                } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
+            const nextIdx = nextNonSpecialIndex(i);
+            if (nextIdx !== null) {
+                const nextDate = new Date(sortedDividends[nextIdx].ex_date);
+                const gapToNextNonSpecial = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+                if (gapToNextNonSpecial > 0) {
+                    frequencyNum = getFrequencyFromDays(gapToNextNonSpecial);
+                }
+            } else {
+                const prevIdx = prevNonSpecialIndex(i);
+                if (prevIdx !== null) {
+                    const prevNSDate = new Date(sortedDividends[prevIdx].ex_date);
+                    const gapFromPrevNonSpecial = Math.round((currentDate.getTime() - prevNSDate.getTime()) / (1000 * 60 * 60 * 24));
+                    if (gapFromPrevNonSpecial > 0) {
+                        frequencyNum = getFrequencyFromDays(gapFromPrevNonSpecial);
+                    }
+                } else if (daysSincePrev !== null && daysSincePrev > 0) {
                     frequencyNum = getFrequencyFromDays(daysSincePrev);
-                }
-            } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
-                frequencyNum = getFrequencyFromDays(daysSincePrev);
-            }
-        }
-
-        // Update the PREVIOUS dividend's frequency based on gap FROM previous TO current
-        // This happens when we process the current dividend and can confirm the previous one's frequency
-        // IMPORTANT: At frequency transition points, don't overwrite the previous dividend's frequency
-        // if it was already set correctly based on gap to next
-        if (i > 0 && previous !== null && daysSincePrev !== null && daysSincePrev > 4) {
-            const prevFrequencyNum = getFrequencyFromDays(daysSincePrev);
-            const prevResult = results[results.length - 1];
-
-            // Additional transition guard (CCETF/ETF fix):
-            // If the PREVIOUS row has its own look-back gap in a clear range (stored as days_since_prev),
-            // do not overwrite its frequency based on the NEW regime's shorter gap.
-            // Example: 10/16 has days_since_prev=28 (Monthly), but 10/23 arrives 7 days later (Weekly).
-            const prevOwnDays = prevResult?.days_since_prev ?? null;
-            const prevOwnIsClear =
-                prevOwnDays !== null &&
-                ((prevOwnDays >= 5 && prevOwnDays <= 10) ||
-                    (prevOwnDays >= 20 && prevOwnDays <= 40) ||
-                    (prevOwnDays >= 60 && prevOwnDays <= 110) ||
-                    (prevOwnDays >= 150 && prevOwnDays <= 210) ||
-                    (prevOwnDays >= 300 && prevOwnDays <= 380));
-            if (prevOwnIsClear) {
-                const prevOwnFreq = getFrequencyFromDays(prevOwnDays!);
-                if (prevOwnFreq !== prevFrequencyNum) {
-                    // Transition detected: keep the previous row's own frequency.
-                    continue;
-                }
-            }
-
-            // Check if previous dividend was at a frequency transition point
-            // The previous dividend's frequency was already set based on gap to next (current dividend)
-            // If that frequency differs from what we'd assign based on gap from prevPrev to previous,
-            // then previous was at a transition and should keep its original frequency (from gap to next)
-            // FIX: At transition points, prevPrevFreq will differ from prevFrequencyNum (the incoming update).
-            // When they differ, we should NOT update - keep the already-set frequency from the transition detection.
-            let shouldUpdatePrevFrequency = true;
-            if (i > 1) {
-                const prevPrev = sortedDividends[i - 2];
-                const prevPrevDate = new Date(prevPrev.ex_date);
-                const prevDate = new Date(previous.ex_date);
-                const prevPrevDays = Math.round((prevDate.getTime() - prevPrevDate.getTime()) / (1000 * 60 * 60 * 24));
-
-                if (prevPrevDays > 4) {
-                    const prevPrevFreq = getFrequencyFromDays(prevPrevDays);
-                    // FIX: Compare prevPrevFreq with the INCOMING update (prevFrequencyNum), not the already-set value
-                    // If they differ, we're at a transition point - the previous dividend should keep its 
-                    // frequency based on its own previous gap (prevPrevFreq), NOT get overwritten to prevFrequencyNum
-                    if (prevPrevFreq !== prevFrequencyNum) {
-                        shouldUpdatePrevFrequency = false;
-                    }
-                }
-            }
-
-            if (shouldUpdatePrevFrequency) {
-                prevResult.frequency_num = prevFrequencyNum;
-
-                // Recalculate annualized and normalized for previous dividend with updated frequency
-                if (prevResult.pmt_type === 'Regular') {
-                    const prevAmount = previous.adj_amount !== null && previous.adj_amount > 0
-                        ? Number(previous.adj_amount)
-                        : null;
-                    if (prevAmount !== null && prevAmount > 0) {
-                        const annualizedRaw = prevAmount * prevFrequencyNum;
-                        prevResult.annualized = Number(annualizedRaw.toFixed(2));
-                        prevResult.normalized_div = Number((annualizedRaw / 52).toFixed(9));
-                    }
                 }
             }
         }
@@ -769,205 +787,38 @@ export function calculateNormalizedForResponse(
         return [];
     }
 
-    // Sort by date ascending for proper calculation
-    const sorted = [...dividends].sort(
-        (a, b) => new Date(a.exDate).getTime() - new Date(b.exDate).getTime()
-    );
+    // Re-use the ETF normalization logic by mapping into DividendInput and then mapping back.
+    // Note: this preserves the improved Special handling (e.g., year-end extra distributions).
+    const mapped: DividendInput[] = dividends.map((d, idx) => ({
+        id: idx,
+        ticker: '',
+        ex_date: d.exDate,
+        div_cash: d.amount,
+        adj_amount: Number.isFinite(d.adjAmount) ? d.adjAmount : null,
+    }));
 
-    const results: Array<{
-        pmtType: 'Regular' | 'Special' | 'Initial';
-        frequencyNum: number;
-        daysSincePrev: number | null;
-        annualized: number | null;
-        normalizedDiv: number | null;
-    }> = [];
+    const normalizedAsc = calculateNormalizedDividends(mapped); // sorted ascending by ex_date
+    const idToExDate = new Map<number, string>();
+    mapped.forEach(m => idToExDate.set(m.id, m.ex_date));
+    const byExDate = new Map<string, NormalizedDividend>();
+    normalizedAsc.forEach(n => {
+        // In practice ex_date is unique per ticker; use date key.
+        const ex = idToExDate.get(n.id);
+        if (ex) byExDate.set(ex, n);
+    });
 
-    const calculatedTypes: ('Regular' | 'Special' | 'Initial')[] = [];
-
-    for (let i = 0; i < sorted.length; i++) {
-        const current = sorted[i];
-        const previous = i > 0 ? sorted[i - 1] : null;
-
-        // Calculate days since previous dividend
-        let daysSincePrev: number | null = null;
-        if (previous) {
-            const currentDate = new Date(current.exDate);
-            const prevDate = new Date(previous.exDate);
-            daysSincePrev = Math.round(
-                (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-            );
-        }
-
-        // Find last Regular dividend to calculate days since last regular
-        // Special dividend rule: paid 1-4 days after LAST REGULAR dividend (not just previous)
-        let daysSinceLastRegular: number | null = null;
-        const lastRegular = findLastRegularDividend(
-            sorted.map(d => ({ id: 0, ticker: '', ex_date: d.exDate, div_cash: d.amount, adj_amount: d.adjAmount })),
-            i,
-            calculatedTypes
-        );
-        if (lastRegular) {
-            const currentDate = new Date(current.exDate);
-            const lastRegularDate = new Date(lastRegular.dividend.ex_date);
-            daysSinceLastRegular = Math.round((currentDate.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
-        } else if (daysSincePrev !== null) {
-            // No regular dividend found yet, use days since previous as fallback
-            daysSinceLastRegular = daysSincePrev;
-        }
-
-        // Get next dividend info for amount-based special detection
-        const next = i < sorted.length - 1 ? sorted[i + 1] : null;
-        let daysToNext: number | null = null;
-        if (next) {
-            const currentDate = new Date(current.exDate);
-            const nextDate = new Date(next.exDate);
-            daysToNext = Math.round((nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
-        }
-        const currentAmount = current.adjAmount ?? current.amount;
-        const nextAmount = next ? (next.adjAmount ?? next.amount) : null;
-
-        // Determine payment type: Special if 1-4 days after last Regular dividend
-        // OR if tiny amount (< 1% of next) that comes 1-4 days before next
-        const pmtType = getPaymentType(daysSincePrev, daysSinceLastRegular, currentAmount, nextAmount, daysToNext);
-        calculatedTypes.push(pmtType);
-
-        // Determine frequency using backward confirmation rule:
-        // IMPORTANT: Frequency is determined by looking AHEAD to the NEXT dividend.
-        // The gap from current to next determines the current dividend's frequency.
-        // This is the "backward confirmation" rule: we confirm a dividend's frequency
-        // by seeing when the next one arrives.
-        // IMPORTANT: For Special dividends (small gaps), look back to last Regular dividend
-        let frequencyNum = 12; // Default to monthly
-
-        if (i < sorted.length - 1) {
-            // Not the last dividend: use gap to next (backward confirmation rule)
-            const nextDiv = sorted[i + 1];
-            const nextDate = new Date(nextDiv.exDate);
-            const currentDate = new Date(current.exDate);
-            const daysToNext = Math.round(
-                (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-            );
-
-            // Try to find the next Regular dividend (skip Special dividends)
-            let nextRegularDiv: typeof current | null = null;
-            let daysToNextRegular: number | null = null;
-            for (let j = i + 1; j < sorted.length; j++) {
-                const testDiv = sorted[j];
-                const testPrev = j > 0 ? sorted[j - 1] : null;
-                let testDaysSincePrev: number | null = null;
-                if (testPrev) {
-                    const testDate = new Date(testDiv.exDate);
-                    const testPrevDate = new Date(testPrev.exDate);
-                    testDaysSincePrev = Math.round((testDate.getTime() - testPrevDate.getTime()) / (1000 * 60 * 60 * 24));
-                }
-                const testPmtType = getPaymentType(testDaysSincePrev);
-                if (testPmtType === 'Regular') {
-                    nextRegularDiv = testDiv;
-                    const testDate = new Date(testDiv.exDate);
-                    daysToNextRegular = Math.round((testDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
-                    break;
-                }
-            }
-
-            // SIMPLE RULE: Use gap to next Regular dividend if available, otherwise use gap to immediate next
-            // This ensures frequency is based on actual dates, not complex transition logic
-            // IMPORTANT: For Special dividends (small gaps <= 4 days), look back to last Regular dividend
-            if (nextRegularDiv && daysToNextRegular !== null && daysToNextRegular > 4) {
-                // Use gap to next Regular to determine frequency (backward confirmation rule)
-                frequencyNum = getFrequencyFromDays(daysToNextRegular);
-            } else if (daysToNext > 4) {
-                // Use gap to immediate next dividend (backward confirmation rule)
-                frequencyNum = getFrequencyFromDays(daysToNext);
-            } else if (daysToNext <= 4 && lastRegular) {
-                // Small gap (Special dividend): look back to last Regular dividend to determine frequency
-                // This handles cases like 12/29 (Special) where gap to next is 1 day, but gap from last Regular (12/23) is 6 days = Weekly
-                const currentDate2 = new Date(current.exDate);
-                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
-                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysFromLastRegular > 4) {
-                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
-                }
-            }
-        } else {
-            // Last dividend: use gap from last Regular dividend if available, otherwise from previous
-            if (lastRegular) {
-                const currentDate2 = new Date(current.exDate);
-                const lastRegularDate = new Date(lastRegular.dividend.ex_date);
-                const daysFromLastRegular = Math.round((currentDate2.getTime() - lastRegularDate.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysFromLastRegular > 4) {
-                    frequencyNum = getFrequencyFromDays(daysFromLastRegular);
-                } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
-                    frequencyNum = getFrequencyFromDays(daysSincePrev);
-                }
-            } else if (i > 0 && daysSincePrev !== null && daysSincePrev > 4) {
-                frequencyNum = getFrequencyFromDays(daysSincePrev);
-            }
-        }
-
-        // Update the PREVIOUS dividend's frequency based on gap FROM previous TO current
-        // This happens when we process the current dividend and can confirm the previous one's frequency
-        // IMPORTANT: At frequency transition points, don't overwrite the previous dividend's frequency
-        // if it was already set correctly based on gap to next
-        if (i > 0 && previous !== null && daysSincePrev !== null && daysSincePrev > 4) {
-            const prevFrequencyNum = getFrequencyFromDays(daysSincePrev);
-            const prevResult = results[results.length - 1];
-
-            // SIMPLE: Just update previous dividend's frequency based on gap from previous to current
-            // Only update if previous dividend's frequency wasn't already set from gap to next
-            if (prevResult.frequencyNum === 12 || prevResult.frequencyNum === prevFrequencyNum) {
-                prevResult.frequencyNum = prevFrequencyNum;
-
-                // Recalculate annualized and normalized for previous dividend with updated frequency
-                if (prevResult.pmtType === 'Regular') {
-                    const prevAmount = previous.adjAmount > 0 ? previous.adjAmount : null;
-                    if (prevAmount !== null && prevAmount > 0) {
-                        const annualizedRaw = prevAmount * prevFrequencyNum;
-                        prevResult.annualized = Number(annualizedRaw.toFixed(2));
-                        prevResult.normalizedDiv = Number((annualizedRaw / 52).toFixed(6));
-                    }
-                }
-            }
-        }
-
-        // Calculate annualized and normalized values
-        // CRITICAL: For normalization, we MUST use adjAmount (adjusted dividends) for ETFs that split
-        // Never fall back to amount (unadjusted) as it will give wrong results after splits
-        // If adjAmount is 0 or missing, we cannot calculate normalized values correctly
-        const amount = current.adjAmount > 0 ? current.adjAmount : null; // Don't use unadjusted amount
-
-        let annualized: number | null = null;
-        let normalizedDiv: number | null = null;
-
-        // Calculate for Regular AND Initial dividends with valid adjusted amounts
-        // Initial = first dividend (no previous to compare), should still be normalized
-        // Only skip Special dividends (tiny amounts paid 1-4 days after regular)
-        // Must have adjAmount (not unadjusted amount) for proper normalization after splits
-        if ((pmtType === 'Regular' || pmtType === 'Initial') && amount !== null && amount > 0 && frequencyNum > 0) {
-            // Calculate annualized: Amount × Frequency (DAYS column = frequency_num = payments per year)
-            const annualizedRaw = amount * frequencyNum;
-            // Round annualized to 2 decimals for storage/display
-            annualized = Number(annualizedRaw.toFixed(2));
-
-            // Normalized value: convert to weekly equivalent rate for line chart
-            // EXACT FORMULA: NORMLZD = (ADJ_DIV × DAYS) / 52
-            // Where ADJ_DIV = adjAmount, DAYS = frequencyNum (payments per year)
-            // IMPORTANT: Calculate from the UNROUNDED annualized value
-            // Example: $4.6530 × 12 = $55.836 → $55.836 / 52 = $1.073769231
-            normalizedDiv = annualizedRaw / 52;
-        }
-
-        results.push({
-            pmtType,
-            frequencyNum,
-            daysSincePrev,
-            annualized: annualized !== null ? Number(annualized.toFixed(2)) : null,
-            normalizedDiv: normalizedDiv !== null ? Number(normalizedDiv.toFixed(6)) : null,
-        });
-    }
-
-    // Results are in ascending order but dividends endpoint returns descending
-    // Return in same order as input (descending - most recent first)
-    return results.reverse();
+    // Return in descending order (to match dividends endpoint)
+    const sortedDesc = [...dividends].sort((a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime());
+    return sortedDesc.map((d) => {
+        const n = byExDate.get(d.exDate);
+        return {
+            pmtType: (n?.pmt_type ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
+            frequencyNum: n?.frequency_num ?? 12,
+            daysSincePrev: n?.days_since_prev ?? null,
+            annualized: n?.annualized ?? null,
+            normalizedDiv: n?.normalized_div ?? null,
+        };
+    });
 }
 
 export default {

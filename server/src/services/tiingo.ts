@@ -60,6 +60,19 @@ export interface TiingoMetaData {
     exchangeCode: string;
 }
 
+// Tiingo "daily dividends" endpoint response (field names vary slightly across docs/examples).
+// We defensively support both camelCase and PascalCase-ish variants.
+interface TiingoDailyDividend {
+    exDate?: string;
+    payDate?: string;
+    paymentDate?: string;
+    recordDate?: string;
+    declarationDate?: string;
+    declaredDate?: string;
+    cashAmount?: number;
+    amount?: number;
+}
+
 // ============================================================================
 // Rate Limiting State
 // ============================================================================
@@ -375,6 +388,42 @@ export async function fetchDividendHistory(
         if (startDate) params.startDate = startDate;
         if (endDate) params.endDate = endDate;
 
+        // NEW: Pull authoritative dividend dates (record/pay/declare) from Tiingo's dividends endpoint.
+        // We still compute dividend amounts/adjustments from the EOD price endpoint (divCash + split factors),
+        // but we enrich each ex-date with its proper metadata when available.
+        let dividendDatesByExDate: Map<string, { recordDate: string | null; paymentDate: string | null; declarationDate: string | null }> | null = null;
+        try {
+            const normalizeDate = (value: string | null | undefined): string | null => {
+                if (!value) return null;
+                return String(value).split('T')[0];
+            };
+
+            const divMeta = await retry(
+                () => tiingoRequest<TiingoDailyDividend[]>(`/tiingo/daily/${ticker.toUpperCase()}/dividends`, params),
+                3,
+                1000,
+                (attempt, error) => logger.warn('Tiingo', `Retry ${attempt} for dividend dates ${ticker}: ${error.message}`)
+            );
+
+            dividendDatesByExDate = new Map();
+            (divMeta || []).forEach((d) => {
+                const ex = normalizeDate(d.exDate);
+                if (!ex) return;
+                const recordDate = normalizeDate(d.recordDate);
+                const paymentDate = normalizeDate(d.payDate || d.paymentDate);
+                const declarationDate = normalizeDate(d.declarationDate || d.declaredDate);
+                dividendDatesByExDate!.set(ex, { recordDate, paymentDate, declarationDate });
+            });
+
+            if (dividendDatesByExDate.size > 0) {
+                logger.debug('Tiingo', `Fetched ${dividendDatesByExDate.size} dividend date records for ${ticker}`);
+            }
+        } catch (e) {
+            // Non-fatal: we will fall back to date estimation downstream.
+            logger.warn('Tiingo', `Failed to fetch dividend dates for ${ticker} from /dividends endpoint: ${(e as Error).message}`);
+            dividendDatesByExDate = null;
+        }
+
         const priceData = await retry(
             () => tiingoRequest<TiingoPriceData[]>(`/tiingo/daily/${ticker.toUpperCase()}/prices`, params),
             3,
@@ -477,9 +526,9 @@ export async function fetchDividendHistory(
                     dividend: divCash,
                     adjDividend: adjDividend, // Uses split factor method (matches Seeking Alpha)
                     scaledDividend: scaledDividend, // Scaled by adjClose/close ratio
-                    recordDate: null, // Tiingo EOD doesn't include record date
-                    paymentDate: null, // Tiingo EOD doesn't include payment date
-                    declarationDate: null,
+                    recordDate: dividendDatesByExDate?.get(dateStr)?.recordDate ?? null,
+                    paymentDate: dividendDatesByExDate?.get(dateStr)?.paymentDate ?? null,
+                    declarationDate: dividendDatesByExDate?.get(dateStr)?.declarationDate ?? null,
                 };
             })
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
