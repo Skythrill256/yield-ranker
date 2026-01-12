@@ -504,14 +504,6 @@ export function calculateNormalizedDividendsForCEFs(
       }
     }
 
-    // CRITICAL: Override frequency for Special dividends
-    // Specials should NEVER show as "Annual", "Monthly", etc. - they're one-time events
-    // Force frequency_num = 1 and frequency_label = 'Irregular' for all Specials
-    if (pmtType === "Special") {
-      frequencyNum = 1;
-      frequencyLabel = "Irregular";
-    }
-
     // Step 5: If Special, optionally split into (regular_component + special_component).
     // NOTE: This does NOT create a second database row (unique constraint on ticker+ex_date).
     // Instead we store the components for display/analysis.
@@ -525,7 +517,7 @@ export function calculateNormalizedDividendsForCEFs(
       amount > 0
     ) {
       // Positive special (spike): split using the established regular cadence amount as baseline.
-      // Negative “specials” (one-off low payment): do not invent a larger regular component than paid.
+      // Negative "specials" (one-off low payment): do not invent a larger regular component than paid.
       if (amount >= medianAmount) {
         regularComponent = Number(medianAmount);
         specialComponent = Number(Math.max(0, amount - medianAmount));
@@ -539,6 +531,33 @@ export function calculateNormalizedDividendsForCEFs(
       specialComponent = 0;
     }
 
+    // CRITICAL: Override frequency for Special dividends
+    // Specials should NEVER show as "Annual", "Monthly", etc. - they're one-time events
+    // Force frequency_num = 1 and frequency_label = 'Irregular' for all Specials
+    // BUT: We need the dominant frequency for annualized calculation (regular component × dominant frequency)
+    let dominantFrequencyNum: number | null = null;
+    if (pmtType === "Special") {
+      // Get dominant frequency for annualized calculation
+      const dominantLabel = determinePatternFrequencyLabel(
+        rollingRegularGapsToNext
+      );
+      dominantFrequencyNum =
+        dominantLabel === "Weekly"
+          ? 52
+          : dominantLabel === "Monthly"
+          ? 12
+          : dominantLabel === "Quarterly"
+          ? 4
+          : dominantLabel === "Semi-Annual"
+          ? 2
+          : dominantLabel === "Annual"
+          ? 1
+          : 12; // Default to Monthly (12) for CEFs if pattern unclear
+      
+      frequencyNum = 1;
+      frequencyLabel = "Irregular";
+    }
+
     // Step 6: Annualized/Normalized for CEFs
     // Annualized = (per-payment amount) × (payments per year)
     // Normalized (for CEFs) = per-payment amount for the detected cadence (i.e., annualized / frequency_num)
@@ -547,24 +566,30 @@ export function calculateNormalizedDividendsForCEFs(
     // - Monthly: normalized = monthly payment amount (e.g., 0.25)
     // - Weekly: normalized = weekly payment amount (e.g., 0.1098)
     //
-    // For Special: normalize/annualize ONLY the regular component (run-rate), not the special spike.
+    // For Special: annualized = (regularComponent × dominantFrequency) + specialComponent
+    // normalizedDiv = regularComponent (the run-rate component)
     let annualized: number | null = null;
     let normalizedDiv: number | null = null;
 
-    const annualizeBase =
-      pmtType === "Special"
-        ? regularComponent !== null && regularComponent > 0
-          ? regularComponent
-          : null
-        : amount > 0
-        ? amount
-        : null;
-
-    if (annualizeBase !== null && frequencyNum !== null && frequencyNum > 0) {
-      const annualizedRaw = annualizeBase * frequencyNum;
-      annualized = Number(annualizedRaw.toFixed(6));
-      // Per-payment normalized value for CEFs
-      normalizedDiv = Number((annualizedRaw / frequencyNum).toFixed(6)); // == annualizeBase
+    if (pmtType === "Special") {
+      // For Specials: annualized = (regularComponent × dominantFrequency) + specialComponent
+      // normalizedDiv = regularComponent (the run-rate component)
+      if (regularComponent !== null && regularComponent > 0) {
+        normalizedDiv = Number(regularComponent.toFixed(6)); // Always set normalized_div
+        if (dominantFrequencyNum !== null && dominantFrequencyNum > 0) {
+          const regularAnnualized = regularComponent * dominantFrequencyNum;
+          const specialComp = specialComponent !== null ? specialComponent : 0;
+          annualized = Number((regularAnnualized + specialComp).toFixed(6));
+        }
+      }
+    } else {
+      // For Regular/Initial: standard calculation
+      const annualizeBase = amount > 0 ? amount : null;
+      if (annualizeBase !== null && frequencyNum !== null && frequencyNum > 0) {
+        const annualizedRaw = annualizeBase * frequencyNum;
+        annualized = Number(annualizedRaw.toFixed(6));
+        normalizedDiv = Number((annualizedRaw / frequencyNum).toFixed(6)); // == annualizeBase
+      }
     }
 
     results.push({
