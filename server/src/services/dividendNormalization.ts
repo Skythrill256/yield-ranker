@@ -440,8 +440,27 @@ export function calculateNormalizedDividendsForCEFs(
     if (daysSincePrev === null) {
       pmtType = "Initial";
     } else if (amount > 0) {
+      // CRITICAL: Check for extreme spikes FIRST (300%+ rule) before other logic
+      // This ensures big spikes like DIVO 12/30 are always caught
+      if (medianAmount !== null && medianAmount > 0) {
+        const isExtremeSpike = amount >= specialMultiplier * medianAmount; // default 3.0x (300%)
+        if (isExtremeSpike) {
+          // For extreme spikes (300%+), check if it repeats next month
+          // If it doesn't repeat, it's definitely a Special
+          const repeatsNext =
+            nextAmount !== null &&
+            nextAmount > 0 &&
+            isApproximatelyEqual(amount, nextAmount, 0.05);
+          
+          if (!repeatsNext) {
+            pmtType = "Special";
+          }
+        }
+      }
+
       // Priority 2: exact same amount as previous => Regular (even if gap is a bit off)
-      if (prevAmount !== null && prevAmount > 0) {
+      // BUT: Don't override if we already detected an extreme spike
+      if (pmtType !== "Special" && prevAmount !== null && prevAmount > 0) {
         const a = Number(amount.toFixed(6));
         const b = Number(prevAmount.toFixed(6));
         if (a === b) {
@@ -451,7 +470,7 @@ export function calculateNormalizedDividendsForCEFs(
 
       // Clustered payments (1–4 days) are always Special
       if (
-        pmtType !== "Regular" &&
+        pmtType !== "Special" &&
         daysSincePrev !== null &&
         daysSincePrev >= 1 &&
         daysSincePrev <= 4
@@ -459,7 +478,8 @@ export function calculateNormalizedDividendsForCEFs(
         pmtType = "Special";
       }
 
-      // Priority 3: cadence-break + spike (ACV/STK year-end clustering fix)
+      // Priority 3: cadence-break + meaningful spike (for smaller spikes that are off-cadence)
+      // This handles year-end clustering like ACV/STK
       if (pmtType !== "Special" && medianAmount !== null && medianAmount > 0) {
         const repeatsNext =
           nextAmount !== null &&
@@ -492,12 +512,12 @@ export function calculateNormalizedDividendsForCEFs(
           gapDays < cadenceBreakThreshold &&
           dominantLabel !== "Weekly"; // weekly regimes naturally have short gaps
 
-        const isExtremeSpike = amount >= specialMultiplier * medianAmount; // default 3.0x
         const isMeaningfulSpike = amount >= 1.5 * medianAmount; // used only when off-cadence
 
         if (
           !repeatsNext &&
-          (isExtremeSpike || (isCadenceBreak && isMeaningfulSpike))
+          isCadenceBreak &&
+          isMeaningfulSpike
         ) {
           pmtType = "Special";
         }
@@ -553,7 +573,7 @@ export function calculateNormalizedDividendsForCEFs(
           : dominantLabel === "Annual"
           ? 1
           : 12; // Default to Monthly (12) for CEFs if pattern unclear
-      
+
       frequencyNum = 1;
       frequencyLabel = "Irregular";
     }
