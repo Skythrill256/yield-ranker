@@ -543,36 +543,24 @@ router.get("/dividends/:ticker", async (req: Request, res: Response) => {
         const normalizedExDate = d.exDate.split("T")[0];
         const dbDiv = dividendsByDateMap.get(normalizedExDate);
 
-        // THE SUPREME COURT FIX: Trust the DB, do not recalculate or use fallbacks
-        // For CEFs, we MUST use the values calculated by refresh_cef.ts
+        // THE SUPREME COURT FIX: Trust the DB, do not recalculate
+        // For CEFs, use values calculated by refresh_cef.ts - they are correct!
         const pmtType = (dbDiv as any)?.pmt_type || "Regular";
         const isSpecial = pmtType === "Special";
 
-        // Map frequency column to frequency string for display
-        // CRITICAL: If DB says Special, UI must show 'Other'
-        let frequencyStr: string | null = null;
-        if (isSpecial) {
-          frequencyStr = "Other";
-        } else {
-          // The database column is 'frequency', not 'frequency_label'
-          const frequency = (dbDiv as any)?.frequency;
-          if (frequency) {
-            frequencyStr = frequency;
-          } else {
-            // Fallback only if DB has no frequency (shouldn't happen after refresh)
-            frequencyStr = d.frequency || null;
-          }
-        }
-
+        // Read frequency directly from database (refresh script sets it to "Other" for Specials)
+        // Database column is 'frequency' (not 'frequency_label' - that's only internal TypeScript)
+        const frequencyFromDB = (dbDiv as any)?.frequency;
+        
         return {
           ...d,
-          // Use database values strictly - no fallbacks that could override Special
+          // Use database values - no fallbacks that could override Special
           pmtType: pmtType as "Regular" | "Special" | "Initial",
-          frequency: frequencyStr, // Include frequency string for UI display
-          // If DB says Special, frequencyNum MUST be 1 (already set by refresh script)
-          frequencyNum: isSpecial ? 1 : (dbDiv as any)?.frequency_num ?? null,
+          frequency: isSpecial ? "Other" : (frequencyFromDB || d.frequency || null),
+          // If DB says Special, frequencyNum MUST be 1
+          frequencyNum: isSpecial ? 1 : ((dbDiv as any)?.frequency_num ?? null),
           daysSincePrev: (dbDiv as any)?.days_since_prev ?? null,
-          // Use pre-calculated math from the refresh script - do not recalculate
+          // Use pre-calculated values from refresh script
           annualized: (dbDiv as any)?.annualized ?? null,
           normalizedDiv: (dbDiv as any)?.normalized_div ?? null,
           regularComponent: (dbDiv as any)?.regular_component ?? null,
