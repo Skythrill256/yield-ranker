@@ -1,10 +1,10 @@
 /**
  * Data API Routes (FMP-backed)
- * 
+ *
  * REST API endpoints for price, dividend, and metrics data
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from "express";
 import {
   getPriceHistory,
   getLatestPrice,
@@ -12,12 +12,33 @@ import {
   getETFStatic,
   getAllSyncLogs,
   upsertDividends,
-} from '../services/database.js';
-import { fetchPriceHistory as fetchTiingoPrices, fetchDividendHistory as fetchTiingoDividends } from '../services/tiingo.js';
-import { calculateMetrics, getChartData, calculateRankings, calculateRealtimeReturns, calculateRealtimeReturnsBatch } from '../services/metrics.js';
-import { calculateNormalizedForResponse, calculateNormalizedDividendsForCEFs } from '../services/dividendNormalization.js';
-import { periodToStartDate, getDateYearsAgo, logger, formatDate } from '../utils/index.js';
-import type { ChartPeriod, RankingWeights, DividendRecord } from '../types/index.js';
+} from "../services/database.js";
+import {
+  fetchPriceHistory as fetchTiingoPrices,
+  fetchDividendHistory as fetchTiingoDividends,
+} from "../services/tiingo.js";
+import {
+  calculateMetrics,
+  getChartData,
+  calculateRankings,
+  calculateRealtimeReturns,
+  calculateRealtimeReturnsBatch,
+} from "../services/metrics.js";
+import {
+  calculateNormalizedForResponse,
+  calculateNormalizedDividendsForCEFs,
+} from "../services/dividendNormalization.js";
+import {
+  periodToStartDate,
+  getDateYearsAgo,
+  logger,
+  formatDate,
+} from "../utils/index.js";
+import type {
+  ChartPeriod,
+  RankingWeights,
+  DividendRecord,
+} from "../types/index.js";
 
 const router: Router = Router();
 
@@ -81,8 +102,8 @@ function estimateDividendDates(
   const payDate = addBusinessDays(ex, payDaysAfterEx);
 
   return {
-    recordDate: recordDate.toISOString().split('T')[0],
-    payDate: payDate.toISOString().split('T')[0],
+    recordDate: recordDate.toISOString().split("T")[0],
+    payDate: payDate.toISOString().split("T")[0],
   };
 }
 
@@ -93,10 +114,10 @@ function estimateDividendDates(
 /**
  * GET /prices/:ticker - Get price history with calculated returns
  */
-router.get('/prices/:ticker', async (req: Request, res: Response) => {
+router.get("/prices/:ticker", async (req: Request, res: Response) => {
   try {
     const { ticker } = req.params;
-    const period = (req.query.period as ChartPeriod) || '1Y';
+    const period = (req.query.period as ChartPeriod) || "1Y";
 
     const chartData = await getChartData(ticker, period);
 
@@ -107,50 +128,60 @@ router.get('/prices/:ticker', async (req: Request, res: Response) => {
       data: chartData,
     });
   } catch (error) {
-    logger.error('Routes', `Error in prices endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch price data' });
+    logger.error(
+      "Routes",
+      `Error in prices endpoint: ${(error as Error).message}`
+    );
+    res.status(500).json({ error: "Failed to fetch price data" });
   }
 });
 
 /**
  * GET /latest/:ticker - Get the most recent price
  */
-router.get('/latest/:ticker', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { ticker } = req.params;
-    const prices = await getLatestPrice(ticker, 2);
+router.get(
+  "/latest/:ticker",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
+      const prices = await getLatestPrice(ticker, 2);
 
-    if (prices.length === 0) {
-      res.status(404).json({ error: 'No price data found for ticker' });
-      return;
+      if (prices.length === 0) {
+        res.status(404).json({ error: "No price data found for ticker" });
+        return;
+      }
+
+      const latest = prices[prices.length - 1];
+      const previous = prices.length > 1 ? prices[prices.length - 2] : latest;
+
+      const currentPrice = latest.close ?? 0;
+      const previousClose = previous.close ?? currentPrice;
+      const priceChange = currentPrice - previousClose;
+      const priceChangePercent =
+        previousClose > 0 ? (priceChange / previousClose) * 100 : 0;
+
+      res.json({
+        ticker: ticker.toUpperCase(),
+        date: latest.date,
+        currentPrice,
+        previousClose,
+        priceChange,
+        priceChangePercent,
+        adjClose: latest.adj_close,
+        volume: latest.volume,
+        high: latest.high,
+        low: latest.low,
+        open: latest.open,
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error in latest endpoint: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to fetch latest price" });
     }
-
-    const latest = prices[prices.length - 1];
-    const previous = prices.length > 1 ? prices[prices.length - 2] : latest;
-
-    const currentPrice = latest.close ?? 0;
-    const previousClose = previous.close ?? currentPrice;
-    const priceChange = currentPrice - previousClose;
-    const priceChangePercent = previousClose > 0 ? (priceChange / previousClose) * 100 : 0;
-
-    res.json({
-      ticker: ticker.toUpperCase(),
-      date: latest.date,
-      currentPrice,
-      previousClose,
-      priceChange,
-      priceChangePercent,
-      adjClose: latest.adj_close,
-      volume: latest.volume,
-      high: latest.high,
-      low: latest.low,
-      open: latest.open,
-    });
-  } catch (error) {
-    logger.error('Routes', `Error in latest endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch latest price' });
   }
-});
+);
 
 // ============================================================================
 // Dividend Endpoints
@@ -160,11 +191,11 @@ router.get('/latest/:ticker', async (req: Request, res: Response): Promise<void>
  * GET /dividends/:ticker - Get dividend history
  * Falls back to live FMP API if database is empty
  */
-router.get('/dividends/:ticker', async (req: Request, res: Response) => {
+router.get("/dividends/:ticker", async (req: Request, res: Response) => {
   try {
     const { ticker } = req.params;
     const years = parseInt(req.query.years as string) || 15;
-    
+
     // For large year requests (50+ years), fetch all dividends without date filter
     // This ensures we get full historical data
     const startDate = years >= 50 ? undefined : getDateYearsAgo(years);
@@ -175,18 +206,23 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
 
     let isLiveData = false;
 
-    const hasMissingDates = dividends.some(d => !d.record_date || !d.pay_date);
+    const hasMissingDates = dividends.some(
+      (d) => !d.record_date || !d.pay_date
+    );
 
     // Always try to fetch from Tiingo dividend API
-    logger.info('Routes', `Fetching dividends from Tiingo for ${ticker}...`);
+    logger.info("Routes", `Fetching dividends from Tiingo for ${ticker}...`);
 
     // Preserve normalized values from database for merging later
     // Include ALL dividends with frequency_num, even if normalized_div is null
     const dbNormalizedMap = new Map<string, any>();
-    dividends.forEach(d => {
-      const exDate = d.ex_date.split('T')[0];
+    dividends.forEach((d) => {
+      const exDate = d.ex_date.split("T")[0];
       // Include if frequency_num exists (even if normalized_div is null)
-      if ((d as any).frequency_num !== null && (d as any).frequency_num !== undefined) {
+      if (
+        (d as any).frequency_num !== null &&
+        (d as any).frequency_num !== undefined
+      ) {
         dbNormalizedMap.set(exDate, {
           normalized_div: (d as any).normalized_div ?? null,
           frequency_num: (d as any).frequency_num,
@@ -200,57 +236,88 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     try {
       // For large year requests, fetch all available data from Tiingo
       const tiingoStartDate = years >= 50 ? undefined : startDate;
-      const tiingoDividends = await fetchTiingoDividends(ticker, tiingoStartDate);
+      const tiingoDividends = await fetchTiingoDividends(
+        ticker,
+        tiingoStartDate
+      );
 
       if (tiingoDividends.length > 0) {
         isLiveData = true;
 
         const existingDividends = await getDividendHistory(ticker, startDate);
-        const manualDividends = existingDividends.filter(d =>
-          d.description?.includes('Manual upload') || d.description?.includes('Early announcement')
+        const manualDividends = existingDividends.filter(
+          (d) =>
+            d.description?.includes("Manual upload") ||
+            d.description?.includes("Early announcement")
         );
 
-        const tiingoRecords = tiingoDividends.map((d: { date: string; dividend: number; adjDividend: number; scaledDividend: number; recordDate: string | null; paymentDate: string | null; declarationDate: string | null }) => {
-          const exDate = d.date.split('T')[0];
-          const divAmount = d.adjDividend > 0 ? d.adjDividend : d.dividend;
+        const tiingoRecords = tiingoDividends
+          .map(
+            (d: {
+              date: string;
+              dividend: number;
+              adjDividend: number;
+              scaledDividend: number;
+              recordDate: string | null;
+              paymentDate: string | null;
+              declarationDate: string | null;
+            }) => {
+              const exDate = d.date.split("T")[0];
+              const divAmount = d.adjDividend > 0 ? d.adjDividend : d.dividend;
 
-          const matchedManual = manualDividends.find(manual => {
-            const manualExDate = new Date(manual.ex_date);
-            const tiingoExDate = new Date(exDate);
-            const daysDiff = Math.abs((tiingoExDate.getTime() - manualExDate.getTime()) / (1000 * 60 * 60 * 24));
-            const amountMatch = Math.abs((manual.adj_amount ?? manual.div_cash) - divAmount) < 0.01;
+              const matchedManual = manualDividends.find((manual) => {
+                const manualExDate = new Date(manual.ex_date);
+                const tiingoExDate = new Date(exDate);
+                const daysDiff = Math.abs(
+                  (tiingoExDate.getTime() - manualExDate.getTime()) /
+                    (1000 * 60 * 60 * 24)
+                );
+                const amountMatch =
+                  Math.abs((manual.adj_amount ?? manual.div_cash) - divAmount) <
+                  0.01;
 
-            return (manual.ex_date === exDate) || (daysDiff <= 7 && amountMatch);
-          });
+                return (
+                  manual.ex_date === exDate || (daysDiff <= 7 && amountMatch)
+                );
+              });
 
-          // Merge with database normalized values if available
-          const dbNormalized = dbNormalizedMap.get(exDate);
-          
-          return {
-            ticker: ticker.toUpperCase(),
-            ex_date: exDate,
-            pay_date: d.paymentDate?.split('T')[0] || null,
-            record_date: d.recordDate?.split('T')[0] || null,
-            declare_date: d.declarationDate?.split('T')[0] || null,
-            div_cash: d.dividend,
-            adj_amount: d.adjDividend,
-            scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
-            div_type: null,
-            frequency: null,
-            description: matchedManual ? null : null,
-            currency: 'USD',
-            split_factor: d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
-            // Preserve normalized values from database
-            normalized_div: dbNormalized?.normalized_div ?? null,
-            frequency_num: dbNormalized?.frequency_num ?? null,
-            pmt_type: dbNormalized?.pmt_type ?? null,
-            days_since_prev: dbNormalized?.days_since_prev ?? null,
-            annualized: dbNormalized?.annualized ?? null,
-          };
-        }).sort((a: DividendRecord, b: DividendRecord) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime());
+              // Merge with database normalized values if available
+              const dbNormalized = dbNormalizedMap.get(exDate);
 
-        upsertDividends(tiingoRecords).catch(err =>
-          logger.warn('Routes', `Failed to persist dividends for ${ticker}: ${err.message}`)
+              return {
+                ticker: ticker.toUpperCase(),
+                ex_date: exDate,
+                pay_date: d.paymentDate?.split("T")[0] || null,
+                record_date: d.recordDate?.split("T")[0] || null,
+                declare_date: d.declarationDate?.split("T")[0] || null,
+                div_cash: d.dividend,
+                adj_amount: d.adjDividend,
+                scaled_amount: d.scaledDividend > 0 ? d.scaledDividend : null,
+                div_type: null,
+                frequency: null,
+                description: matchedManual ? null : null,
+                currency: "USD",
+                split_factor:
+                  d.adjDividend > 0 ? d.dividend / d.adjDividend : 1,
+                // Preserve normalized values from database
+                normalized_div: dbNormalized?.normalized_div ?? null,
+                frequency_num: dbNormalized?.frequency_num ?? null,
+                pmt_type: dbNormalized?.pmt_type ?? null,
+                days_since_prev: dbNormalized?.days_since_prev ?? null,
+                annualized: dbNormalized?.annualized ?? null,
+              };
+            }
+          )
+          .sort(
+            (a: DividendRecord, b: DividendRecord) =>
+              new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
+          );
+
+        upsertDividends(tiingoRecords).catch((err) =>
+          logger.warn(
+            "Routes",
+            `Failed to persist dividends for ${ticker}: ${err.message}`
+          )
         );
 
         // After upserting, re-fetch from database to get normalized values
@@ -263,23 +330,32 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         }
       }
     } catch (error) {
-      logger.warn('Routes', `Failed to fetch Tiingo dividends for ${ticker}: ${(error as Error).message}`);
+      logger.warn(
+        "Routes",
+        `Failed to fetch Tiingo dividends for ${ticker}: ${
+          (error as Error).message
+        }`
+      );
     }
 
     // Log if no dividends found
     if (dividends.length === 0) {
-      logger.info('Routes', `No dividend data found for ${ticker} from Tiingo API`);
+      logger.info(
+        "Routes",
+        `No dividend data found for ${ticker} from Tiingo API`
+      );
     }
 
     // Detect frequency from actual dividend dates first to get accurate paymentsPerYear
     let actualPaymentsPerYear = paymentsPerYear;
     if (dividends.length >= 2) {
-      const sorted = [...dividends].sort((a, b) =>
-        new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
+      const sorted = [...dividends].sort(
+        (a, b) => new Date(a.ex_date).getTime() - new Date(b.ex_date).getTime()
       );
       const firstDate = new Date(sorted[0].ex_date);
       const lastDate = new Date(sorted[sorted.length - 1].ex_date);
-      const daysDiff = (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24);
+      const daysDiff =
+        (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24);
       if (daysDiff > 0 && sorted.length > 1) {
         const avgDaysBetween = daysDiff / (sorted.length - 1);
         if (avgDaysBetween <= 10) actualPaymentsPerYear = 52;
@@ -296,12 +372,15 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     let lastDividend: number | null = null;
     for (const div of dividends) {
       const divAny = div as any;
-      const pmtType = divAny?.pmt_type || 'Regular';
-      
+      const pmtType = divAny?.pmt_type || "Regular";
+
       // Only use Regular or Initial dividends (skip Special)
-      if (pmtType === 'Regular' || pmtType === 'Initial') {
+      if (pmtType === "Regular" || pmtType === "Initial") {
         // For split specials that were converted to Regular in table, regular_component might exist
-        if (divAny?.regular_component !== null && divAny?.regular_component !== undefined) {
+        if (
+          divAny?.regular_component !== null &&
+          divAny?.regular_component !== undefined
+        ) {
           const rc = Number(divAny.regular_component);
           if (isFinite(rc) && rc > 0) {
             lastDividend = rc;
@@ -317,7 +396,9 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         }
       }
     }
-    const annualizedDividend = lastDividend ? lastDividend * actualPaymentsPerYear : null;
+    const annualizedDividend = lastDividend
+      ? lastDividend * actualPaymentsPerYear
+      : null;
 
     // Calculate YoY growth
     let dividendGrowth: number | null = null;
@@ -330,35 +411,41 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         .reduce((sum, d) => sum + d.div_cash, 0);
 
       if (priorYearTotal > 0) {
-        dividendGrowth = ((recentYearTotal - priorYearTotal) / priorYearTotal) * 100;
+        dividendGrowth =
+          ((recentYearTotal - priorYearTotal) / priorYearTotal) * 100;
       }
     }
 
     // Detect frequency from actual dividend dates for each dividend
     // This detects per-payment frequency based on days between consecutive payments
-    const detectFrequencyFromDates = (records: DividendRecord[], index: number): string => {
+    const detectFrequencyFromDates = (
+      records: DividendRecord[],
+      index: number
+    ): string => {
       if (records.length < 2) {
         // Fallback to paymentsPerYear if not enough data
-        if (paymentsPerYear === 12) return 'Monthly';
-        if (paymentsPerYear === 4) return 'Quarterly';
-        if (paymentsPerYear === 52) return 'Weekly';
-        if (paymentsPerYear === 1) return 'Annual';
+        if (paymentsPerYear === 12) return "Monthly";
+        if (paymentsPerYear === 4) return "Quarterly";
+        if (paymentsPerYear === 52) return "Weekly";
+        if (paymentsPerYear === 1) return "Annual";
         return `${paymentsPerYear}x/Yr`;
       }
 
       // Sort dividends by date (descending - most recent first) for frequency detection
-      const sorted = [...records].sort((a, b) =>
-        new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
+      const sorted = [...records].sort(
+        (a, b) => new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime()
       );
 
       // Find the index in sorted array
-      const sortedIndex = sorted.findIndex(r => r.ex_date === records[index].ex_date);
+      const sortedIndex = sorted.findIndex(
+        (r) => r.ex_date === records[index].ex_date
+      );
       if (sortedIndex === -1) {
         // Fallback if not found
-        if (actualPaymentsPerYear === 12) return 'Monthly';
-        if (actualPaymentsPerYear === 52) return 'Weekly';
-        if (actualPaymentsPerYear === 4) return 'Quarterly';
-        return 'Monthly';
+        if (actualPaymentsPerYear === 12) return "Monthly";
+        if (actualPaymentsPerYear === 52) return "Weekly";
+        if (actualPaymentsPerYear === 4) return "Quarterly";
+        return "Monthly";
       }
 
       const currentDate = new Date(sorted[sortedIndex].ex_date);
@@ -367,30 +454,32 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       // Try to find previous dividend (more recent payment)
       if (sortedIndex > 0) {
         const prevDate = new Date(sorted[sortedIndex - 1].ex_date);
-        daysBetween = (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
+        daysBetween =
+          (prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
       }
 
       // If no previous dividend found, try next dividend (older payment)
       if (daysBetween === null && sortedIndex < sorted.length - 1) {
         const nextDate = new Date(sorted[sortedIndex + 1].ex_date);
-        daysBetween = (currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24);
+        daysBetween =
+          (currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24);
       }
 
       // Determine frequency based on days between payments
       // Weekly: <= 10 days, Monthly: 11-35 days, Quarterly: 36-95 days, etc.
       if (daysBetween !== null) {
-        if (daysBetween <= 10) return 'Weekly';
-        if (daysBetween <= 35) return 'Monthly';
-        if (daysBetween <= 95) return 'Quarterly';
-        if (daysBetween <= 185) return 'Semi-Annual';
-        return 'Annual';
+        if (daysBetween <= 10) return "Weekly";
+        if (daysBetween <= 35) return "Monthly";
+        if (daysBetween <= 95) return "Quarterly";
+        if (daysBetween <= 185) return "Semi-Annual";
+        return "Annual";
       }
 
       // Fallback to actualPaymentsPerYear
-      if (actualPaymentsPerYear === 12) return 'Monthly';
-      if (actualPaymentsPerYear === 4) return 'Quarterly';
-      if (actualPaymentsPerYear === 52) return 'Weekly';
-      if (actualPaymentsPerYear === 1) return 'Annual';
+      if (actualPaymentsPerYear === 12) return "Monthly";
+      if (actualPaymentsPerYear === 4) return "Quarterly";
+      if (actualPaymentsPerYear === 52) return "Weekly";
+      if (actualPaymentsPerYear === 1) return "Annual";
       return `${actualPaymentsPerYear}x/Yr`;
     };
 
@@ -403,7 +492,10 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       let payDate = d.pay_date;
 
       if (!recordDate || !payDate) {
-        const estimated = estimateDividendDates(d.ex_date, actualPaymentsPerYear);
+        const estimated = estimateDividendDates(
+          d.ex_date,
+          actualPaymentsPerYear
+        );
         if (!recordDate) recordDate = estimated.recordDate;
         if (!payDate) payDate = estimated.payDate;
       }
@@ -416,22 +508,26 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
         amount: d.div_cash,
         adjAmount: d.adj_amount ?? d.div_cash,
         scaledAmount: d.scaled_amount ?? d.div_cash,
-        type: d.div_type?.toLowerCase().includes('special') ? 'Special' : 'Regular',
+        type: d.div_type?.toLowerCase().includes("special")
+          ? "Special"
+          : "Regular",
         frequency: d.frequency ?? detectFrequencyFromDates(dividends, idx),
         description: d.description,
-        currency: d.currency ?? 'USD',
+        currency: d.currency ?? "USD",
       };
     });
 
     // Check if this is a CEF (has nav_symbol or category === 'CEF')
     const staticDataAny = staticData as any;
-    const isCEF = (staticDataAny?.nav_symbol && staticDataAny.nav_symbol !== '') || staticData?.category === 'CEF';
-    
+    const isCEF =
+      (staticDataAny?.nav_symbol && staticDataAny.nav_symbol !== "") ||
+      staticData?.category === "CEF";
+
     // For CEFs: Use database values (already calculated correctly by refresh_cef.ts)
     // For ETFs: Recalculate live (prevents stale DB pmt_type/frequency issues)
     const dividendsByDateMap = new Map<string, any>();
     dividends.forEach((d) => {
-      const exDate = d.ex_date.split('T')[0];
+      const exDate = d.ex_date.split("T")[0];
       dividendsByDateMap.set(exDate, d);
     });
 
@@ -441,25 +537,42 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       const dividendRecordsDesc = [...dividendRecords].sort(
         (a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
       );
-      
+
       dividendsWithNormalized = dividendRecordsDesc.map((d) => {
-        const normalizedExDate = d.exDate.split('T')[0];
+        // Find the exact DB record for this date (handle time strings)
+        const normalizedExDate = d.exDate.split("T")[0];
         const dbDiv = dividendsByDateMap.get(normalizedExDate);
-        
+
+        // THE SUPREME COURT FIX: Trust the DB, do not recalculate or use fallbacks
+        // For CEFs, we MUST use the values calculated by refresh_cef.ts
+        const pmtType = (dbDiv as any)?.pmt_type || "Regular";
+        const isSpecial = pmtType === "Special";
+
         // Map frequency_label to frequency string for display
-        const frequencyLabel = (dbDiv as any)?.frequency_label;
+        // CRITICAL: If DB says Special, UI must show 'Other'
         let frequencyStr: string | null = null;
-        if ((dbDiv as any)?.pmt_type === 'Special') {
-          frequencyStr = 'Other';
-        } else if (frequencyLabel) {
-          frequencyStr = frequencyLabel === 'Irregular' ? 'Irregular' : frequencyLabel;
+        if (isSpecial) {
+          frequencyStr = "Other";
+        } else {
+          const frequencyLabel = (dbDiv as any)?.frequency_label;
+          if (frequencyLabel) {
+            frequencyStr =
+              frequencyLabel === "Irregular" ? "Irregular" : frequencyLabel;
+          } else {
+            // Fallback only if DB has no frequency_label (shouldn't happen after refresh)
+            frequencyStr = d.frequency || null;
+          }
         }
-        
+
         return {
           ...d,
-          pmtType: ((dbDiv as any)?.pmt_type ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
-          frequencyNum: (dbDiv as any)?.frequency_num ?? 12,
+          // Use database values strictly - no fallbacks that could override Special
+          pmtType: pmtType as "Regular" | "Special" | "Initial",
+          frequency: frequencyStr, // Include frequency string for UI display
+          // If DB says Special, frequencyNum MUST be 1 (already set by refresh script)
+          frequencyNum: isSpecial ? 1 : ((dbDiv as any)?.frequency_num ?? null),
           daysSincePrev: (dbDiv as any)?.days_since_prev ?? null,
+          // Use pre-calculated math from the refresh script - do not recalculate
           annualized: (dbDiv as any)?.annualized ?? null,
           normalizedDiv: (dbDiv as any)?.normalized_div ?? null,
           regularComponent: (dbDiv as any)?.regular_component ?? null,
@@ -468,19 +581,23 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       });
     } else {
       // For ETFs: Recalculate live using general normalization
-      const liveNormalizedDesc = calculateNormalizedForResponse(dividendRecords);
+      const liveNormalizedDesc =
+        calculateNormalizedForResponse(dividendRecords);
       const dividendRecordsDesc = [...dividendRecords].sort(
         (a, b) => new Date(b.exDate).getTime() - new Date(a.exDate).getTime()
       );
 
       dividendsWithNormalized = dividendRecordsDesc.map((d, i) => {
-        const normalizedExDate = d.exDate.split('T')[0];
+        const normalizedExDate = d.exDate.split("T")[0];
         const dbDiv = dividendsByDateMap.get(normalizedExDate);
         const live = liveNormalizedDesc[i];
 
         return {
           ...d,
-          pmtType: (live?.pmtType ?? 'Regular') as 'Regular' | 'Special' | 'Initial',
+          pmtType: (live?.pmtType ?? "Regular") as
+            | "Regular"
+            | "Special"
+            | "Initial",
           frequencyNum: live?.frequencyNum ?? 12,
           daysSincePrev: live?.daysSincePrev ?? null,
           annualized: live?.annualized ?? null,
@@ -494,7 +611,7 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
     // Recompute lastDividend using LIVE pmtType so special stubs don’t pollute the run-rate.
     lastDividend = null;
     for (const div of dividendsWithNormalized) {
-      if (div.pmtType === 'Regular' || div.pmtType === 'Initial') {
+      if (div.pmtType === "Regular" || div.pmtType === "Initial") {
         const rc = (div as any).regularComponent;
         if (rc !== null && rc !== undefined) {
           const v = Number(rc);
@@ -515,14 +632,19 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       ticker: ticker.toUpperCase(),
       paymentsPerYear: actualPaymentsPerYear,
       lastDividend,
-      annualizedDividend: lastDividend ? lastDividend * actualPaymentsPerYear : null,
+      annualizedDividend: lastDividend
+        ? lastDividend * actualPaymentsPerYear
+        : null,
       dividendGrowth,
       isLiveData,
       dividends: dividendsWithNormalized,
     });
   } catch (error) {
-    logger.error('Routes', `Error in dividends endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch dividend data' });
+    logger.error(
+      "Routes",
+      `Error in dividends endpoint: ${(error as Error).message}`
+    );
+    res.status(500).json({ error: "Failed to fetch dividend data" });
   }
 });
 
@@ -533,14 +655,17 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
 /**
  * GET /metrics/:ticker - Get all calculated metrics
  */
-router.get('/metrics/:ticker', async (req: Request, res: Response) => {
+router.get("/metrics/:ticker", async (req: Request, res: Response) => {
   try {
     const { ticker } = req.params;
     const metrics = await calculateMetrics(ticker);
     res.json(metrics);
   } catch (error) {
-    logger.error('Routes', `Error in metrics endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to calculate metrics' });
+    logger.error(
+      "Routes",
+      `Error in metrics endpoint: ${(error as Error).message}`
+    );
+    res.status(500).json({ error: "Failed to calculate metrics" });
   }
 });
 
@@ -551,62 +676,78 @@ router.get('/metrics/:ticker', async (req: Request, res: Response) => {
 interface CompareRequestBody {
   tickers: string[];
   period?: ChartPeriod;
-  type?: 'totalReturn' | 'priceReturn';
+  type?: "totalReturn" | "priceReturn";
 }
 
 /**
  * POST /compare - Get comparison chart data for multiple tickers
  */
-router.post('/compare', async (req: Request<object, object, CompareRequestBody>, res: Response): Promise<void> => {
-  try {
-    const { tickers, period = '1Y' } = req.body;
+router.post(
+  "/compare",
+  async (
+    req: Request<object, object, CompareRequestBody>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { tickers, period = "1Y" } = req.body;
 
-    if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
-      res.status(400).json({ error: 'tickers array is required' });
-      return;
-    }
-
-    const startDate = periodToStartDate(period);
-    const result: Record<string, {
-      timestamps: number[];
-      closes: number[];
-      adjCloses: number[];
-      priceReturns: number[];
-      totalReturns: number[];
-    }> = {};
-
-    for (const ticker of tickers.slice(0, 5)) {
-      const prices = await getPriceHistory(ticker, startDate);
-
-      if (prices.length > 0) {
-        const firstClose = prices[0].close ?? 0;
-        const firstAdjClose = prices[0].adj_close ?? 0;
-
-        result[ticker.toUpperCase()] = {
-          timestamps: prices.map(p => new Date(p.date).getTime() / 1000),
-          closes: prices.map(p => p.close ?? 0),
-          adjCloses: prices.map(p => p.adj_close ?? 0),
-          priceReturns: prices.map(p =>
-            firstClose > 0 ? (((p.close ?? 0) - firstClose) / firstClose) * 100 : 0
-          ),
-          totalReturns: prices.map(p =>
-            firstAdjClose > 0 ? (((p.adj_close ?? 0) - firstAdjClose) / firstAdjClose) * 100 : 0
-          ),
-        };
+      if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
+        res.status(400).json({ error: "tickers array is required" });
+        return;
       }
-    }
 
-    res.json({
-      tickers: Object.keys(result),
-      period,
-      startDate,
-      data: result,
-    });
-  } catch (error) {
-    logger.error('Routes', `Error in compare endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch comparison data' });
+      const startDate = periodToStartDate(period);
+      const result: Record<
+        string,
+        {
+          timestamps: number[];
+          closes: number[];
+          adjCloses: number[];
+          priceReturns: number[];
+          totalReturns: number[];
+        }
+      > = {};
+
+      for (const ticker of tickers.slice(0, 5)) {
+        const prices = await getPriceHistory(ticker, startDate);
+
+        if (prices.length > 0) {
+          const firstClose = prices[0].close ?? 0;
+          const firstAdjClose = prices[0].adj_close ?? 0;
+
+          result[ticker.toUpperCase()] = {
+            timestamps: prices.map((p) => new Date(p.date).getTime() / 1000),
+            closes: prices.map((p) => p.close ?? 0),
+            adjCloses: prices.map((p) => p.adj_close ?? 0),
+            priceReturns: prices.map((p) =>
+              firstClose > 0
+                ? (((p.close ?? 0) - firstClose) / firstClose) * 100
+                : 0
+            ),
+            totalReturns: prices.map((p) =>
+              firstAdjClose > 0
+                ? (((p.adj_close ?? 0) - firstAdjClose) / firstAdjClose) * 100
+                : 0
+            ),
+          };
+        }
+      }
+
+      res.json({
+        tickers: Object.keys(result),
+        period,
+        startDate,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error in compare endpoint: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to fetch comparison data" });
+    }
   }
-});
+);
 
 // ============================================================================
 // Ranking Endpoints
@@ -619,21 +760,27 @@ interface RankingsRequestBody {
 /**
  * POST /rankings - Get ranked ETFs with custom weights
  */
-router.post('/rankings', async (req: Request<object, object, RankingsRequestBody>, res: Response) => {
-  try {
-    const { weights } = req.body;
-    const rankings = await calculateRankings(weights);
+router.post(
+  "/rankings",
+  async (req: Request<object, object, RankingsRequestBody>, res: Response) => {
+    try {
+      const { weights } = req.body;
+      const rankings = await calculateRankings(weights);
 
-    res.json({
-      weights: weights ?? { yield: 34, totalReturn: 33, volatility: 33 },
-      rankings,
-      calculatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Routes', `Error in rankings endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to calculate rankings' });
+      res.json({
+        weights: weights ?? { yield: 34, totalReturn: 33, volatility: 33 },
+        rankings,
+        calculatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error in rankings endpoint: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to calculate rankings" });
+    }
   }
-});
+);
 
 // ============================================================================
 // Live Chart Endpoints (Direct from Tiingo API)
@@ -645,41 +792,41 @@ router.post('/rankings', async (req: Request<object, object, RankingsRequestBody
 function getLiveStartDate(period: string): string {
   const now = new Date();
   switch (period) {
-    case '1D':
+    case "1D":
       now.setDate(now.getDate() - 1);
       break;
-    case '1W':
+    case "1W":
       now.setDate(now.getDate() - 7);
       break;
-    case '1M':
+    case "1M":
       now.setMonth(now.getMonth() - 1);
       break;
-    case '3M':
+    case "3M":
       now.setMonth(now.getMonth() - 3);
       break;
-    case '6M':
+    case "6M":
       now.setMonth(now.getMonth() - 6);
       break;
-    case 'YTD':
+    case "YTD":
       now.setMonth(0);
       now.setDate(1);
       break;
-    case '1Y':
+    case "1Y":
       now.setFullYear(now.getFullYear() - 1);
       break;
-    case '3Y':
+    case "3Y":
       now.setFullYear(now.getFullYear() - 3);
       break;
-    case '5Y':
+    case "5Y":
       now.setFullYear(now.getFullYear() - 5);
       break;
-    case '10Y':
+    case "10Y":
       now.setFullYear(now.getFullYear() - 10);
       break;
-    case '20Y':
+    case "20Y":
       now.setFullYear(now.getFullYear() - 20);
       break;
-    case 'MAX':
+    case "MAX":
       now.setFullYear(2000);
       break;
     default:
@@ -691,111 +838,145 @@ function getLiveStartDate(period: string): string {
 /**
  * GET /live/:ticker - Get live price data directly from Tiingo API
  */
-router.get('/live/:ticker', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { ticker } = req.params;
-    const period = (req.query.period as string) || '1Y';
-    const startDate = getLiveStartDate(period);
-    const endDate = formatDate(new Date());
+router.get(
+  "/live/:ticker",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
+      const period = (req.query.period as string) || "1Y";
+      const startDate = getLiveStartDate(period);
+      const endDate = formatDate(new Date());
 
-    logger.info('Routes', `Fetching live data for ${ticker} from ${startDate} to ${endDate}`);
+      logger.info(
+        "Routes",
+        `Fetching live data for ${ticker} from ${startDate} to ${endDate}`
+      );
 
-    const prices = await fetchTiingoPrices(ticker, startDate, endDate);
+      const prices = await fetchTiingoPrices(ticker, startDate, endDate);
 
-    if (!prices || prices.length === 0) {
-      res.status(404).json({ error: `No data found for ${ticker}` });
-      return;
+      if (!prices || prices.length === 0) {
+        res.status(404).json({ error: `No data found for ${ticker}` });
+        return;
+      }
+
+      // Calculate returns
+      const firstClose = prices[0].close;
+      const firstAdjClose = prices[0].adjClose;
+
+      const chartData = prices.map((p) => ({
+        date: p.date.split("T")[0],
+        timestamp: new Date(p.date).getTime() / 1000,
+        open: p.open,
+        high: p.high,
+        low: p.low,
+        close: p.close,
+        adjClose: p.adjClose,
+        volume: p.volume,
+        divCash: p.divCash || 0, // Tiingo includes divCash on ex-dividend dates
+        priceReturn:
+          firstClose > 0 ? ((p.close - firstClose) / firstClose) * 100 : 0,
+        totalReturn:
+          firstAdjClose > 0
+            ? ((p.adjClose - firstAdjClose) / firstAdjClose) * 100
+            : 0,
+      }));
+
+      res.json({
+        ticker: ticker.toUpperCase(),
+        period,
+        count: chartData.length,
+        startDate,
+        endDate,
+        data: chartData,
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error in live endpoint: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to fetch live data from Tiingo" });
     }
-
-    // Calculate returns
-    const firstClose = prices[0].close;
-    const firstAdjClose = prices[0].adjClose;
-
-    const chartData = prices.map((p) => ({
-      date: p.date.split('T')[0],
-      timestamp: new Date(p.date).getTime() / 1000,
-      open: p.open,
-      high: p.high,
-      low: p.low,
-      close: p.close,
-      adjClose: p.adjClose,
-      volume: p.volume,
-      divCash: p.divCash || 0, // Tiingo includes divCash on ex-dividend dates
-      priceReturn: firstClose > 0 ? ((p.close - firstClose) / firstClose) * 100 : 0,
-      totalReturn: firstAdjClose > 0 ? ((p.adjClose - firstAdjClose) / firstAdjClose) * 100 : 0,
-    }));
-
-    res.json({
-      ticker: ticker.toUpperCase(),
-      period,
-      count: chartData.length,
-      startDate,
-      endDate,
-      data: chartData,
-    });
-  } catch (error) {
-    logger.error('Routes', `Error in live endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch live data from Tiingo' });
   }
-});
+);
 
 /**
  * POST /live/compare - Get live comparison data for multiple tickers
  */
-router.post('/live/compare', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { tickers, period = '1Y' } = req.body as { tickers: string[]; period?: string };
+router.post(
+  "/live/compare",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { tickers, period = "1Y" } = req.body as {
+        tickers: string[];
+        period?: string;
+      };
 
-    if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
-      res.status(400).json({ error: 'tickers array is required' });
-      return;
-    }
-
-    const startDate = getLiveStartDate(period);
-    const endDate = formatDate(new Date());
-
-    logger.info('Routes', `Fetching live comparison for ${tickers.join(', ')} from ${startDate}`);
-
-    const result: Record<string, {
-      timestamps: number[];
-      closes: number[];
-      adjCloses: number[];
-      priceReturns: number[];
-      totalReturns: number[];
-    }> = {};
-
-    for (const ticker of tickers) {
-      const prices = await fetchTiingoPrices(ticker.toUpperCase(), startDate, endDate);
-
-      if (prices && prices.length > 0) {
-        const firstClose = prices[0].close;
-        const firstAdjClose = prices[0].adjClose;
-
-        result[ticker.toUpperCase()] = {
-          timestamps: prices.map((p) => new Date(p.date).getTime() / 1000),
-          closes: prices.map((p) => p.close),
-          adjCloses: prices.map((p) => p.adjClose),
-          priceReturns: prices.map((p) =>
-            firstClose > 0 ? ((p.close - firstClose) / firstClose) * 100 : 0
-          ),
-          totalReturns: prices.map((p) =>
-            firstAdjClose > 0 ? ((p.adjClose - firstAdjClose) / firstAdjClose) * 100 : 0
-          ),
-        };
+      if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
+        res.status(400).json({ error: "tickers array is required" });
+        return;
       }
-    }
 
-    res.json({
-      tickers: Object.keys(result),
-      period,
-      startDate,
-      data: result,
-    });
-  } catch (error) {
-    logger.error('Routes', `Error in live compare endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch live comparison data' });
+      const startDate = getLiveStartDate(period);
+      const endDate = formatDate(new Date());
+
+      logger.info(
+        "Routes",
+        `Fetching live comparison for ${tickers.join(", ")} from ${startDate}`
+      );
+
+      const result: Record<
+        string,
+        {
+          timestamps: number[];
+          closes: number[];
+          adjCloses: number[];
+          priceReturns: number[];
+          totalReturns: number[];
+        }
+      > = {};
+
+      for (const ticker of tickers) {
+        const prices = await fetchTiingoPrices(
+          ticker.toUpperCase(),
+          startDate,
+          endDate
+        );
+
+        if (prices && prices.length > 0) {
+          const firstClose = prices[0].close;
+          const firstAdjClose = prices[0].adjClose;
+
+          result[ticker.toUpperCase()] = {
+            timestamps: prices.map((p) => new Date(p.date).getTime() / 1000),
+            closes: prices.map((p) => p.close),
+            adjCloses: prices.map((p) => p.adjClose),
+            priceReturns: prices.map((p) =>
+              firstClose > 0 ? ((p.close - firstClose) / firstClose) * 100 : 0
+            ),
+            totalReturns: prices.map((p) =>
+              firstAdjClose > 0
+                ? ((p.adjClose - firstAdjClose) / firstAdjClose) * 100
+                : 0
+            ),
+          };
+        }
+      }
+
+      res.json({
+        tickers: Object.keys(result),
+        period,
+        startDate,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error in live compare endpoint: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to fetch live comparison data" });
+    }
   }
-});
+);
 
 // ============================================================================
 // Realtime Returns Endpoints
@@ -805,32 +986,40 @@ router.post('/live/compare', async (req: Request, res: Response): Promise<void> 
  * GET /realtime-returns/:ticker - Get realtime returns for a single ticker
  * Uses IEX intraday prices for accurate realtime calculations
  */
-router.get('/realtime-returns/:ticker', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { ticker } = req.params;
+router.get(
+  "/realtime-returns/:ticker",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { ticker } = req.params;
 
-    if (!ticker) {
-      res.status(400).json({ error: 'Ticker is required' });
-      return;
+      if (!ticker) {
+        res.status(400).json({ error: "Ticker is required" });
+        return;
+      }
+
+      const returns = await calculateRealtimeReturns(ticker);
+
+      if (!returns) {
+        res
+          .status(404)
+          .json({ error: `No realtime data available for ${ticker}` });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: returns,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error fetching realtime returns: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to fetch realtime returns" });
     }
-
-    const returns = await calculateRealtimeReturns(ticker);
-
-    if (!returns) {
-      res.status(404).json({ error: `No realtime data available for ${ticker}` });
-      return;
-    }
-
-    res.json({
-      success: true,
-      data: returns,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Routes', `Error fetching realtime returns: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch realtime returns' });
   }
-});
+);
 
 interface RealtimeReturnsBatchBody {
   tickers: string[];
@@ -840,37 +1029,46 @@ interface RealtimeReturnsBatchBody {
  * POST /realtime-returns/batch - Get realtime returns for multiple tickers
  * More efficient for fetching multiple tickers at once
  */
-router.post('/realtime-returns/batch', async (req: Request<object, object, RealtimeReturnsBatchBody>, res: Response): Promise<void> => {
-  try {
-    const { tickers } = req.body;
+router.post(
+  "/realtime-returns/batch",
+  async (
+    req: Request<object, object, RealtimeReturnsBatchBody>,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { tickers } = req.body;
 
-    if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
-      res.status(400).json({ error: 'tickers array is required' });
-      return;
+      if (!tickers || !Array.isArray(tickers) || tickers.length === 0) {
+        res.status(400).json({ error: "tickers array is required" });
+        return;
+      }
+
+      // Limit to 50 tickers per request
+      const limitedTickers = tickers.slice(0, 50);
+
+      const returnsMap = await calculateRealtimeReturnsBatch(limitedTickers);
+
+      // Convert Map to object for JSON response
+      const returns: Record<string, unknown> = {};
+      returnsMap.forEach((value, key) => {
+        returns[key] = value;
+      });
+
+      res.json({
+        success: true,
+        count: returnsMap.size,
+        data: returns,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error(
+        "Routes",
+        `Error fetching batch realtime returns: ${(error as Error).message}`
+      );
+      res.status(500).json({ error: "Failed to fetch realtime returns" });
     }
-
-    // Limit to 50 tickers per request
-    const limitedTickers = tickers.slice(0, 50);
-
-    const returnsMap = await calculateRealtimeReturnsBatch(limitedTickers);
-
-    // Convert Map to object for JSON response
-    const returns: Record<string, unknown> = {};
-    returnsMap.forEach((value, key) => {
-      returns[key] = value;
-    });
-
-    res.json({
-      success: true,
-      count: returnsMap.size,
-      data: returns,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Routes', `Error fetching batch realtime returns: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch realtime returns' });
   }
-});
+);
 
 // ============================================================================
 // Sync Status Endpoint
@@ -879,15 +1077,15 @@ router.post('/realtime-returns/batch', async (req: Request<object, object, Realt
 /**
  * GET /sync-status - Get data synchronization status
  */
-router.get('/sync-status', async (_req: Request, res: Response) => {
+router.get("/sync-status", async (_req: Request, res: Response) => {
   try {
     const logs = await getAllSyncLogs();
 
-    const pricesLogs = logs.filter(d => d.data_type === 'prices');
-    const dividendsLogs = logs.filter(d => d.data_type === 'dividends');
-    const successCount = logs.filter(d => d.status === 'success').length;
-    const errorCount = logs.filter(d => d.status === 'error').length;
-    const uniqueTickers = new Set(logs.map(d => d.ticker)).size;
+    const pricesLogs = logs.filter((d) => d.data_type === "prices");
+    const dividendsLogs = logs.filter((d) => d.data_type === "dividends");
+    const successCount = logs.filter((d) => d.status === "success").length;
+    const errorCount = logs.filter((d) => d.status === "error").length;
+    const uniqueTickers = new Set(logs.map((d) => d.ticker)).size;
     const lastSync = logs.length > 0 ? logs[0].last_sync_date : null;
 
     res.json({
@@ -900,8 +1098,11 @@ router.get('/sync-status', async (_req: Request, res: Response) => {
       details: logs,
     });
   } catch (error) {
-    logger.error('Routes', `Error in sync-status endpoint: ${(error as Error).message}`);
-    res.status(500).json({ error: 'Failed to fetch sync status' });
+    logger.error(
+      "Routes",
+      `Error in sync-status endpoint: ${(error as Error).message}`
+    );
+    res.status(500).json({ error: "Failed to fetch sync status" });
   }
 });
 
