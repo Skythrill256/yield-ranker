@@ -558,6 +558,9 @@ router.get("/dividends/:ticker", async (req: Request, res: Response) => {
 
         return {
           ...d,
+          // CRITICAL: Override the buggy 'type' field (from div_type) to match pmtType
+          // Frontend falls back to 'type' if pmtType is missing, so this must be correct
+          type: isSpecial ? "Special" : "Regular",
           // Use database values - no fallbacks that could override Special
           pmtType: pmtType as "Regular" | "Special" | "Initial",
           // CRITICAL: For Specials, ALWAYS use "Other". For Regulars, ONLY use DB value (no fallback to buggy detectFrequencyFromDates)
