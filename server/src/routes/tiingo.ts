@@ -423,8 +423,9 @@ router.get('/dividends/:ticker', async (req: Request, res: Response) => {
       };
     });
 
-    // Check if this is a CEF (has nav_symbol)
-    const isCEF = staticData?.nav_symbol && staticData.nav_symbol !== '';
+    // Check if this is a CEF (has nav_symbol or category === 'CEF')
+    const staticDataAny = staticData as any;
+    const isCEF = (staticDataAny?.nav_symbol && staticDataAny.nav_symbol !== '') || staticData?.category === 'CEF';
     
     // For CEFs: Use database values (already calculated correctly by refresh_cef.ts)
     // For ETFs: Recalculate live (prevents stale DB pmt_type/frequency issues)
