@@ -133,7 +133,19 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
     // Special/Initial dividends should not affect frequency change detection
     // Filter to only Regular dividends for frequency detection
     const regularDividends = dividends.filter(div => {
-      const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
+      // Use same logic as display: check pmtType, then frequency="Other", then type
+      let pmtType: 'Regular' | 'Special' | 'Initial' = 'Regular';
+      if (div.pmtType === 'Special' || div.pmtType === 'Initial') {
+        pmtType = div.pmtType;
+      } else if (div.frequency === 'Other') {
+        pmtType = 'Special'; // frequency="Other" means Special
+      } else if (div.type === 'Special') {
+        pmtType = 'Special';
+      } else if (div.pmtType === 'Regular') {
+        pmtType = 'Regular';
+      } else if (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5) {
+        pmtType = 'Special'; // Fallback: very short gap might be special
+      }
       return pmtType === 'Regular';
     });
 
@@ -226,7 +238,19 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
       // - For CEF split specials: use the regularComponent (not the specialComponent)
       // - For regular dividends: use adjusted dividend (div.adjAmount)
       // - For non-split specials: skip (set to 0 so bar doesn't show)
-      const pmtType = div.pmtType || (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5 ? 'Special' : 'Regular');
+      // Use same logic as display: check pmtType, then frequency="Other", then type
+      let pmtType: 'Regular' | 'Special' | 'Initial' = 'Regular';
+      if (div.pmtType === 'Special' || div.pmtType === 'Initial') {
+        pmtType = div.pmtType;
+      } else if (div.frequency === 'Other') {
+        pmtType = 'Special'; // frequency="Other" means Special
+      } else if (div.type === 'Special') {
+        pmtType = 'Special';
+      } else if (div.pmtType === 'Regular') {
+        pmtType = 'Regular';
+      } else if (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5) {
+        pmtType = 'Special'; // Fallback: very short gap might be special
+      }
       
       const isSplitSpecial =
         (pmtType === 'Special') &&
@@ -899,9 +923,22 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
                         if (!isNaN(rd.getTime())) recordDate = rd;
                       }
 
-                      // Use pmtType from normalized calculation (Regular/Special/Initial)
-                      // Fallback to div.type if pmtType not available
-                      const typeLabel = div.pmtType || (div.type === 'Special' ? 'Special' : 'Regular');
+                      // CRITICAL: Determine type label with multiple fallbacks
+                      // Priority: 1) pmtType, 2) frequency === "Other", 3) type field
+                      // This ensures Special is always detected correctly
+                      let typeLabel: 'Regular' | 'Special' | 'Initial' = 'Regular';
+                      
+                      if (div.pmtType === 'Special' || div.pmtType === 'Initial') {
+                        typeLabel = div.pmtType;
+                      } else if (div.frequency === 'Other') {
+                        // CRITICAL SAFEGUARD: frequency="Other" means it's a Special
+                        // This matches the backend logic where frequency="Other" is the source of truth
+                        typeLabel = 'Special';
+                      } else if (div.type === 'Special') {
+                        typeLabel = 'Special';
+                      } else if (div.pmtType === 'Regular') {
+                        typeLabel = 'Regular';
+                      }
 
                       // Convert frequencyNum to readable string, fallback to frequency field
                       // For Special dividends, always show "Other" as frequency
