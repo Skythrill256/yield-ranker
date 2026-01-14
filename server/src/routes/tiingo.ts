@@ -580,9 +580,10 @@ router.get("/dividends/:ticker", async (req: Request, res: Response) => {
             ? null
             : (dbDiv as any)?.frequency_num ?? null,
           daysSincePrev: (dbDiv as any)?.days_since_prev ?? null,
-          // Use pre-calculated values from refresh script
-          annualized: (dbDiv as any)?.annualized ?? null,
-          normalizedDiv: (dbDiv as any)?.normalized_div ?? null,
+          // CRITICAL: For Specials, ALWAYS set annualized and normalizedDiv to null
+          // Even if database has old values, force them to null for specials
+          annualized: isSpecial ? null : ((dbDiv as any)?.annualized ?? null),
+          normalizedDiv: isSpecial ? null : ((dbDiv as any)?.normalized_div ?? null),
           regularComponent: (dbDiv as any)?.regular_component ?? null,
           specialComponent: (dbDiv as any)?.special_component ?? null,
         };
@@ -599,17 +600,22 @@ router.get("/dividends/:ticker", async (req: Request, res: Response) => {
         const normalizedExDate = d.exDate.split("T")[0];
         const dbDiv = dividendsByDateMap.get(normalizedExDate);
         const live = liveNormalizedDesc[i];
+        
+        const pmtType = (live?.pmtType ?? "Regular") as
+          | "Regular"
+          | "Special"
+          | "Initial";
+        const isSpecial = pmtType === "Special";
 
         return {
           ...d,
-          pmtType: (live?.pmtType ?? "Regular") as
-            | "Regular"
-            | "Special"
-            | "Initial",
+          pmtType: pmtType,
           frequencyNum: live?.frequencyNum ?? 12,
           daysSincePrev: live?.daysSincePrev ?? null,
-          annualized: live?.annualized ?? null,
-          normalizedDiv: live?.normalizedDiv ?? null,
+          // CRITICAL: For Specials, ALWAYS set annualized and normalizedDiv to null
+          // Even if live calculation has values, force them to null for specials
+          annualized: isSpecial ? null : (live?.annualized ?? null),
+          normalizedDiv: isSpecial ? null : (live?.normalizedDiv ?? null),
           regularComponent: (dbDiv as any)?.regular_component ?? null,
           specialComponent: (dbDiv as any)?.special_component ?? null,
         };
