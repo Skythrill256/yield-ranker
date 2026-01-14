@@ -160,10 +160,9 @@ function shouldTreatAsSpecialByCadence({
     if (deviationRel >= 0.12) return true; // 12%+ divergence
   }
 
-  // Year-end extra distributions (often cap-gains): if it's "too soon" for the dominant cadence,
-  // treat as special even when amount isn't wildly different.
-  const dt = new Date(currentExDate);
-  if (!isNaN(dt.getTime()) && dt.getMonth() === 11) return true; // December
+  // REMOVED: Automatic December special detection
+  // For EOD processing, December dividends should be treated as Regular unless there's a clear special signal
+  // (e.g., second December payment, extreme amount difference). The CEF-specific December rules handle this.
 
   // Otherwise be conservative and do not force special without an amount signal.
   return false;
@@ -527,20 +526,20 @@ export function calculateNormalizedDividendsForCEFs(
           }
         }
 
-        // Rule 2: If not already Special, check if amount is different from regular pattern
-        // This catches first December dividends that have unusual amounts
+        // Rule 2: If not already Special, check if amount is EXTREMELY different from regular pattern
+        // For EOD: Only mark as special if amount is significantly different (>= 30% deviation)
+        // This prevents regular December payments from being marked special due to minor variations
         if (
           pmtType !== "Special" &&
           medianAmount !== null &&
           medianAmount > 0
         ) {
-          const isNormalAmount = isApproximatelyEqual(
-            amount,
-            medianAmount,
-            amountStabilityRelTol
-          );
-          if (!isNormalAmount) {
-            // December dividend with amount different from regular pattern -> Special
+          // Only mark as special if amount is significantly different (>= 30% deviation)
+          // This ensures regular December payments aren't marked special
+          const deviationRel =
+            Math.abs(amount - medianAmount) / Math.max(medianAmount, 1e-9);
+          if (deviationRel >= 0.30) {
+            // December dividend with amount significantly different from regular pattern -> Special
             // CRITICAL: Override any previous classification
             pmtType = "Special";
           }
@@ -1038,7 +1037,7 @@ export function calculateNormalizedDividends(
   // PASS 2: compute frequency using "next non-special" for confirmation, with transition guard:
   // if the current dividend has a clear look-back gap, keep that frequency (prevents regime-change overwrites).
   const results: NormalizedDividend[] = [];
-  
+
   // Track newest regular frequency (for normalized calculation)
   let newestRegularFrequency: number | null = null;
 
@@ -1139,10 +1138,11 @@ export function calculateNormalizedDividends(
       // Normalized will be recalculated in second pass using newest regular frequency
       // Store annualized for now, normalized will be calculated after we know newest regular frequency
       normalizedDiv = null;
-      
+
       // Track newest regular frequency (for normalized calculation)
       // Since we process oldest to newest, the last regular dividend's frequency is the newest
-      if (frequencyNum > 0 && frequencyNum !== 1) { // Exclude specials (frequencyNum = 1)
+      if (frequencyNum > 0 && frequencyNum !== 1) {
+        // Exclude specials (frequencyNum = 1)
         newestRegularFrequency = frequencyNum;
       }
     }
