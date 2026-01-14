@@ -149,6 +149,8 @@ export const ETFTable = ({
     if (!highlight) return;
 
     setPinnedSymbol(highlight);
+    // Clear sorting so pinned symbol can appear at top
+    setSortField(null);
 
     // Remove the param immediately so refresh clears the behavior naturally.
     navigate(location.pathname, { replace: true });

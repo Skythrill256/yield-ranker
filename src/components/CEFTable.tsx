@@ -111,6 +111,8 @@ export const CEFTable = ({
     if (!highlight) return;
 
     setPinnedSymbol(highlight);
+    // Clear sorting so pinned symbol can appear at top
+    setSortField(null);
     navigate(location.pathname, { replace: true });
 
     // Scroll to top when a symbol is highlighted
