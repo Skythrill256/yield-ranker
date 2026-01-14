@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Clock, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Loader2, Clock, TrendingUp, TrendingDown, BarChart3, Plus, X, Search } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { fetchSingleCEF, fetchCEFDataWithMetadata, fetchCEFPriceNAV, PriceNAVData } from "@/services/cefData";
 import { CEF } from "@/types/cef";
@@ -42,6 +43,17 @@ const CEFDetail = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartError, setChartError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [comparisonCEFs, setComparisonCEFs] = useState<string[]>([]);
+  const [showComparisonSelector, setShowComparisonSelector] = useState(false);
+  const [comparisonSearchQuery, setComparisonSearchQuery] = useState("");
+
+  const toggleComparison = (compSymbol: string) => {
+    if (comparisonCEFs.includes(compSymbol)) {
+      setComparisonCEFs(comparisonCEFs.filter((s) => s !== compSymbol));
+    } else if (comparisonCEFs.length < 5) {
+      setComparisonCEFs([...comparisonCEFs, compSymbol]);
+    }
+  };
 
   const buildChartData = useCallback(async () => {
     if (!symbol || chartType !== "priceNAV") return;
@@ -55,36 +67,78 @@ const CEFDetail = () => {
         setTimeout(() => reject(new Error("Chart data fetch timeout")), 30000); // 30 second timeout
       });
 
-      const fetchPromise = fetchCEFPriceNAV(symbol, selectedTimeframe);
-      const data = await Promise.race([fetchPromise, timeoutPromise]) as Awaited<ReturnType<typeof fetchCEFPriceNAV>>;
+      // Fetch data for main symbol and all comparison symbols
+      const symbolsToFetch = [symbol, ...comparisonCEFs];
+      const fetchPromises = symbolsToFetch.map(sym => 
+        fetchCEFPriceNAV(sym, selectedTimeframe)
+      );
+      
+      const allData = await Promise.race([
+        Promise.all(fetchPromises),
+        timeoutPromise
+      ]) as Awaited<ReturnType<typeof fetchCEFPriceNAV>>[];
 
-      if (!data.data || data.data.length === 0) {
+      // Get main symbol data
+      const mainData = allData[0];
+      if (!mainData.data || mainData.data.length === 0) {
         setChartError("Chart data is not available for this timeframe.");
         setChartData([]);
         return;
       }
 
-      // Backend already filters by timeframe, so we just need to format and sort
-      const sortedData = [...(data.data || [])].sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
-        return dateA - dateB;
+      // Create a map of dates to data points
+      const dateMap = new Map<string, any>();
+
+      // Process main symbol data
+      mainData.data.forEach(d => {
+        const dateStr = d.date;
+        const priceValue = d.price !== null && d.price !== undefined ? Number(d.price) : null;
+        const navValue = d.nav !== null && d.nav !== undefined ? Number(d.nav) : null;
+
+        dateMap.set(dateStr, {
+          date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          fullDate: dateStr,
+          price: priceValue,
+          nav: navValue,
+        });
       });
 
-      const formattedData = sortedData
-        .map(d => {
-          const dateStr = d.date;
-          const priceValue = d.price !== null && d.price !== undefined ? Number(d.price) : null;
-          const navValue = d.nav !== null && d.nav !== undefined ? Number(d.nav) : null;
+      // Process comparison symbols data
+      comparisonCEFs.forEach((compSymbol, index) => {
+        const compData = allData[index + 1];
+        if (compData && compData.data) {
+          compData.data.forEach(d => {
+            const dateStr = d.date;
+            const priceValue = d.price !== null && d.price !== undefined ? Number(d.price) : null;
+            const navValue = d.nav !== null && d.nav !== undefined ? Number(d.nav) : null;
 
-          return {
-            date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-            fullDate: dateStr,
-            price: priceValue,
-            nav: navValue,
-          };
-        })
-        .filter(d => d.price !== null || d.nav !== null);
+            if (dateMap.has(dateStr)) {
+              const existing = dateMap.get(dateStr);
+              dateMap.set(dateStr, {
+                ...existing,
+                [`price_${compSymbol}`]: priceValue,
+                [`nav_${compSymbol}`]: navValue,
+              });
+            } else {
+              dateMap.set(dateStr, {
+                date: new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                fullDate: dateStr,
+                price: null,
+                nav: null,
+                [`price_${compSymbol}`]: priceValue,
+                [`nav_${compSymbol}`]: navValue,
+              });
+            }
+          });
+        }
+      });
+
+      // Convert map to array and sort by date
+      const formattedData = Array.from(dateMap.values()).sort((a, b) => {
+        const dateA = new Date(a.fullDate).getTime();
+        const dateB = new Date(b.fullDate).getTime();
+        return dateA - dateB;
+      });
 
       setChartData(formattedData);
     } catch (error) {
@@ -92,7 +146,7 @@ const CEFDetail = () => {
       setChartError("Unable to load chart data right now.");
       setChartData([]);
     }
-  }, [symbol, selectedTimeframe, chartType]);
+  }, [symbol, selectedTimeframe, chartType, comparisonCEFs]);
 
 
   useEffect(() => {
@@ -200,12 +254,25 @@ const CEFDetail = () => {
   const currentReturn = cef.return12Mo;
   const isPositive = currentReturn != null && currentReturn >= 0;
 
-  // Calculate price and NAV ranges for chart
-  const priceValues = chartData.map(d => d.price).filter(v => v !== null) as number[];
-  const navValues = chartData.map(d => d.nav).filter(v => v !== null) as number[];
-  const allValues = [...priceValues, ...navValues];
+  // Calculate price and NAV ranges for chart (including comparison CEFs)
+  const getAllPriceValues = () => {
+    const values: number[] = [];
+    chartData.forEach(d => {
+      if (d.price !== null) values.push(d.price);
+      if (d.nav !== null) values.push(d.nav);
+      comparisonCEFs.forEach(sym => {
+        if (d[`price_${sym}`] !== null && d[`price_${sym}`] !== undefined) values.push(d[`price_${sym}`]);
+        if (d[`nav_${sym}`] !== null && d[`nav_${sym}`] !== undefined) values.push(d[`nav_${sym}`]);
+      });
+    });
+    return values;
+  };
+  const allValues = getAllPriceValues();
   const minValue = allValues.length > 0 ? Math.min(...allValues) * 0.95 : 0;
   const maxValue = allValues.length > 0 ? Math.max(...allValues) * 1.05 : 100;
+
+  // Colors for comparison lines
+  const comparisonColors = ["#f97316", "#8b5cf6", "#10b981", "#ef4444", "#ec4899"];
 
   return (
     <div className="min-h-screen bg-background">
@@ -381,29 +448,40 @@ const CEFDetail = () => {
               </h2>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 relative z-0">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
-                  Metric:
-                </label>
-                <Select
-                  value={chartType}
-                  onValueChange={(value: ChartType) => setChartType(value)}
-                >
-                  <SelectTrigger className="w-[160px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="priceNAV">
-                      <span className="font-bold">Price/NAV</span>
-                    </SelectItem>
-                    <SelectItem value="totalReturn">
-                      <span className="font-bold">Total Return (DRIP)</span>
-                    </SelectItem>
-                    <SelectItem value="priceReturn">
-                      <span className="font-bold">Price Return</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
+                    Metric:
+                  </label>
+                  <Select
+                    value={chartType}
+                    onValueChange={(value: ChartType) => setChartType(value)}
+                  >
+                    <SelectTrigger className="w-[160px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="priceNAV">
+                        <span className="font-bold">Price/NAV</span>
+                      </SelectItem>
+                      <SelectItem value="totalReturn">
+                        <span className="font-bold">Total Return (DRIP)</span>
+                      </SelectItem>
+                      <SelectItem value="priceReturn">
+                        <span className="font-bold">Price Return</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {chartType === "priceNAV" && (
+                  <button
+                    onClick={() => setShowComparisonSelector(!showComparisonSelector)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1 h-9"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Compare ({comparisonCEFs.length}/5)
+                  </button>
+                )}
               </div>
               <div className="flex gap-1 flex-wrap justify-end">
                 {timeframes.map((tf) => (
@@ -419,6 +497,109 @@ const CEFDetail = () => {
                 ))}
               </div>
             </div>
+
+            {chartType === "priceNAV" && comparisonCEFs.length > 0 && (
+              <div className="mb-4 flex gap-2 flex-wrap">
+                {[symbol, ...comparisonCEFs].map((sym, index) => {
+                  const compareCEF = allCEFs.find((c) => c.symbol === sym);
+                  if (!compareCEF) return null;
+                  const colors = ["#1f2937", "#f97316", "#8b5cf6", "#10b981", "#ef4444", "#ec4899"];
+                  const color = colors[index % colors.length];
+
+                  return (
+                    <div
+                      key={sym}
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-2 rounded-lg"
+                      style={{ borderColor: color }}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{sym}</span>
+                        {compareCEF.marketPrice != null && (
+                          <span className="text-xs text-muted-foreground">
+                            ${compareCEF.marketPrice.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      {index > 0 && (
+                        <button
+                          onClick={() => toggleComparison(sym)}
+                          className="ml-1 hover:bg-slate-200 rounded-full p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {chartType === "priceNAV" && showComparisonSelector && (
+              <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-lg relative">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-sm">Search CEFs to Compare</h3>
+                  <button
+                    onClick={() => {
+                      setShowComparisonSelector(false);
+                      setComparisonSearchQuery("");
+                    }}
+                    className="hover:bg-slate-200 rounded-full p-1"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search by symbol..."
+                    value={comparisonSearchQuery}
+                    onChange={(e) => setComparisonSearchQuery(e.target.value.toUpperCase())}
+                    className="pl-9"
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {allCEFs
+                    .filter((c) => {
+                      const query = comparisonSearchQuery.toLowerCase();
+                      return (
+                        c.symbol.toLowerCase().includes(query) &&
+                        c.symbol !== symbol &&
+                        !comparisonCEFs.includes(c.symbol)
+                      );
+                    })
+                    .slice(0, 10)
+                    .map((c) => (
+                      <button
+                        key={c.symbol}
+                        onClick={() => {
+                          toggleComparison(c.symbol);
+                          setComparisonSearchQuery("");
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-200 rounded flex items-center justify-between"
+                      >
+                        <div>
+                          <span className="font-semibold">{c.symbol}</span>
+                          {c.name && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {c.name}
+                            </span>
+                          )}
+                        </div>
+                        {c.marketPrice != null && (
+                          <span className="text-sm font-semibold">
+                            ${c.marketPrice.toFixed(2)}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
 
             {chartError && (
               <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
@@ -498,7 +679,6 @@ const CEFDetail = () => {
                         formatter={(value: number | null, name: string) => {
                           if (value === null || value === undefined) return 'N/A';
                           if (typeof value === 'number' && !isNaN(value)) {
-                            // name is "Price" or "NAV" from the Line component's name prop
                             return [`$${value.toFixed(2)}`, name];
                           }
                           return ['N/A', name];
@@ -517,7 +697,7 @@ const CEFDetail = () => {
                         strokeWidth={3}
                         dot={false}
                         activeDot={{ r: 5 }}
-                        name="Price"
+                        name={`${symbol} Price`}
                         connectNulls={true}
                       />
                       <Line
@@ -527,9 +707,37 @@ const CEFDetail = () => {
                         strokeWidth={3}
                         dot={false}
                         activeDot={{ r: 5 }}
-                        name="NAV"
+                        name={`${symbol} NAV`}
                         connectNulls={true}
                       />
+                      {comparisonCEFs.map((compSymbol, index) => {
+                        const color = comparisonColors[index % comparisonColors.length];
+                        return (
+                          <React.Fragment key={compSymbol}>
+                            <Line
+                              type="monotone"
+                              dataKey={`price_${compSymbol}`}
+                              stroke={color}
+                              strokeWidth={2}
+                              strokeDasharray="5 5"
+                              dot={false}
+                              activeDot={{ r: 4 }}
+                              name={`${compSymbol} Price`}
+                              connectNulls={true}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey={`nav_${compSymbol}`}
+                              stroke={color}
+                              strokeWidth={2}
+                              dot={false}
+                              activeDot={{ r: 4 }}
+                              name={`${compSymbol} NAV`}
+                              connectNulls={true}
+                            />
+                          </React.Fragment>
+                        );
+                      })}
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (

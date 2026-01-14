@@ -87,10 +87,29 @@ export function DividendHistory({ ticker, annualDividend, dvi, forwardYield, num
     const filteredDivs = getFilteredDividends;
     if (!filteredDivs || filteredDivs.length === 0) return [];
 
+    // CRITICAL: Filter to only REGULAR dividends for yearly totals bar chart
+    // Special dividends should NOT be included in annual totals
+    const regularDivs = filteredDivs.filter(div => {
+      // Use same logic as display: check pmtType, then frequency="Other", then type
+      let pmtType: 'Regular' | 'Special' | 'Initial' = 'Regular';
+      if (div.pmtType === 'Special' || div.pmtType === 'Initial') {
+        pmtType = div.pmtType;
+      } else if (div.frequency === 'Other') {
+        pmtType = 'Special'; // frequency="Other" means Special
+      } else if (div.type === 'Special') {
+        pmtType = 'Special';
+      } else if (div.pmtType === 'Regular') {
+        pmtType = 'Regular';
+      } else if (div.daysSincePrev !== undefined && div.daysSincePrev !== null && div.daysSincePrev <= 5) {
+        pmtType = 'Special'; // Fallback: very short gap might be special
+      }
+      return pmtType === 'Regular';
+    });
+
     const result: YearlyDividend[] = [];
     const dividendsByYear = new Map<number, DividendRecord[]>();
 
-    filteredDivs.forEach(d => {
+    regularDivs.forEach(d => {
       const year = new Date(d.exDate).getFullYear();
       if (!dividendsByYear.has(year)) {
         dividendsByYear.set(year, []);
