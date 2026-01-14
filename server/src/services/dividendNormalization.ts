@@ -515,14 +515,28 @@ export function calculateNormalizedDividendsForCEFs(
           // This handles cases like ASGI where $0.1600 is the new regular rate for early 2024
           pmtType = "Regular";
           amountMatchesPrevious = true; // Flag to prevent other rules from overriding
+        } else if (medianAmount !== null && medianAmount > 0) {
+          // If next payments don't match, check if it's a reasonable amount (not a huge spike)
+          // For January, be lenient - only mark as Special if it's clearly a spike (>= 3x median)
+          // This handles cases where next payments don't exist yet or are different
+          const isExtremeSpike = amount >= specialMultiplier * medianAmount; // default 3.0x (300%)
+          if (!isExtremeSpike) {
+            // January payment with reasonable amount → Regular (likely new rate for the year)
+            // This handles ASGI where $0.1600 is new rate but next payments might not exist yet
+            pmtType = "Regular";
+            amountMatchesPrevious = true; // Flag to prevent other rules from overriding
+          }
+          // If it IS an extreme spike, let other rules handle it (don't override)
         }
       }
 
       // Clustered payments (1–4 days) are Special UNLESS amount matches recent regular pattern OR next payments (lookahead)
       // For EOD: If amount matches recent pattern or next payments, it's Regular even if 1-4 days apart
       // This handles cases like ASGI where January payment is close to December but matches regular pattern (MDP funds)
+      // BUT: Skip this rule for January payments (already handled by January override)
       if (
         pmtType !== "Special" &&
+        !isJanuary && // Skip for January payments (already handled by January override)
         daysSincePrev !== null &&
         daysSincePrev >= 1 &&
         daysSincePrev <= 4
@@ -659,9 +673,11 @@ export function calculateNormalizedDividendsForCEFs(
       // This catches cases like STK where $0.4625 repeats, then $0.6521 appears (even if < 1.5x)
       // Also catches CSQ 12/27/07 where $0.1423 appears after $0.0975 repeats
       // CRITICAL: If there's repetition and then a spike, it's Special regardless of spike size
+      // BUT: Skip this rule for January payments (handled by January override for MDP funds)
       if (
         pmtType !== "Special" &&
         !amountMatchesPrevious &&
+        !isJanuary && // Skip for January payments (handled by January override)
         medianAmount !== null &&
         medianAmount > 0
       ) {
