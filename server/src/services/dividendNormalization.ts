@@ -479,15 +479,33 @@ export function calculateNormalizedDividendsForCEFs(
         }
       }
 
-      // Clustered payments (1–4 days) are always Special
-      // BUT: Skip if amount matches previous (already handled above)
+      // Clustered payments (1–4 days) are Special UNLESS amount matches recent regular pattern
+      // For EOD: If amount matches recent pattern, it's Regular even if 1-4 days apart
+      // This handles cases like ASGI where January payment is close to December but matches regular pattern
       if (
         pmtType !== "Special" &&
         daysSincePrev !== null &&
         daysSincePrev >= 1 &&
         daysSincePrev <= 4
       ) {
-        pmtType = "Special";
+        // Check if amount matches recent regular pattern before marking as Special
+        const recentAmounts = rollingRegularAmounts.slice(-3); // Last 3 regular amounts
+        const recentMedian = median(recentAmounts);
+        
+        if (recentMedian !== null && recentMedian > 0 && recentAmounts.length >= 2) {
+          const matchesRecent = isApproximatelyEqual(amount, recentMedian, amountStabilityRelTol);
+          if (matchesRecent) {
+            // Amount matches recent pattern → Regular (even if 1-4 days apart)
+            // This handles cases where payment timing is close but amount is regular
+            pmtType = "Regular";
+          } else {
+            // Amount doesn't match recent pattern → Special
+            pmtType = "Special";
+          }
+        } else {
+          // No recent pattern to compare → mark as Special (conservative approach)
+          pmtType = "Special";
+        }
       }
 
       // December override: Multiple rules for December dividends
@@ -538,17 +556,26 @@ export function calculateNormalizedDividendsForCEFs(
           // This handles cases where dividend amount changed mid-year (e.g., BMEZ: $0.1450 → $0.09)
           const recentAmounts = rollingRegularAmounts.slice(-3); // Last 3 regular amounts
           const recentMedian = median(recentAmounts);
-          
+
           // If we have recent amounts, check against recent pattern first
-          if (recentMedian !== null && recentMedian > 0 && recentAmounts.length >= 2) {
-            const matchesRecent = isApproximatelyEqual(amount, recentMedian, amountStabilityRelTol);
+          if (
+            recentMedian !== null &&
+            recentMedian > 0 &&
+            recentAmounts.length >= 2
+          ) {
+            const matchesRecent = isApproximatelyEqual(
+              amount,
+              recentMedian,
+              amountStabilityRelTol
+            );
             if (matchesRecent) {
               // December amount matches recent pattern → Regular (don't mark as special)
               // This handles cases like BMEZ where amount changed from $0.1450 to $0.09
               // and December continues the new regular amount
             } else {
               // December amount doesn't match recent pattern - check if it's extremely different
-              const deviationFromRecent = Math.abs(amount - recentMedian) / Math.max(recentMedian, 1e-9);
+              const deviationFromRecent =
+                Math.abs(amount - recentMedian) / Math.max(recentMedian, 1e-9);
               if (deviationFromRecent >= 0.3) {
                 // December dividend with amount significantly different from recent pattern -> Special
                 pmtType = "Special";
