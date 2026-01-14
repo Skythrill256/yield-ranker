@@ -602,7 +602,7 @@ export function calculateNormalizedDividendsForCEFs(
         const annualizedRaw = annualizeBase * frequencyNum;
         annualized = Number(annualizedRaw.toFixed(6));
         // Normalized will be recalculated in second pass using newest regular frequency
-        // For now, set to null (will be calculated after we know newest regular frequency)
+        // Store annualized for now, normalized will be calculated after we know newest regular frequency
         normalizedDiv = null;
       }
     }
@@ -631,10 +631,14 @@ export function calculateNormalizedDividendsForCEFs(
           rollingRegularGapsToNext.push(daysToNext);
         }
       }
-      
+
       // Track newest regular frequency (for normalized calculation)
       // Since we process oldest to newest, the last regular dividend's frequency is the newest
-      if (frequencyNum !== null && frequencyNum > 0 && frequencyLabel !== "Irregular") {
+      if (
+        frequencyNum !== null &&
+        frequencyNum > 0 &&
+        frequencyLabel !== "Irregular"
+      ) {
         newestRegularFrequency = frequencyNum;
       }
     }
@@ -642,13 +646,21 @@ export function calculateNormalizedDividendsForCEFs(
 
   // Second pass: Recalculate normalized for all dividends using newest regular frequency
   // CRITICAL: All dividends should use the same newest regular frequency for normalized calculation
-  if (newestRegularFrequency !== null && newestRegularFrequency > 0) {
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i];
-      // Only recalculate for Regular/Initial dividends (not Specials)
-      if (result.pmt_type !== "Special" && result.annualized !== null) {
-        result.normalized_div = Number((result.annualized / newestRegularFrequency).toFixed(6));
-      }
+  // - If newest is Monthly (12): normalized = annualized / 12 for ALL dividends
+  // - If newest is Quarterly (4): normalized = annualized / 4 for ALL dividends
+  // - If newest is Weekly (52): normalized = annualized / 52 for ALL dividends
+  // Default to 12 (Monthly) if no regular frequency found
+  const frequencyForNormalized = newestRegularFrequency !== null && newestRegularFrequency > 0 
+    ? newestRegularFrequency 
+    : 12; // Default to Monthly (12) if no regular frequency found
+  
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    // Only recalculate for Regular/Initial dividends (not Specials)
+    if (result.pmt_type !== "Special" && result.annualized !== null) {
+      result.normalized_div = Number(
+        (result.annualized / frequencyForNormalized).toFixed(6)
+      );
     }
   }
 
