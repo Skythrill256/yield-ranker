@@ -445,7 +445,8 @@ export function calculateNormalizedDividendsForCEFs(
       pmtType = "Initial";
     } else if (amount > 0) {
       const currentDate = new Date(current.ex_date);
-      const isDecember = !isNaN(currentDate.getTime()) && currentDate.getMonth() === 11; // month 11 = December
+      const isDecember =
+        !isNaN(currentDate.getTime()) && currentDate.getMonth() === 11; // month 11 = December
 
       // CRITICAL: Check for extreme spikes FIRST (300%+ rule) before other logic
       // This ensures big spikes like DIVO 12/30 are always caught
@@ -487,11 +488,54 @@ export function calculateNormalizedDividendsForCEFs(
 
       // December override: If December dividend and amount is different from regular pattern -> Special
       // This catches cases like STK 12/14/18 where amount jumps from $0.4625 to $0.6521
-      if (pmtType !== "Special" && isDecember && medianAmount !== null && medianAmount > 0) {
-        const isNormalAmount = isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
+      if (
+        pmtType !== "Special" &&
+        isDecember &&
+        medianAmount !== null &&
+        medianAmount > 0
+      ) {
+        const isNormalAmount = isApproximatelyEqual(
+          amount,
+          medianAmount,
+          amountStabilityRelTol
+        );
         if (!isNormalAmount) {
           // December dividend with amount different from regular pattern -> Special
           pmtType = "Special";
+        }
+      }
+
+      // Spike after repetition: If amount has been stable/repeating, then a different amount appears -> Special
+      // This catches cases like STK where $0.4625 repeats, then $0.6521 appears (even if < 1.5x)
+      // CRITICAL: If there's repetition and then a spike, it's Special regardless of spike size
+      if (
+        pmtType !== "Special" &&
+        medianAmount !== null &&
+        medianAmount > 0 &&
+        rollingRegularAmounts.length >= 3
+      ) {
+        // Check if recent amounts have been stable (repeating pattern)
+        const recentAmounts = rollingRegularAmounts.slice(-4); // Last 4 regular amounts
+        const allMatchMedian = recentAmounts.every((amt) =>
+          isApproximatelyEqual(amt, medianAmount, amountStabilityRelTol)
+        );
+
+        // If recent amounts were stable/repeating, and current amount is different -> Special
+        // This catches spikes after repetition even if they're below 1.5x threshold
+        if (
+          allMatchMedian &&
+          !isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol)
+        ) {
+          // Amount has been repeating, now it's different -> Special (even if spike is small)
+          // Check if it doesn't repeat next (to avoid false positives on frequency changes)
+          const repeatsNext =
+            nextAmount !== null &&
+            nextAmount > 0 &&
+            isApproximatelyEqual(amount, nextAmount, 0.05);
+          
+          if (!repeatsNext) {
+            pmtType = "Special";
+          }
         }
       }
 
