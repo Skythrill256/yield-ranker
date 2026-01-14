@@ -78,6 +78,10 @@ export const CEFTable = ({
 
   const handleSort = useCallback((field: SortField) => {
     if (field === null) return;
+    // Clear pinned symbol when user clicks any sorting option
+    if (pinnedSymbol) {
+      setPinnedSymbol(null);
+    }
     setSortField((prevField) => {
       if (prevField === field) {
         setSortDirection((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
@@ -86,7 +90,7 @@ export const CEFTable = ({
       setSortDirection("asc");
       return field;
     });
-  }, []);
+  }, [pinnedSymbol]);
 
   const returnColumns = [
     // { key: "return15Yr" as keyof CEF, label: "15 YR" }, // Hidden per CEO request
@@ -121,12 +125,6 @@ export const CEFTable = ({
     });
   }, [location.search, location.pathname, navigate]);
 
-  // Clear pinned symbol when sorting is applied (user wants normal sorting behavior)
-  useEffect(() => {
-    if (sortField && pinnedSymbol) {
-      setPinnedSymbol(null);
-    }
-  }, [sortField, sortDirection]);
 
   const sortedCEFs = useMemo(() => {
     if (!sortField && !pinnedSymbol) return cefs;
