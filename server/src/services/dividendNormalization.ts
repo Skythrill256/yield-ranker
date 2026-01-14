@@ -491,24 +491,57 @@ export function calculateNormalizedDividendsForCEFs(
         pmtType = "Special";
       }
 
-      // December override: If December dividend and amount is different from regular pattern -> Special
-      // This catches cases like STK 12/14/18 where amount jumps from $0.4625 to $0.6521
+      // December override: Multiple rules for December dividends
+      // 1. Second (or later) December dividend in same year -> Special (regardless of amount)
+      // 2. December dividend with amount different from regular pattern -> Special
+      // This catches cases like:
+      // - CSQ 12/27/07 (second December, should be Special)
+      // - STK 12/14/18 (amount different from regular pattern)
       // BUT: Skip if amount matches previous (already handled above to prevent back-to-back specials)
       if (
         pmtType !== "Special" &&
         !amountMatchesPrevious &&
-        isDecember &&
-        medianAmount !== null &&
-        medianAmount > 0
+        isDecember
       ) {
-        const isNormalAmount = isApproximatelyEqual(
-          amount,
-          medianAmount,
-          amountStabilityRelTol
-        );
-        if (!isNormalAmount) {
-          // December dividend with amount different from regular pattern -> Special
-          pmtType = "Special";
+        const currentYear = currentDate.getFullYear();
+        
+        // Rule 1: Check if this is a second (or later) December dividend in the same year
+        const decemberDividendsThisYear = sorted
+          .filter((d, idx) => {
+            if (idx > i) return false; // Only check dividends up to current
+            const dDate = new Date(d.ex_date);
+            return (
+              !isNaN(dDate.getTime()) &&
+              dDate.getFullYear() === currentYear &&
+              dDate.getMonth() === 11
+            ); // December = month 11
+          })
+          .sort((a, b) => a.ex_date.localeCompare(b.ex_date));
+
+        if (decemberDividendsThisYear.length > 1) {
+          // Check if current is NOT the first December dividend
+          const firstDecember = decemberDividendsThisYear[0];
+          if (current.ex_date !== firstDecember.ex_date) {
+            // Second or later December dividend → Special (regardless of amount)
+            pmtType = "Special";
+          }
+        }
+        
+        // Rule 2: If not already Special, check if amount is different from regular pattern
+        if (
+          pmtType !== "Special" &&
+          medianAmount !== null &&
+          medianAmount > 0
+        ) {
+          const isNormalAmount = isApproximatelyEqual(
+            amount,
+            medianAmount,
+            amountStabilityRelTol
+          );
+          if (!isNormalAmount) {
+            // December dividend with amount different from regular pattern -> Special
+            pmtType = "Special";
+          }
         }
       }
 
@@ -524,10 +557,11 @@ export function calculateNormalizedDividendsForCEFs(
       ) {
         // Check if we have enough history OR if previous amount was stable
         const hasEnoughHistory = rollingRegularAmounts.length >= 3;
-        const prevWasStable = prevAmount !== null && 
-          prevAmount > 0 && 
+        const prevWasStable =
+          prevAmount !== null &&
+          prevAmount > 0 &&
           isApproximatelyEqual(prevAmount, medianAmount, amountStabilityRelTol);
-        
+
         // If we have enough history, check recent amounts for repetition pattern
         if (hasEnoughHistory) {
           const recentAmounts = rollingRegularAmounts.slice(-4); // Last 4 regular amounts
@@ -552,7 +586,10 @@ export function calculateNormalizedDividendsForCEFs(
               pmtType = "Special";
             }
           }
-        } else if (prevWasStable && !isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol)) {
+        } else if (
+          prevWasStable &&
+          !isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol)
+        ) {
           // Fallback: If previous amount was stable and current is different, it's likely a spike
           // This catches cases like CSQ 12/27/07 even with limited history
           const repeatsNext =
