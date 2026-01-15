@@ -398,7 +398,7 @@ const ETFDetail = () => {
                     value={chartType === "price" ? "priceReturn" : "totalReturn"}
                     onValueChange={(value) => setChartType(value === "priceReturn" ? "price" : "totalReturn")}
                   >
-                    <SelectTrigger className="w-[160px] h-9 text-sm">
+                    <SelectTrigger className="w-[160px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
