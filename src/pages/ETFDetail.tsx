@@ -208,9 +208,34 @@ const ETFDetail = () => {
   const currentReturn = getReturnForTimeframe();
   const isPositive = currentReturn != null && currentReturn >= 0;
 
-  const chartValues = (chartData && Array.isArray(chartData) ? chartData : []).map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
-  const minValue = chartValues.length > 0 ? Math.min(...chartValues, 0) : -10;
-  const maxValue = chartValues.length > 0 ? Math.max(...chartValues, 0) : 10;
+  // Calculate min/max values based on chart type
+  const chartValues = chartData && Array.isArray(chartData) ? chartData : [];
+  let minValue: number, maxValue: number;
+  
+  if (chartType === "price") {
+    // For price charts, use actual price values
+    const prices: number[] = [];
+    // Include primary price (use price_${symbol} if comparisons exist, otherwise "price")
+    if (comparisonETFs.length > 0) {
+      const primaryPrices = chartValues.map(d => d[`price_${etf.symbol}`]).filter(v => typeof v === 'number' && !isNaN(v));
+      prices.push(...primaryPrices);
+    } else {
+      const primaryPrices = chartValues.map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
+      prices.push(...primaryPrices);
+    }
+    // Also include comparison prices
+    comparisonETFs.forEach(sym => {
+      const compPrices = chartValues.map(d => d[`price_${sym}`]).filter(v => typeof v === 'number' && !isNaN(v));
+      prices.push(...compPrices);
+    });
+    minValue = prices.length > 0 ? Math.min(...prices) * 0.98 : 0;
+    maxValue = prices.length > 0 ? Math.max(...prices) * 1.02 : 100;
+  } else {
+    // For total return charts, use percentage values
+    const returns = chartValues.map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
+    minValue = returns.length > 0 ? Math.min(...returns, 0) : -10;
+    maxValue = returns.length > 0 ? Math.max(...returns, 0) : 10;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -395,18 +420,18 @@ const ETFDetail = () => {
                     Metric:
                   </label>
                   <Select
-                    value={chartType === "price" ? "priceReturn" : "totalReturn"}
-                    onValueChange={(value) => setChartType(value === "priceReturn" ? "price" : "totalReturn")}
+                    value={chartType === "price" ? "price" : "totalReturn"}
+                    onValueChange={(value) => setChartType(value === "price" ? "price" : "totalReturn")}
                   >
                     <SelectTrigger className="w-[160px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="price">
+                        <span className="font-bold">Price</span>
+                      </SelectItem>
                       <SelectItem value="totalReturn">
                         <span className="font-bold">Total Return (DRIP)</span>
-                      </SelectItem>
-                      <SelectItem value="priceReturn">
-                        <span className="font-bold">Price Return</span>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -649,121 +674,215 @@ const ETFDetail = () => {
               <div className="w-full">
                 <ResponsiveContainer width="100%" height={400}>
                   {chartData && Array.isArray(chartData) && chartData.length > 0 ? (
-                    <ComposedChart data={chartData}>
-                      <defs>
-                        <linearGradient
-                          id={`colorPrice-${etf.symbol}`}
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor={isPositive ? "#10b981" : "#ef4444"}
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor={isPositive ? "#10b981" : "#ef4444"}
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis
-                        dataKey="time"
-                        stroke="#94a3b8"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        interval={
-                          // Calculate tick interval based on data length and timeframe
-                          chartData.length <= 30 ? 0 :
-                            chartData.length <= 90 ? Math.floor(chartData.length / 6) :
-                              chartData.length <= 365 ? Math.floor(chartData.length / 8) :
-                                Math.floor(chartData.length / 10)
-                        }
-                        tickFormatter={(value) => value || ''}
-                      />
-                      <YAxis
-                        stroke="#94a3b8"
-                        fontSize={12}
-                        domain={chartType === "totalReturn" ? [minValue, maxValue] : [minValue, maxValue]}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => {
-                          if (typeof value === 'number' && !isNaN(value)) {
-                            return `${value.toFixed(1)}%`;
+                    chartType === "price" ? (
+                      // Line Chart for Price (similar to CEFs)
+                      <LineChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis
+                          dataKey="time"
+                          stroke="#94a3b8"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          interval={
+                            chartData.length <= 30 ? 0 :
+                              chartData.length <= 90 ? Math.floor(chartData.length / 6) :
+                                chartData.length <= 365 ? Math.floor(chartData.length / 8) :
+                                  Math.floor(chartData.length / 10)
                           }
-                          return '';
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.98)",
-                          border: "none",
-                          borderRadius: "12px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                          padding: "12px 16px",
-                        }}
-                        labelStyle={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}
-                        labelFormatter={(label, payload) => {
-                          if (payload && payload[0]?.payload?.fullDate) {
-                            const date = new Date(payload[0].payload.fullDate);
-                            return date.toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            });
-                          }
-                          return label;
-                        }}
-                        formatter={(value: number | string, name: string) => {
-                          if (typeof value === 'number' && !isNaN(value)) {
-                            return [`${value.toFixed(2)}%`, name];
-                          }
-                          return ['N/A', name];
-                        }}
-                      />
-                      {/* Primary ETF with gradient Area (only when no comparisons) */}
-                      {comparisonETFs.length === 0 && (
-                        <Area
-                          type="monotone"
-                          dataKey="price"
-                          stroke={isPositive ? "#10b981" : "#ef4444"}
-                          strokeWidth={3}
-                          fill={`url(#colorPrice-${etf.symbol})`}
-                          fillOpacity={1}
-                          dot={false}
-                          name={etf.symbol}
-                          animationDuration={500}
-                          strokeLinecap="round"
-                          connectNulls={false}
+                          tickFormatter={(value) => value || ''}
                         />
-                      )}
-                      {/* All ETFs as Lines (when comparing) */}
-                      {[etf.symbol, ...comparisonETFs].map((sym, index) => {
-                        const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
-                        const color = colors[index % colors.length];
-                        const dataKey = chartType === "totalReturn" ? `return_${sym}` : `price_${sym}`;
-                        return (
-                          <Line
-                            key={sym}
+                        <YAxis
+                          domain={[minValue, maxValue]}
+                          stroke="#94a3b8"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => {
+                            if (typeof value === 'number' && !isNaN(value)) {
+                              return `$${value.toFixed(2)}`;
+                            }
+                            return '';
+                          }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(255, 255, 255, 0.98)",
+                            border: "none",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                            padding: "12px 16px",
+                          }}
+                          labelStyle={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload[0]?.payload?.fullDate) {
+                              const date = new Date(payload[0].payload.fullDate);
+                              return date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                            }
+                            return label;
+                          }}
+                          formatter={(value: number | null, name: string) => {
+                            if (value === null || value === undefined) return 'N/A';
+                            if (typeof value === 'number' && !isNaN(value)) {
+                              // Check if it's a comparison line
+                              if (name.includes('Price_') || name.includes('price_')) {
+                                const symbol = name.split('_')[1] || name;
+                                return [`$${value.toFixed(2)}`, `${symbol} Price`];
+                              }
+                              return [`$${value.toFixed(2)}`, name];
+                            }
+                            return ['N/A', name];
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="top"
+                          align="left"
+                          iconType="line"
+                          wrapperStyle={{ paddingBottom: '10px', fontSize: '12px', color: '#64748b' }}
+                        />
+                        {/* All ETFs as Lines (primary + comparisons) */}
+                        {[etf.symbol, ...comparisonETFs].map((sym, index) => {
+                          const colors = ["#1f2937", "#f97316", "#8b5cf6", "#10b981", "#ef4444", "#ec4899"];
+                          const color = colors[index % colors.length];
+                          // When there are comparisons, all symbols use price_${symbol} format
+                          // When there are no comparisons, primary uses "price"
+                          const dataKey = comparisonETFs.length > 0 ? `price_${sym}` : (index === 0 ? "price" : `price_${sym}`);
+                          return (
+                            <Line
+                              key={sym}
+                              type="monotone"
+                              dataKey={dataKey}
+                              stroke={color}
+                              strokeWidth={index === 0 ? 3 : 2}
+                              dot={false}
+                              activeDot={{ r: 5 }}
+                              name={`${sym} Price`}
+                              connectNulls={true}
+                            />
+                          );
+                        })}
+                      </LineChart>
+                    ) : (
+                      // ComposedChart for Total Return (existing behavior)
+                      <ComposedChart data={chartData}>
+                        <defs>
+                          <linearGradient
+                            id={`colorPrice-${etf.symbol}`}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor={isPositive ? "#10b981" : "#ef4444"}
+                              stopOpacity={0.3}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor={isPositive ? "#10b981" : "#ef4444"}
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis
+                          dataKey="time"
+                          stroke="#94a3b8"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          interval={
+                            chartData.length <= 30 ? 0 :
+                              chartData.length <= 90 ? Math.floor(chartData.length / 6) :
+                                chartData.length <= 365 ? Math.floor(chartData.length / 8) :
+                                  Math.floor(chartData.length / 10)
+                          }
+                          tickFormatter={(value) => value || ''}
+                        />
+                        <YAxis
+                          stroke="#94a3b8"
+                          fontSize={12}
+                          domain={[minValue, maxValue]}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => {
+                            if (typeof value === 'number' && !isNaN(value)) {
+                              return `${value.toFixed(1)}%`;
+                            }
+                            return '';
+                          }}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(255, 255, 255, 0.98)",
+                            border: "none",
+                            borderRadius: "12px",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                            padding: "12px 16px",
+                          }}
+                          labelStyle={{ color: "#64748b", fontSize: "12px", marginBottom: "4px" }}
+                          labelFormatter={(label, payload) => {
+                            if (payload && payload[0]?.payload?.fullDate) {
+                              const date = new Date(payload[0].payload.fullDate);
+                              return date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                            }
+                            return label;
+                          }}
+                          formatter={(value: number | string, name: string) => {
+                            if (typeof value === 'number' && !isNaN(value)) {
+                              return [`${value.toFixed(2)}%`, name];
+                            }
+                            return ['N/A', name];
+                          }}
+                        />
+                        {/* Primary ETF with gradient Area (only when no comparisons) */}
+                        {comparisonETFs.length === 0 && (
+                          <Area
                             type="monotone"
-                            dataKey={dataKey}
-                            stroke={color}
-                            strokeWidth={index === 0 ? 3 : 2.5}
+                            dataKey="price"
+                            stroke={isPositive ? "#10b981" : "#ef4444"}
+                            strokeWidth={3}
+                            fill={`url(#colorPrice-${etf.symbol})`}
+                            fillOpacity={1}
                             dot={false}
-                            name={sym}
+                            name={etf.symbol}
                             animationDuration={500}
-                            animationBegin={(index + 1) * 100}
                             strokeLinecap="round"
                             connectNulls={false}
                           />
-                        );
-                      })}
-                    </ComposedChart>
+                        )}
+                        {/* All ETFs as Lines (when comparing) */}
+                        {[etf.symbol, ...comparisonETFs].map((sym, index) => {
+                          const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
+                          const color = colors[index % colors.length];
+                          const dataKey = `return_${sym}`;
+                          return (
+                            <Line
+                              key={sym}
+                              type="monotone"
+                              dataKey={dataKey}
+                              stroke={color}
+                              strokeWidth={index === 0 ? 3 : 2.5}
+                              dot={false}
+                              name={sym}
+                              animationDuration={500}
+                              animationBegin={(index + 1) * 100}
+                              strokeLinecap="round"
+                              connectNulls={false}
+                            />
+                          );
+                        })}
+                      </ComposedChart>
+                    )
                   ) : (
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
