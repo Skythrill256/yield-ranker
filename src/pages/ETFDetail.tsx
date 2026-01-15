@@ -36,6 +36,7 @@ import {
   Area,
   AreaChart,
   ComposedChart,
+  Legend,
 } from "recharts";
 import { SEO, getFinancialProductSchema } from "@/components/SEO";
 
@@ -232,7 +233,20 @@ const ETFDetail = () => {
     maxValue = prices.length > 0 ? Math.max(...prices) * 1.02 : 100;
   } else {
     // For total return charts, use percentage values
-    const returns = chartValues.map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
+    const returns: number[] = [];
+    // Include primary return (use return_${symbol} if comparisons exist, otherwise "price")
+    if (comparisonETFs.length > 0) {
+      const primaryReturns = chartValues.map(d => d[`return_${etf.symbol}`]).filter(v => typeof v === 'number' && !isNaN(v));
+      returns.push(...primaryReturns);
+    } else {
+      const primaryReturns = chartValues.map(d => d.price).filter(v => typeof v === 'number' && !isNaN(v));
+      returns.push(...primaryReturns);
+    }
+    // Also include comparison returns
+    comparisonETFs.forEach(sym => {
+      const compReturns = chartValues.map(d => d[`return_${sym}`]).filter(v => typeof v === 'number' && !isNaN(v));
+      returns.push(...compReturns);
+    });
     minValue = returns.length > 0 ? Math.min(...returns, 0) : -10;
     maxValue = returns.length > 0 ? Math.max(...returns, 0) : 10;
   }
@@ -420,15 +434,15 @@ const ETFDetail = () => {
                     Metric:
                   </label>
                   <Select
-                    value={chartType === "price" ? "price" : "totalReturn"}
-                    onValueChange={(value) => setChartType(value === "price" ? "price" : "totalReturn")}
+                    value={chartType === "price" ? "priceReturn" : "totalReturn"}
+                    onValueChange={(value) => setChartType(value === "priceReturn" ? "price" : "totalReturn")}
                   >
                     <SelectTrigger className="w-[160px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="price">
-                        <span className="font-bold">Price</span>
+                      <SelectItem value="priceReturn">
+                        <span className="font-bold">Price Return</span>
                       </SelectItem>
                       <SelectItem value="totalReturn">
                         <span className="font-bold">Total Return (DRIP)</span>
@@ -767,28 +781,8 @@ const ETFDetail = () => {
                         })}
                       </LineChart>
                     ) : (
-                      // ComposedChart for Total Return (existing behavior)
-                      <ComposedChart data={chartData}>
-                        <defs>
-                          <linearGradient
-                            id={`colorPrice-${etf.symbol}`}
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
-                            <stop
-                              offset="5%"
-                              stopColor={isPositive ? "#10b981" : "#ef4444"}
-                              stopOpacity={0.3}
-                            />
-                            <stop
-                              offset="95%"
-                              stopColor={isPositive ? "#10b981" : "#ef4444"}
-                              stopOpacity={0}
-                            />
-                          </linearGradient>
-                        </defs>
+                      // Line Chart for Total Return (same as Price Return)
+                      <LineChart data={chartData} margin={{ top: 20, right: 20, left: 20, bottom: 60 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                         <XAxis
                           dataKey="time"
@@ -805,9 +799,9 @@ const ETFDetail = () => {
                           tickFormatter={(value) => value || ''}
                         />
                         <YAxis
+                          domain={[minValue, maxValue]}
                           stroke="#94a3b8"
                           fontSize={12}
-                          domain={[minValue, maxValue]}
                           tickLine={false}
                           axisLine={false}
                           tickFormatter={(value) => {
@@ -837,51 +831,47 @@ const ETFDetail = () => {
                             }
                             return label;
                           }}
-                          formatter={(value: number | string, name: string) => {
+                          formatter={(value: number | null, name: string) => {
+                            if (value === null || value === undefined) return 'N/A';
                             if (typeof value === 'number' && !isNaN(value)) {
+                              // Check if it's a comparison line
+                              if (name.includes('Return_') || name.includes('return_')) {
+                                const symbol = name.split('_')[1] || name;
+                                return [`${value.toFixed(2)}%`, `${symbol} Total Return`];
+                              }
                               return [`${value.toFixed(2)}%`, name];
                             }
                             return ['N/A', name];
                           }}
                         />
-                        {/* Primary ETF with gradient Area (only when no comparisons) */}
-                        {comparisonETFs.length === 0 && (
-                          <Area
-                            type="monotone"
-                            dataKey="price"
-                            stroke={isPositive ? "#10b981" : "#ef4444"}
-                            strokeWidth={3}
-                            fill={`url(#colorPrice-${etf.symbol})`}
-                            fillOpacity={1}
-                            dot={false}
-                            name={etf.symbol}
-                            animationDuration={500}
-                            strokeLinecap="round"
-                            connectNulls={false}
-                          />
-                        )}
-                        {/* All ETFs as Lines (when comparing) */}
+                        <Legend
+                          verticalAlign="top"
+                          align="left"
+                          iconType="line"
+                          wrapperStyle={{ paddingBottom: '10px', fontSize: '12px', color: '#64748b' }}
+                        />
+                        {/* All ETFs as Lines (primary + comparisons) */}
                         {[etf.symbol, ...comparisonETFs].map((sym, index) => {
-                          const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
+                          const colors = ["#1f2937", "#f97316", "#8b5cf6", "#10b981", "#ef4444", "#ec4899"];
                           const color = colors[index % colors.length];
-                          const dataKey = `return_${sym}`;
+                          // When there are comparisons, all symbols use return_${symbol} format
+                          // When there are no comparisons, primary uses "price" (which contains return data)
+                          const dataKey = comparisonETFs.length > 0 ? `return_${sym}` : (index === 0 ? "price" : `return_${sym}`);
                           return (
                             <Line
                               key={sym}
                               type="monotone"
                               dataKey={dataKey}
                               stroke={color}
-                              strokeWidth={index === 0 ? 3 : 2.5}
+                              strokeWidth={index === 0 ? 3 : 2}
                               dot={false}
-                              name={sym}
-                              animationDuration={500}
-                              animationBegin={(index + 1) * 100}
-                              strokeLinecap="round"
-                              connectNulls={false}
+                              activeDot={{ r: 5 }}
+                              name={`${sym} Total Return`}
+                              connectNulls={true}
                             />
                           );
                         })}
-                      </ComposedChart>
+                      </LineChart>
                     )
                   ) : (
                     <div className="flex items-center justify-center h-full">
