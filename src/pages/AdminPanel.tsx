@@ -61,6 +61,7 @@ import {
   Mail,
 } from "lucide-react";
 import { NewsletterManagement } from "@/components/NewsletterManagement";
+import { addSubscriber, removeSubscriber, listSubscribers } from "@/services/newsletterAdmin";
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-US", {
@@ -118,6 +119,9 @@ const AdminPanel = () => {
   const [notebookData, setNotebookData] = useState<NotebookData | null>(null);
   const [notebookLoading, setNotebookLoading] = useState(false);
   const [notebookSaving, setNotebookSaving] = useState(false);
+  const [subscribers, setSubscribers] = useState<Set<string>>(new Set());
+  const [loadingSubscribers, setLoadingSubscribers] = useState(false);
+  const [updatingNewsletter, setUpdatingNewsletter] = useState<string | null>(null);
 
   const userMetadata =
     (user?.user_metadata as {
@@ -230,9 +234,81 @@ const AdminPanel = () => {
     if (isAdmin) {
       fetchProfiles();
       fetchSiteSettings();
+      fetchSubscribers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
+
+  const fetchSubscribers = async () => {
+    setLoadingSubscribers(true);
+    try {
+      const result = await listSubscribers(10000, 0);
+      if (result.success && result.subscribers) {
+        const emailSet = new Set<string>();
+        result.subscribers.forEach((sub) => {
+          if (sub.email && sub.status === 'active') {
+            emailSet.add(sub.email.toLowerCase());
+          }
+        });
+        setSubscribers(emailSet);
+      }
+    } catch (error) {
+      console.error("Failed to load subscribers:", error);
+    } finally {
+      setLoadingSubscribers(false);
+    }
+  };
+
+  const handleNewsletterToggle = async (profile: ProfileRow, isSubscribed: boolean) => {
+    if (!profile.email) {
+      toast({
+        variant: "destructive",
+        title: "No email",
+        description: "User does not have an email address",
+      });
+      return;
+    }
+
+    const key = `${profile.id}-newsletter`;
+    setUpdatingNewsletter(key);
+    try {
+      let result;
+      if (isSubscribed) {
+        // Unsubscribe
+        result = await removeSubscriber(profile.email);
+      } else {
+        // Subscribe
+        result = await addSubscriber(profile.email);
+      }
+
+      if (result.success) {
+        // Update local subscribers set
+        const newSubscribers = new Set(subscribers);
+        if (isSubscribed) {
+          newSubscribers.delete(profile.email.toLowerCase());
+        } else {
+          newSubscribers.add(profile.email.toLowerCase());
+        }
+        setSubscribers(newSubscribers);
+
+        toast({
+          title: isSubscribed ? "Unsubscribed" : "Subscribed",
+          description: result.message || `${profile.email} has been ${isSubscribed ? 'unsubscribed' : 'subscribed'} to the newsletter`,
+        });
+      } else {
+        throw new Error(result.message || 'Failed to update subscription');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update newsletter subscription";
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: message,
+      });
+    } finally {
+      setUpdatingNewsletter(null);
+    }
+  };
 
   // Load notebook when notebook tab becomes active
   useEffect(() => {
@@ -1215,14 +1291,42 @@ const AdminPanel = () => {
                                     />
                                   </td>
                                   <td className="px-3 sm:px-4 py-3 text-sm text-foreground whitespace-nowrap">
-                                    <span
-                                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${profile.preferences?.emailNotifications !== false
-                                        ? "border-green-300 bg-green-50 text-green-700"
-                                        : "border-slate-300 bg-slate-50 text-slate-700"
-                                        }`}
-                                    >
-                                      {profile.preferences?.emailNotifications !== false ? "ON" : "OFF"}
-                                    </span>
+                                    {profile.role === "premium" && profile.email ? (
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${subscribers.has(profile.email.toLowerCase())
+                                            ? "border-green-300 bg-green-50 text-green-700"
+                                            : "border-slate-300 bg-slate-50 text-slate-700"
+                                            }`}
+                                        >
+                                          {subscribers.has(profile.email.toLowerCase()) ? "SUBSCRIBED" : "NOT SUBSCRIBED"}
+                                        </span>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleNewsletterToggle(profile, subscribers.has(profile.email.toLowerCase()))}
+                                          disabled={updatingNewsletter === `${profile.id}-newsletter` || loadingSubscribers}
+                                          className="border-2 text-xs h-7 px-2"
+                                        >
+                                          {updatingNewsletter === `${profile.id}-newsletter` ? (
+                                            <RefreshCw className="h-3 w-3 animate-spin" />
+                                          ) : subscribers.has(profile.email.toLowerCase()) ? (
+                                            "Unsubscribe"
+                                          ) : (
+                                            "Subscribe"
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <span
+                                        className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${profile.preferences?.emailNotifications !== false
+                                          ? "border-green-300 bg-green-50 text-green-700"
+                                          : "border-slate-300 bg-slate-50 text-slate-700"
+                                          }`}
+                                      >
+                                        {profile.preferences?.emailNotifications !== false ? "ON" : "OFF"}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="px-3 sm:px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                                     {profile.last_login
