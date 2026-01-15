@@ -160,20 +160,22 @@ const ETFDetail = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container max-w-7xl mx-auto px-4 py-12">
-          <div className="text-center">
-            {isLoading ? (
-              <>
-                <h1 className="text-2xl font-bold mb-4">Loading ETF data...</h1>
-                <p className="text-muted-foreground text-sm">
-                  Fetching the latest data. Please wait.
-                </p>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold mb-4">ETF Not Found</h1>
-                <Button onClick={() => navigate("/")}>Return Home</Button>
-              </>
-            )}
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              {isLoading ? (
+                <>
+                  <h1 className="text-2xl font-bold mb-4">Loading ETF data...</h1>
+                  <p className="text-muted-foreground text-sm">
+                    Fetching the latest data. Please wait.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold mb-4">ETF Not Found</h1>
+                  <Button onClick={() => navigate("/")}>Return Home</Button>
+                </>
+              )}
+            </div>
           </div>
         </main>
       </div>
@@ -427,52 +429,44 @@ const ETFDetail = () => {
                 {chartType === "price" ? "PRICE RETURN CHART" : "TOTAL RETURN CHART"}
               </h2>
             </div>
-            {/* Mobile: Stack all controls in rows, Tablet: Better spacing, Desktop: Keep horizontal */}
-            <div className="flex flex-col gap-3 mb-4 relative z-0">
-              {/* Row 1: Metric Selector - Full width on mobile, auto on tablet+ */}
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
-                  Metric:
-                </label>
-                <Select
-                  value={chartType === "price" ? "priceReturn" : "totalReturn"}
-                  onValueChange={(value) => setChartType(value === "priceReturn" ? "price" : "totalReturn")}
-                >
-                  <SelectTrigger className="flex-1 md:w-[200px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="priceReturn">
-                      <span className="font-bold">Price Return</span>
-                    </SelectItem>
-                    <SelectItem value="totalReturn">
-                      <span className="font-bold">Total Return (DRIP)</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Row 2: Compare and Dividend History buttons - Full width on mobile */}
-              <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            {/* Mobile/Tablet: Stack all controls in rows, Desktop: Keep horizontal */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4 relative z-0">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 flex-wrap">
+                {/* Row 1: Metric Selector - Full width on mobile, auto on tablet+ */}
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
+                    Metric:
+                  </label>
+                  <Select
+                    value={chartType === "price" ? "priceReturn" : "totalReturn"}
+                    onValueChange={(value) => setChartType(value === "priceReturn" ? "price" : "totalReturn")}
+                  >
+                    <SelectTrigger className="flex-1 md:w-[200px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="priceReturn">
+                        <span className="font-bold">Price Return</span>
+                      </SelectItem>
+                      <SelectItem value="totalReturn">
+                        <span className="font-bold">Total Return (DRIP)</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Row 2: Compare button - Full width on mobile, auto on tablet+ */}
                 <button
                   onClick={() => setShowComparisonSelector(!showComparisonSelector)}
-                  className="flex-1 sm:flex-initial px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center justify-center gap-2 h-10"
+                  className="w-full md:w-auto px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center justify-center gap-2 h-9"
                 >
                   <Plus className="h-4 w-4" />
                   Compare ({comparisonETFs.length}/5)
                 </button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/etf/${etf.symbol}/dividends`)}
-                  className="flex-1 sm:flex-initial h-10 px-4 text-sm"
-                >
-                  Dividend History
-                </Button>
               </div>
               
-              {/* Row 3: Time Periods - Full width on mobile, centered on tablet, right-aligned on desktop */}
-              <div className="flex gap-1 flex-wrap w-full lg:justify-end">
+              {/* Time Periods - Full width on mobile, wrapped on tablet, right-aligned on desktop */}
+              <div className="flex gap-1 flex-wrap w-full lg:w-auto lg:justify-end">
                 {timeframes.map((tf) => (
                   <Button
                     key={tf}

@@ -70,45 +70,33 @@ const retryLazyImport = (
             setTimeout(() => attempt(remaining - 1), backoffDelay);
           } else {
             console.error("[Lazy Import] Failed to load module after retries:", error);
-            // Save state one more time before showing error
+            // Save state one more time before attempting automatic recovery
             saveState();
-            // Return a fallback component instead of crashing
+            // Try automatic recovery: clear cache and reload silently
+            // Don't show error immediately - let the automatic reload handle it
+            setTimeout(() => {
+              if ("caches" in window) {
+                caches.keys().then((names) => {
+                  names.forEach((name) => {
+                    caches.delete(name);
+                  });
+                  window.location.reload();
+                }).catch(() => {
+                  window.location.reload();
+                });
+              } else {
+                window.location.reload();
+              }
+            }, 500);
+            // Return a minimal loading component while reload happens
             resolve({
               default: () => (
                 <div className="min-h-screen bg-background flex items-center justify-center p-4">
-                  <div className="max-w-md w-full bg-card border border-destructive rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-foreground">
-                      Failed to Load Page
-                    </h2>
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                     <p className="text-sm text-muted-foreground">
-                      The page could not be loaded after multiple attempts. This may be due to network issues or a deployment update.
+                      Loading page...
                     </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          // Clear cache and reload
-                          if ("caches" in window) {
-                            caches.keys().then((names) => {
-                              names.forEach((name) => {
-                                caches.delete(name);
-                              });
-                              window.location.reload();
-                            });
-                          } else {
-                            globalThis.location.reload();
-                          }
-                        }}
-                        className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                      >
-                        Reload Page
-                      </button>
-                      <button
-                        onClick={() => window.history.back()}
-                        className="flex-1 px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/90"
-                      >
-                        Go Back
-                      </button>
-                    </div>
                   </div>
                 </div>
               ),

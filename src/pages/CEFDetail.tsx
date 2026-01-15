@@ -451,37 +451,37 @@ const CEFDetail = () => {
                 {chartType === "priceNAV" ? "PRICE/NAV CHART" : chartType === "totalReturn" ? "TOTAL RETURN CHART" : "PRICE RETURN CHART"}
               </h2>
             </div>
-            {/* Mobile: Stack all controls in rows, Tablet: Better spacing, Desktop: Keep horizontal */}
-            <div className="flex flex-col gap-3 mb-4 relative z-0">
-              {/* Row 1: Metric Selector - Full width on mobile, auto on tablet+ */}
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
-                  Metric:
-                </label>
-                <Select
-                  value={chartType}
-                  onValueChange={(value: ChartType) => setChartType(value)}
-                >
-                  <SelectTrigger className="flex-1 md:w-[180px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="priceNAV">
-                      <span className="font-bold">Price/NAV</span>
-                    </SelectItem>
-                    <SelectItem value="totalReturn">
-                      <span className="font-bold">Total Return (DRIP)</span>
-                    </SelectItem>
-                    <SelectItem value="priceReturn">
-                      <span className="font-bold">Price Return</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Row 2: Compare Button (only for priceNAV) - Full width on mobile */}
-              {chartType === "priceNAV" && (
-                <div className="w-full md:w-auto">
+            {/* Mobile/Tablet: Stack all controls in rows, Desktop: Keep horizontal */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4 relative z-0">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-3 flex-wrap">
+                {/* Row 1: Metric Selector - Full width on mobile, auto on tablet+ */}
+                <div className="flex items-center gap-2 w-full md:w-auto">
+                  <label className="text-sm font-bold text-muted-foreground whitespace-nowrap">
+                    Metric:
+                  </label>
+                  <Select
+                    value={chartType}
+                    onValueChange={(value: ChartType) => setChartType(value)}
+                  >
+                    <SelectTrigger className="flex-1 md:w-[180px] h-9 text-sm text-blue-600 border-blue-600 focus:border-blue-600 focus:ring-blue-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="priceNAV">
+                        <span className="font-bold">Price/NAV</span>
+                      </SelectItem>
+                      <SelectItem value="totalReturn">
+                        <span className="font-bold">Total Return (DRIP)</span>
+                      </SelectItem>
+                      <SelectItem value="priceReturn">
+                        <span className="font-bold">Price Return</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Row 2: Compare Button (only for priceNAV) - Full width on mobile, auto on tablet+ */}
+                {chartType === "priceNAV" && (
                   <button
                     onClick={() => {
                       const willShow = !showComparisonSelector;
@@ -493,16 +493,16 @@ const CEFDetail = () => {
                         }, 100);
                       }
                     }}
-                    className="w-full md:w-auto px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center justify-center gap-2 h-10"
+                    className="w-full md:w-auto px-4 py-2 text-sm font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center justify-center gap-2 h-9"
                   >
                     <Plus className="h-4 w-4" />
                     Compare ({comparisonCEFs.length}/5)
                   </button>
-                </div>
-              )}
+                )}
+              </div>
               
-              {/* Row 3: Time Periods - Full width on mobile, centered on tablet, right-aligned on desktop */}
-              <div className="flex gap-1 flex-wrap w-full lg:justify-end">
+              {/* Time Periods - Full width on mobile, wrapped on tablet, right-aligned on desktop */}
+              <div className="flex gap-1 flex-wrap w-full lg:w-auto lg:justify-end">
                 {timeframes.map((tf) => (
                   <Button
                     key={tf}

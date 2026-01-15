@@ -200,9 +200,9 @@ export const Header = () => {
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
-              <X className="h-8 w-8 text-foreground" />
+              <X className="h-10 w-10 text-foreground stroke-[2.5]" />
             ) : (
-              <Menu className="h-8 w-8 text-foreground" />
+              <Menu className="h-10 w-10 text-foreground stroke-[2.5]" />
             )}
           </Button>
         </div>
