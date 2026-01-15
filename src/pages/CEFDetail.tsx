@@ -552,42 +552,47 @@ const CEFDetail = () => {
                     className="pl-9"
                   />
                 </div>
-                <div className="max-h-48 overflow-y-auto">
-                  {allCEFs
-                    .filter((c) => {
-                      const query = comparisonSearchQuery.toLowerCase();
-                      return (
-                        c.symbol.toLowerCase().includes(query) &&
-                        c.symbol !== symbol &&
-                        !comparisonCEFs.includes(c.symbol)
-                      );
-                    })
-                    .slice(0, 10)
-                    .map((c) => (
-                      <button
-                        key={c.symbol}
-                        onClick={() => {
-                          toggleComparison(c.symbol);
-                          setComparisonSearchQuery("");
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-200 rounded flex items-center justify-between"
-                      >
-                        <div>
-                          <span className="font-semibold">{c.symbol}</span>
-                          {c.name && (
-                            <span className="text-xs text-muted-foreground ml-2">
-                              {c.name}
-                            </span>
-                          )}
-                        </div>
-                        {c.marketPrice != null && (
-                          <span className="text-sm font-semibold">
-                            ${c.marketPrice.toFixed(2)}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                </div>
+                {/* Only show search results when there's a query */}
+                {comparisonSearchQuery && (
+                  <div className="absolute top-full left-4 right-4 mt-2 z-[9999] bg-background border-2 border-border rounded-xl shadow-2xl overflow-hidden">
+                    <div className="max-h-96 overflow-y-auto">
+                      {allCEFs
+                        .filter((c) => {
+                          const query = comparisonSearchQuery.toLowerCase();
+                          return (
+                            c.symbol.toLowerCase().includes(query) &&
+                            c.symbol !== symbol &&
+                            !comparisonCEFs.includes(c.symbol)
+                          );
+                        })
+                        .slice(0, 10)
+                        .map((c) => (
+                          <button
+                            key={c.symbol}
+                            onClick={() => {
+                              toggleComparison(c.symbol);
+                              setComparisonSearchQuery("");
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0 flex items-center justify-between"
+                          >
+                            <div>
+                              <span className="font-semibold text-base">{c.symbol}</span>
+                              {c.name && (
+                                <span className="text-xs text-muted-foreground ml-2 block">
+                                  {c.name}
+                                </span>
+                              )}
+                            </div>
+                            {c.marketPrice != null && (
+                              <span className="text-sm font-semibold">
+                                ${c.marketPrice.toFixed(2)}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

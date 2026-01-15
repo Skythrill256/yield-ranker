@@ -486,7 +486,7 @@ const ETFDetail = () => {
                 {[etf.symbol, ...comparisonETFs].map((sym, index) => {
                   const compareETF = allETFs.find((e) => e.symbol === sym);
                   if (!compareETF) return null;
-                  const colors = ["#3b82f6", "#f97316", "#8b5cf6", "#10b981", "#ef4444"];
+                  const colors = ["#1f2937", "#f97316", "#8b5cf6", "#10b981", "#ef4444", "#ec4899"];
                   const color = colors[index % colors.length];
 
                   let displayValue = "N/A";
