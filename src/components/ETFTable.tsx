@@ -126,6 +126,11 @@ export const ETFTable = ({
   };
 
   const handleSort = useCallback((field: SortField) => {
+    if (field === null) return;
+    // Clear pinned symbol when user clicks any sorting option
+    if (pinnedSymbol) {
+      setPinnedSymbol(null);
+    }
     setSortField((prevField) => {
       if (prevField === field) {
         setSortDirection((prevDir) => (prevDir === "asc" ? "desc" : "asc"));
@@ -135,7 +140,8 @@ export const ETFTable = ({
         return field;
       }
     });
-  }, []);
+  }, [pinnedSymbol]);
+
 
   const handleSelectionChange = (symbol: string) => {
     setSelectedSymbol(symbol);
@@ -203,7 +209,7 @@ export const ETFTable = ({
 
     // Create a stable sorted array - use symbol as secondary sort to ensure stability
     let sorted = [...etfs];
-    
+
     // Pinned: bring selected symbol to top (only when no sorting is active)
     // When sorting is active, pinned symbol goes to its natural sorted position
     if (pinnedSymbol && !sortField) {
@@ -215,7 +221,12 @@ export const ETFTable = ({
       console.log('[ETFTable] Pinned symbol:', pinnedSymbol, '- brought to top (no sorting)');
       return sorted;
     }
-    
+
+    // Normal sorting when sortField is set
+    if (!sortField) {
+      return sorted;
+    }
+
     sorted = sorted.sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
@@ -444,142 +455,142 @@ export const ETFTable = ({
                 normalizeIssuer(prev.issuer) !== normalizeIssuer(etf.issuer);
 
               return (
-              <tr
-                key={etf.symbol}
-                id={`etf-row-${etf.symbol}`}
-                data-etf-symbol={etf.symbol}
-                className={`border-b border-slate-200 transition-all hover:bg-slate-100 group ${issuerChanged ? "border-t-4 border-slate-300" : ""}`}
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <td
-                  className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 bg-white border-r border-slate-200 transition-all cursor-pointer shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(etf.symbol);
-                  }}
-                  title="Click to add to Favorites"
+                <tr
+                  key={etf.symbol}
+                  id={`etf-row-${etf.symbol}`}
+                  data-etf-symbol={etf.symbol}
+                  className={`border-b border-slate-200 transition-all hover:bg-slate-100 group ${issuerChanged ? "border-t-4 border-slate-300" : ""}`}
+                  style={{ animationDelay: `${index * 30}ms` }}
                 >
-                  <Star
-                    className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(etf.symbol)
-                      ? "fill-yellow-400 text-yellow-400"
-                      : "text-slate-500 hover:text-yellow-500 hover:scale-110"
-                      }`}
-                  />
-                </td>
-                <td
-                  data-symbol-cell
-                  className="py-1 px-1.5 sm:px-2 align-middle sticky left-[28px] z-10 bg-white border-r border-slate-200 text-primary text-xs transition-all shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]"
-                >
-                  <button
-                    onClick={() => {
-                      if (onSymbolClick) {
-                        onSymbolClick(etf.symbol);
-                      } else {
-                        navigate(`/etf/${etf.symbol}`);
-                      }
-                    }}
-                    className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap font-bold"
-                  >
-                    {etf.symbol}
-                  </button>
-                </td>
-                <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px] truncate">
-                  {etf.issuer}
-                </td>
-                <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[150px] sm:max-w-[180px] truncate text-xs text-muted-foreground min-w-[120px] sm:min-w-[140px]">
-                  {etf.description}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center text-xs text-muted-foreground">
-                  {etf.payDay || "N/A"}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-foreground">
-                  ${etf.price.toFixed(2)}
-                </td>
-                <td className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold ${etf.priceChange != null && etf.priceChange >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                  {etf.priceChange != null ? `${etf.priceChange >= 0 ? '+' : ''}${etf.priceChange.toFixed(2)}` : 'N/A'}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center">
-                  <button
+                  <td
+                    className="py-1 px-1.5 align-middle text-center sticky left-0 z-10 bg-white border-r border-slate-200 transition-all cursor-pointer shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (onDividendClick) {
-                        onDividendClick(etf.symbol);
-                      } else {
-                        navigate(`/etf/${etf.symbol}/dividends`);
-                      }
+                      toggleFavorite(etf.symbol);
                     }}
-                    className="tabular-nums text-sm text-primary font-bold hover:underline cursor-pointer transition-colors"
-                    title="Click to view dividend history"
+                    title="Click to add to Favorites"
                   >
-                    {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
-                  </button>
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
-                  {etf.numPayments}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
-                  {(() => {
-                    // Calculate Annual Div = Div × #Pmt to ensure accuracy
-                    const calculatedAnnualDiv = etf.dividend && etf.numPayments
-                      ? etf.dividend * etf.numPayments
-                      : null;
-                    // Use calculated value if available, fallback to database value
-                    const annualDiv = calculatedAnnualDiv ?? etf.annualDividend;
-                    return annualDiv != null && annualDiv > 0
-                      ? `$${annualDiv.toFixed(2)}`
-                      : 'N/A';
-                  })()}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-sm">
-                  {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
-                  {etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendCV != null ? `${(etf.dividendCV * 100).toFixed(1)}%` : 'N/A')}
-                </td>
-                <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
-                  {isGuest ? (
+                    <Star
+                      className={`h-4 w-4 mx-auto cursor-pointer transition-all ${favorites.has(etf.symbol)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-slate-500 hover:text-yellow-500 hover:scale-110"
+                        }`}
+                    />
+                  </td>
+                  <td
+                    data-symbol-cell
+                    className="py-1 px-1.5 sm:px-2 align-middle sticky left-[28px] z-10 bg-white border-r border-slate-200 text-primary text-xs transition-all shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)] min-w-[70px] sm:min-w-[80px]"
+                  >
+                    <button
+                      onClick={() => {
+                        if (onSymbolClick) {
+                          onSymbolClick(etf.symbol);
+                        } else {
+                          navigate(`/etf/${etf.symbol}`);
+                        }
+                      }}
+                      className="hover:underline hover:text-primary/80 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 rounded px-1 whitespace-nowrap font-bold"
+                    >
+                      {etf.symbol}
+                    </button>
+                  </td>
+                  <td className="py-1 px-1.5 sm:px-2 align-middle text-xs text-muted-foreground uppercase font-medium whitespace-nowrap min-w-[60px] sm:min-w-[70px] max-w-[70px] sm:max-w-[80px] truncate">
+                    {etf.issuer}
+                  </td>
+                  <td className="py-1 px-1.5 sm:px-2 align-middle max-w-[150px] sm:max-w-[180px] truncate text-xs text-muted-foreground min-w-[120px] sm:min-w-[140px]">
+                    {etf.description}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center text-xs text-muted-foreground">
+                    {etf.payDay || "N/A"}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-foreground">
+                    ${etf.price.toFixed(2)}
+                  </td>
+                  <td className={`py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold ${etf.priceChange != null && etf.priceChange >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                    {etf.priceChange != null ? `${etf.priceChange >= 0 ? '+' : ''}${etf.priceChange.toFixed(2)}` : 'N/A'}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowUpgradeModal(true);
+                        if (onDividendClick) {
+                          onDividendClick(etf.symbol);
+                        } else {
+                          navigate(`/etf/${etf.symbol}/dividends`);
+                        }
                       }}
-                      className="flex items-center justify-center w-full group"
-                      title="Upgrade to Premium to see rankings"
+                      className="tabular-nums text-sm text-primary font-bold hover:underline cursor-pointer transition-colors"
+                      title="Click to view dividend history"
                     >
-                      <div className="p-0.5 rounded bg-gradient-to-br from-primary/10 to-accent/10 group-hover:from-primary/20 group-hover:to-accent/20 border border-primary/20 group-hover:border-primary/40 transition-all duration-200">
-                        <Lock className="h-3 w-3 text-primary group-hover:text-accent transition-colors" />
-                      </div>
+                      {etf.dividend != null ? etf.dividend.toFixed(4) : 'N/A'}
                     </button>
-                  ) : (
-                    <span className="text-primary">{etf.weightedRank !== null ? etf.weightedRank : '-'}</span>
-                  )}
-                </td>
-                {returnColumns.map((col, colIndex) => {
-                  const rawValue = etf[col.key];
-                  const numericValue =
-                    typeof rawValue === "number" ? rawValue : undefined;
-                  const valueClass =
-                    numericValue === undefined
-                      ? "text-muted-foreground"
-                      : numericValue >= 0
-                        ? "text-green-600"
-                        : "text-red-600";
-                  return (
-                    <td
-                      key={`${etf.symbol}-${String(col.key)}`}
-                      className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[65px] sm:min-w-[75px] ${colIndex === returnColumns.length - 1
-                        ? "border-r-2 border-slate-300"
-                        : ""
-                        }`}
-                    >
-                      {numericValue !== undefined
-                        ? `${numericValue > 0 ? "+" : ""}${numericValue.toFixed(1)}%`
-                        : "N/A"}
-                    </td>
-                  );
-                })}
-              </tr>
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
+                    {etf.numPayments}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
+                    {(() => {
+                      // Calculate Annual Div = Div × #Pmt to ensure accuracy
+                      const calculatedAnnualDiv = etf.dividend && etf.numPayments
+                        ? etf.dividend * etf.numPayments
+                        : null;
+                      // Use calculated value if available, fallback to database value
+                      const annualDiv = calculatedAnnualDiv ?? etf.annualDividend;
+                      return annualDiv != null && annualDiv > 0
+                        ? `$${annualDiv.toFixed(2)}`
+                        : 'N/A';
+                    })()}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center font-bold tabular-nums text-primary text-sm">
+                    {etf.forwardYield != null ? `${etf.forwardYield.toFixed(1)}%` : 'N/A'}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center tabular-nums text-xs font-bold text-muted-foreground">
+                    {etf.dividendCVPercent != null ? `${etf.dividendCVPercent.toFixed(1)}%` : (etf.dividendCV != null ? `${(etf.dividendCV * 100).toFixed(1)}%` : 'N/A')}
+                  </td>
+                  <td className="py-1 px-1.5 align-middle text-center font-bold text-sm tabular-nums border-r-2 border-slate-300">
+                    {isGuest ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowUpgradeModal(true);
+                        }}
+                        className="flex items-center justify-center w-full group"
+                        title="Upgrade to Premium to see rankings"
+                      >
+                        <div className="p-0.5 rounded bg-gradient-to-br from-primary/10 to-accent/10 group-hover:from-primary/20 group-hover:to-accent/20 border border-primary/20 group-hover:border-primary/40 transition-all duration-200">
+                          <Lock className="h-3 w-3 text-primary group-hover:text-accent transition-colors" />
+                        </div>
+                      </button>
+                    ) : (
+                      <span className="text-primary">{etf.weightedRank !== null ? etf.weightedRank : '-'}</span>
+                    )}
+                  </td>
+                  {returnColumns.map((col, colIndex) => {
+                    const rawValue = etf[col.key];
+                    const numericValue =
+                      typeof rawValue === "number" ? rawValue : undefined;
+                    const valueClass =
+                      numericValue === undefined
+                        ? "text-muted-foreground"
+                        : numericValue >= 0
+                          ? "text-green-600"
+                          : "text-red-600";
+                    return (
+                      <td
+                        key={`${etf.symbol}-${String(col.key)}`}
+                        className={`py-1.5 px-1.5 sm:px-2 align-middle text-center font-bold tabular-nums text-xs sm:text-sm ${valueClass} whitespace-nowrap min-w-[65px] sm:min-w-[75px] ${colIndex === returnColumns.length - 1
+                          ? "border-r-2 border-slate-300"
+                          : ""
+                          }`}
+                      >
+                        {numericValue !== undefined
+                          ? `${numericValue > 0 ? "+" : ""}${numericValue.toFixed(1)}%`
+                          : "N/A"}
+                      </td>
+                    );
+                  })}
+                </tr>
               );
             })}
           </tbody>

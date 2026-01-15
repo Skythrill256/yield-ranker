@@ -10,20 +10,20 @@ import { useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { 
-  Loader2, 
-  Mail, 
-  Lock, 
-  ChevronLeft, 
-  PanelLeftClose, 
-  PanelLeft, 
-  Menu,
-  LogOut,
-  Home,
-  BarChart3,
-  Settings,
-  Star,
-  ArrowLeft,
+import {
+    Loader2,
+    Mail,
+    Lock,
+    ChevronLeft,
+    PanelLeftClose,
+    PanelLeft,
+    Menu,
+    LogOut,
+    Home,
+    BarChart3,
+    Settings,
+    Star,
+    ArrowLeft,
 } from 'lucide-react';
 import { listCampaigns, getCampaign, type Campaign } from '@/services/newsletterAdmin';
 import { useFavorites } from '@/hooks/useFavorites';
@@ -314,10 +314,10 @@ export default function Newsletters() {
                             ? "justify-center px-0 py-2.5"
                             : "gap-3 px-4 py-3"
                             } rounded-lg text-sm font-medium transition-colors ${showFavoritesOnly
-                            ? sidebarCollapsed
-                                ? "bg-yellow-50 text-yellow-600"
-                                : "bg-yellow-500 text-white"
-                            : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
+                                ? sidebarCollapsed
+                                    ? "bg-yellow-50 text-yellow-600"
+                                    : "bg-yellow-500 text-white"
+                                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
                             }`}
                         title={sidebarCollapsed ? "Favorites" : ""}
                     >
@@ -346,7 +346,7 @@ export default function Newsletters() {
                         )}
                     </button>
                     <button
-                        onClick={() => navigate('/newsletters')}
+                        onClick={() => navigate('/newsletters/archive')}
                         className={`w-full flex items-center ${sidebarCollapsed
                             ? "justify-center px-0 py-2.5"
                             : "gap-3 px-4 py-3"

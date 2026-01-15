@@ -147,6 +147,7 @@ const Settings = lazy(() => retryLazyImport(() => import("./pages/Settings")));
 const Favorites = lazy(() => retryLazyImport(() => import("./pages/Favorites")));
 const Profile = lazy(() => retryLazyImport(() => import("./pages/Profile")));
 const Newsletters = lazy(() => retryLazyImport(() => import("./pages/Newsletters")));
+const PublicNewsletters = lazy(() => retryLazyImport(() => import("./pages/PublicNewsletters")));
 const TermsOfService = lazy(() =>
   retryLazyImport(() => import("./pages/TermsOfService"))
 );
@@ -199,8 +200,9 @@ const AppRoutes = () => {
           <Route path="/resources-cef" element={<Resources />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/newsletters" element={<PublicNewsletters />} />
           <Route
-            path="/newsletters"
+            path="/newsletters/archive"
             element={
               <RequireAuth>
                 <Newsletters />

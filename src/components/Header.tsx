@@ -114,17 +114,15 @@ export const Header = () => {
               Resources
             </Button>
 
-            {/* Newsletters - Premium users only */}
-            {isAuthenticated && (profile?.is_premium || user?.user_metadata?.is_premium) && (
-              <Button
-                variant="ghost"
-                className="px-3 lg:px-4 py-2 text-sm lg:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-lg"
-                onClick={() => go("/newsletters")}
-              >
-                <Mail className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 lg:mr-2" />
-                Newsletters
-              </Button>
-            )}
+            {/* Newsletters - Available to all users */}
+            <Button
+              variant="ghost"
+              className="px-3 lg:px-4 py-2 text-sm lg:text-base font-medium text-foreground hover:bg-slate-100 hover:text-foreground transition-colors rounded-lg"
+              onClick={() => go("/newsletters")}
+            >
+              <Mail className="w-4 h-4 lg:w-5 lg:h-5 mr-1.5 lg:mr-2" />
+              Newsletters
+            </Button>
 
             {/* Plans */}
             <Button
@@ -250,16 +248,14 @@ export const Header = () => {
               <FileText className="w-5 h-5 mr-3" />
               Resources
             </Button>
-            {isAuthenticated && (profile?.is_premium || user?.user_metadata?.is_premium) && (
-              <Button
-                variant="ghost"
-                className="justify-start px-4 py-4 text-base sm:text-lg font-semibold text-foreground hover:bg-slate-100 rounded-lg"
-                onClick={() => go("/newsletters")}
-              >
-                <Mail className="w-5 h-5 mr-3" />
-                Newsletters
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              className="justify-start px-4 py-4 text-base sm:text-lg font-semibold text-foreground hover:bg-slate-100 rounded-lg"
+              onClick={() => go("/newsletters")}
+            >
+              <Mail className="w-5 h-5 mr-3" />
+              Newsletters
+            </Button>
             <Button
               variant="ghost"
               className="justify-start px-4 py-4 text-base sm:text-lg font-semibold text-foreground hover:bg-slate-100 rounded-lg"

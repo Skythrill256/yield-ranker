@@ -133,7 +133,7 @@ export default function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState<"cef" | "cc">(currentCategory);
   const [cefData, setCefData] = useState<CEF[]>([]);
   const [isLoadingCEFData, setIsLoadingCEFData] = useState(false);
-  
+
   // Use appropriate favorites hook based on category
   const { favorites, toggleFavorite: toggleFavoriteHook, cleanupFavorites } = useFavorites(
     selectedCategory === "cef" ? "cef" : "etf"
@@ -390,7 +390,7 @@ export default function Dashboard() {
           });
           setEtfData(deduplicated);
           cleanupFavorites(deduplicated.map(etf => etf.symbol));
-          
+
           if (selectedETF) {
             const updated = deduplicated.find(e => e.symbol === selectedETF.symbol);
             if (updated) {
@@ -1104,12 +1104,12 @@ export default function Dashboard() {
   const filteredCEFs = useMemo(() => {
     const dataToFilter = isGuest ? cefData : rankedCEFs;
     let filtered = dataToFilter;
-    
+
     // Apply favorites filter if enabled
     if (showFavoritesOnly && isPremium) {
       filtered = filtered.filter(cef => favorites.has(cef.symbol));
     }
-    
+
     // Apply search query filter
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter((cef) => {
@@ -1120,7 +1120,7 @@ export default function Dashboard() {
         );
       });
     }
-    
+
     return filtered;
   }, [isGuest, cefData, rankedCEFs, showFavoritesOnly, isPremium, favorites, searchQuery]);
 
@@ -2836,7 +2836,7 @@ export default function Dashboard() {
             onClick={() => {
               setShowFavoritesOnly(false);
               setAdminSection(null);
-              navigate("/newsletters");
+              navigate("/newsletters/archive");
             }}
             className={`w-full flex items-center ${sidebarCollapsed
               ? "justify-center px-0 py-2.5"
@@ -3314,119 +3314,119 @@ export default function Dashboard() {
                   {selectedCategory === "cc" && (
                     <Card className="border-2 border-slate-200">
                       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                            <div className="flex flex-col gap-1">
-                              <h2 className="text-2xl font-bold text-foreground">
-                                Covered Call Option ETFs
-                              </h2>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {isLoadingData ? "Loading..." : `${uniqueSymbolETFs.length} ETFs`}
-                                {lastDataUpdate && ` • Last updated: ${lastDataUpdate}`}
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex flex-col gap-1">
+                            <h2 className="text-2xl font-bold text-foreground">
+                              Covered Call Option ETFs
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {isLoadingData ? "Loading..." : `${uniqueSymbolETFs.length} ETFs`}
+                              {lastDataUpdate && ` • Last updated: ${lastDataUpdate}`}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
+                              <div className="relative">
+                                {isPremium && (
+                                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
+                                    {yieldWeight} {volatilityWeight ?? 0} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
+                                  </div>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (isGuest) {
+                                      setShowUpgradeModal(true);
+                                    } else {
+                                      setShowRankingPanel(true);
+                                    }
+                                  }}
+                                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
+                                >
+                                  <Sliders className="h-4 w-4 mr-2" />
+                                  Customize Rankings
+                                </Button>
+                              </div>
+                              {/* Total Return / Price Return Toggle */}
+                              <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
+                                <div
+                                  className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
+                                    }`}
+                                  style={{ zIndex: 0 }}
+                                />
+                                <button
+                                  onClick={() => setShowTotalReturns(true)}
+                                  className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${showTotalReturns
+                                    ? "text-white"
+                                    : "text-slate-600 hover:text-slate-900"
+                                    }`}
+                                >
+                                  Total Returns
+                                </button>
+                                <button
+                                  onClick={() => setShowTotalReturns(false)}
+                                  className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${!showTotalReturns
+                                    ? "text-white"
+                                    : "text-slate-600 hover:text-slate-900"
+                                    }`}
+                                >
+                                  Price Returns
+                                </button>
+                              </div>
+                              {isPremium && (
+                                <button
+                                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                                  className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center px-4 rounded-md flex items-center ${showFavoritesOnly
+                                    ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
+                                    : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
+                                    }`}
+                                >
+                                  <Star
+                                    className={`h-4 w-4 mr-2 ${showFavoritesOnly ? "fill-white" : "fill-yellow-400"
+                                      }`}
+                                  />
+                                  {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
+                                  {favorites.size > 0 && `(${favorites.size})`}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+                          {isLoadingData ? (
+                            <div className="min-h-[60vh] flex flex-col items-center justify-center py-20 px-4">
+                              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                              <h3 className="text-xl font-bold text-foreground mb-2">
+                                Loading ETF Data
+                              </h3>
+                              <p className="text-sm text-muted-foreground text-center max-w-md">
+                                Fetching the latest data. Please wait.
                               </p>
                             </div>
-                            <div className="flex flex-col gap-2">
-                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
-                                <div className="relative">
-                                  {isPremium && (
-                                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
-                                      {yieldWeight} {volatilityWeight ?? 0} {totalReturnWeight} {totalReturnTimeframe.toUpperCase()}
-                                    </div>
-                                  )}
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (isGuest) {
-                                        setShowUpgradeModal(true);
-                                      } else {
-                                        setShowRankingPanel(true);
-                                      }
-                                    }}
-                                    className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
-                                  >
-                                    <Sliders className="h-4 w-4 mr-2" />
-                                    Customize Rankings
-                                  </Button>
-                                </div>
-                                {/* Total Return / Price Return Toggle */}
-                                <div className="relative inline-flex items-center h-10 sm:h-9 md:h-9 border-2 border-slate-300 rounded-md overflow-hidden w-full sm:w-auto">
-                                  <div
-                                    className={`absolute top-0 bottom-0 left-0 bg-primary transition-all duration-200 ${showTotalReturns ? 'w-1/2' : 'w-1/2 translate-x-full'
-                                      }`}
-                                    style={{ zIndex: 0 }}
-                                  />
-                                  <button
-                                    onClick={() => setShowTotalReturns(true)}
-                                    className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 whitespace-nowrap ${showTotalReturns
-                                      ? "text-white"
-                                      : "text-slate-600 hover:text-slate-900"
-                                      }`}
-                                  >
-                                    Total Returns
-                                  </button>
-                                  <button
-                                    onClick={() => setShowTotalReturns(false)}
-                                    className={`relative z-10 flex-1 px-3 sm:px-4 py-2 text-xs font-semibold transition-colors duration-200 md:whitespace-nowrap ${!showTotalReturns
-                                      ? "text-white"
-                                      : "text-slate-600 hover:text-slate-900"
-                                      }`}
-                                  >
-                                    Price Returns
-                                  </button>
-                                </div>
-                                {isPremium && (
-                                  <button
-                                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                                    className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center px-4 rounded-md flex items-center ${showFavoritesOnly
-                                        ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
-                                        : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                                      }`}
-                                  >
-                                    <Star
-                                      className={`h-4 w-4 mr-2 ${showFavoritesOnly ? "fill-white" : "fill-yellow-400"
-                                        }`}
-                                    />
-                                    {showFavoritesOnly ? "Show All" : "Favorites"}{" "}
-                                    {favorites.size > 0 && `(${favorites.size})`}
-                                  </button>
-                                )}
-                              </div>
+                          ) : uniqueSymbolETFs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 px-4">
+                              <div className="text-6xl mb-4">⚠️</div>
+                              <h3 className="text-xl font-bold text-foreground mb-2">
+                                No Data Available
+                              </h3>
+                              <p className="text-sm text-muted-foreground text-center max-w-md">
+                                Unable to fetch live ETF data. Please check your connection
+                                and try again.
+                              </p>
                             </div>
-                          </div>
-
-                          <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
-                            {isLoadingData ? (
-                              <div className="min-h-[60vh] flex flex-col items-center justify-center py-20 px-4">
-                                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                                <h3 className="text-xl font-bold text-foreground mb-2">
-                                  Loading ETF Data
-                                </h3>
-                                <p className="text-sm text-muted-foreground text-center max-w-md">
-                                  Fetching the latest data. Please wait.
-                                </p>
-                              </div>
-                            ) : uniqueSymbolETFs.length === 0 ? (
-                              <div className="flex flex-col items-center justify-center py-20 px-4">
-                                <div className="text-6xl mb-4">⚠️</div>
-                                <h3 className="text-xl font-bold text-foreground mb-2">
-                                  No Data Available
-                                </h3>
-                                <p className="text-sm text-muted-foreground text-center max-w-md">
-                                  Unable to fetch live ETF data. Please check your connection
-                                  and try again.
-                                </p>
-                              </div>
-                            ) : (
-                              <ETFTable
-                                etfs={uniqueSymbolETFs}
-                                favorites={favorites}
-                                onToggleFavorite={toggleFavorite}
-                                viewMode={showTotalReturns ? "total" : "price"}
-                                onSymbolClick={handleETFSymbolClick}
-                                onDividendClick={handleETFDividendClick}
-                              />
-                            )}
-                          </div>
+                          ) : (
+                            <ETFTable
+                              etfs={uniqueSymbolETFs}
+                              favorites={favorites}
+                              onToggleFavorite={toggleFavorite}
+                              viewMode={showTotalReturns ? "total" : "price"}
+                              onSymbolClick={handleETFSymbolClick}
+                              onDividendClick={handleETFDividendClick}
+                            />
+                          )}
+                        </div>
                       </div>
                     </Card>
                   )}
@@ -3435,92 +3435,92 @@ export default function Dashboard() {
                   {selectedCategory === "cef" && (
                     <Card className="border-2 border-slate-200">
                       <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                            <div className="flex flex-col gap-1">
-                              <h2 className="text-2xl font-bold text-foreground">
-                                Closed End Funds
-                              </h2>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {isLoadingCEFData ? "Loading..." : `${filteredCEFs.length} CEFs`}
-                                {lastCEFDataUpdate && ` • Last updated: ${lastCEFDataUpdate}`}
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex flex-col gap-1">
+                            <h2 className="text-2xl font-bold text-foreground">
+                              Closed End Funds
+                            </h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {isLoadingCEFData ? "Loading..." : `${filteredCEFs.length} CEFs`}
+                              {lastCEFDataUpdate && ` • Last updated: ${lastCEFDataUpdate}`}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
+                              <div className="relative">
+                                {isPremium && (
+                                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
+                                    {cefYieldWeight} {cefVolatilityWeight} {cefTotalReturnWeight} {cefTotalReturnTimeframe.toUpperCase()}
+                                  </div>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (isGuest) {
+                                      setShowUpgradeModal(true);
+                                    } else {
+                                      setShowRankingPanel(true);
+                                    }
+                                  }}
+                                  className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
+                                >
+                                  <Sliders className="h-4 w-4 mr-2" />
+                                  Customize Rankings
+                                </Button>
+                              </div>
+                              {isPremium && (
+                                <button
+                                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                                  className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center px-4 rounded-md flex items-center ${showFavoritesOnly
+                                    ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
+                                    : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
+                                    }`}
+                                >
+                                  <Star
+                                    className={`h-4 w-4 mr-2 ${showFavoritesOnly ? "fill-white" : "fill-yellow-400"
+                                      }`}
+                                  />
+                                  {showFavoritesOnly ? "Show All" : "CEF Favorites"}{" "}
+                                  {favorites.size > 0 && `(${favorites.size})`}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
+                          {isLoadingCEFData ? (
+                            <div className="min-h-[60vh] flex flex-col items-center justify-center py-20 px-4">
+                              <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                              <h3 className="text-xl font-bold text-foreground mb-2">
+                                Loading CEF Data
+                              </h3>
+                              <p className="text-sm text-muted-foreground text-center max-w-md">
+                                Fetching the latest data. Please wait.
                               </p>
                             </div>
-                            <div className="flex flex-col gap-2">
-                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:pt-0.5 md:flex-nowrap">
-                                <div className="relative">
-                                  {isPremium && (
-                                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs sm:text-sm text-muted-foreground font-medium whitespace-nowrap">
-                                      {cefYieldWeight} {cefVolatilityWeight} {cefTotalReturnWeight} {cefTotalReturnTimeframe.toUpperCase()}
-                                    </div>
-                                  )}
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (isGuest) {
-                                        setShowUpgradeModal(true);
-                                      } else {
-                                        setShowRankingPanel(true);
-                                      }
-                                    }}
-                                    className="border-2 border-primary bg-white text-primary hover:bg-white hover:text-primary h-10 sm:h-9 md:h-9 rounded-md whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center"
-                                  >
-                                    <Sliders className="h-4 w-4 mr-2" />
-                                    Customize Rankings
-                                  </Button>
-                                </div>
-                                {isPremium && (
-                                  <button
-                                    onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                                    className={`border-2 h-10 sm:h-9 md:h-9 transition-colors whitespace-nowrap w-full sm:w-auto md:flex-shrink-0 justify-center px-4 rounded-md flex items-center ${showFavoritesOnly
-                                        ? "bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white"
-                                        : "border-yellow-400 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-600"
-                                      }`}
-                                  >
-                                    <Star
-                                      className={`h-4 w-4 mr-2 ${showFavoritesOnly ? "fill-white" : "fill-yellow-400"
-                                        }`}
-                                    />
-                                    {showFavoritesOnly ? "Show All" : "CEF Favorites"}{" "}
-                                    {favorites.size > 0 && `(${favorites.size})`}
-                                  </button>
-                                )}
-                              </div>
+                          ) : filteredCEFs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 px-4">
+                              <div className="text-6xl mb-4">⚠️</div>
+                              <h3 className="text-xl font-bold text-foreground mb-2">
+                                No Data Available
+                              </h3>
+                              <p className="text-sm text-muted-foreground text-center max-w-md">
+                                Unable to fetch live CEF data. Please check your connection
+                                and try again.
+                              </p>
                             </div>
-                          </div>
-
-                          <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
-                            {isLoadingCEFData ? (
-                              <div className="min-h-[60vh] flex flex-col items-center justify-center py-20 px-4">
-                                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                                <h3 className="text-xl font-bold text-foreground mb-2">
-                                  Loading CEF Data
-                                </h3>
-                                <p className="text-sm text-muted-foreground text-center max-w-md">
-                                  Fetching the latest data. Please wait.
-                                </p>
-                              </div>
-                            ) : filteredCEFs.length === 0 ? (
-                              <div className="flex flex-col items-center justify-center py-20 px-4">
-                                <div className="text-6xl mb-4">⚠️</div>
-                                <h3 className="text-xl font-bold text-foreground mb-2">
-                                  No Data Available
-                                </h3>
-                                <p className="text-sm text-muted-foreground text-center max-w-md">
-                                  Unable to fetch live CEF data. Please check your connection
-                                  and try again.
-                                </p>
-                              </div>
-                            ) : (
-                              <CEFTable
-                                cefs={filteredCEFs}
-                                favorites={favorites}
-                                onToggleFavorite={toggleFavorite}
-                                onSymbolClick={handleCEFSymbolClick}
-                                onDividendClick={handleCEFDividendClick}
-                              />
-                            )}
-                          </div>
+                          ) : (
+                            <CEFTable
+                              cefs={filteredCEFs}
+                              favorites={favorites}
+                              onToggleFavorite={toggleFavorite}
+                              onSymbolClick={handleCEFSymbolClick}
+                              onDividendClick={handleCEFDividendClick}
+                            />
+                          )}
+                        </div>
                       </div>
                     </Card>
                   )}
@@ -3831,32 +3831,32 @@ export default function Dashboard() {
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                    {dividendModalSymbol && (
-                      <>
-                        {dividendModalSymbol.toUpperCase()} - Dividend Yield & Payments
-                        {selectedCategory === "cc" ? (
-                          etfData.find(e => e.symbol === dividendModalSymbol) ? (
-                            <p className="text-sm font-normal text-muted-foreground mt-1">
-                              {etfData.find(e => e.symbol === dividendModalSymbol)?.name}
-                            </p>
-                          ) : (
-                            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                              <strong>Note:</strong> This ETF is not currently in our database, but dividend history may still be available.
-                            </div>
-                          )
-                        ) : (
-                          cefData.find(c => c.symbol === dividendModalSymbol) ? (
-                            <p className="text-sm font-normal text-muted-foreground mt-1">
-                              {cefData.find(c => c.symbol === dividendModalSymbol)?.name}
-                            </p>
-                          ) : (
-                            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                              <strong>Note:</strong> This CEF is not currently in our database, but dividend history may still be available.
-                            </div>
-                          )
-                        )}
-                      </>
+                {dividendModalSymbol && (
+                  <>
+                    {dividendModalSymbol.toUpperCase()} - Dividend Yield & Payments
+                    {selectedCategory === "cc" ? (
+                      etfData.find(e => e.symbol === dividendModalSymbol) ? (
+                        <p className="text-sm font-normal text-muted-foreground mt-1">
+                          {etfData.find(e => e.symbol === dividendModalSymbol)?.name}
+                        </p>
+                      ) : (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                          <strong>Note:</strong> This ETF is not currently in our database, but dividend history may still be available.
+                        </div>
+                      )
+                    ) : (
+                      cefData.find(c => c.symbol === dividendModalSymbol) ? (
+                        <p className="text-sm font-normal text-muted-foreground mt-1">
+                          {cefData.find(c => c.symbol === dividendModalSymbol)?.name}
+                        </p>
+                      ) : (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                          <strong>Note:</strong> This CEF is not currently in our database, but dividend history may still be available.
+                        </div>
+                      )
                     )}
+                  </>
+                )}
               </DialogTitle>
             </DialogHeader>
             {dividendModalSymbol && (

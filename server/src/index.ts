@@ -29,6 +29,7 @@ import userRoutes from './routes/user.js';
 import newsletterRoutes from './routes/newsletter.js';
 import contactRoutes from './routes/contact.js';
 import adminNewsletterRoutes from './routes/admin/newsletters.js';
+import publicNewsletterRoutes from './routes/public-newsletters.js';
 
 // ============================================================================
 // Config Validation (non-fatal)
@@ -146,6 +147,7 @@ app.use('/api/admin/newsletters', adminNewsletterRoutes);  // MUST be before /ap
 app.use('/api/admin', etfRoutes); // legacy
 app.use('/api/user', userRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/public-newsletters', publicNewsletterRoutes);
 app.use('/api', contactRoutes);
 
 
