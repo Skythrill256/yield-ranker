@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Card } from "@/components/ui/card";
@@ -46,6 +46,7 @@ const CEFDetail = () => {
   const [comparisonCEFs, setComparisonCEFs] = useState<string[]>([]);
   const [showComparisonSelector, setShowComparisonSelector] = useState(false);
   const [comparisonSearchQuery, setComparisonSearchQuery] = useState("");
+  const comparisonInputRef = useRef<HTMLInputElement>(null);
 
   const toggleComparison = (compSymbol: string) => {
     if (comparisonCEFs.includes(compSymbol)) {
@@ -196,6 +197,19 @@ const CEFDetail = () => {
       buildChartData();
     }
   }, [cef, buildChartData, chartType]);
+
+  // Auto-focus input when comparison selector opens on mobile
+  useEffect(() => {
+    if (showComparisonSelector && comparisonInputRef.current) {
+      // Small delay to ensure DOM is ready, especially on mobile
+      const timer = setTimeout(() => {
+        comparisonInputRef.current?.focus();
+        // For mobile, we need to scroll into view and ensure keyboard opens
+        comparisonInputRef.current?.click();
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [showComparisonSelector]);
 
   if (!symbol) {
     return (
@@ -465,7 +479,16 @@ const CEFDetail = () => {
                 </div>
                 {chartType === "priceNAV" && (
                   <button
-                    onClick={() => setShowComparisonSelector(!showComparisonSelector)}
+                    onClick={() => {
+                      const willShow = !showComparisonSelector;
+                      setShowComparisonSelector(willShow);
+                      // Focus input when opening on mobile
+                      if (willShow) {
+                        setTimeout(() => {
+                          comparisonInputRef.current?.focus();
+                        }, 100);
+                      }
+                    }}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors bg-accent text-white hover:bg-accent/90 flex items-center gap-1 h-9"
                   >
                     <Plus className="h-3 w-3" />
@@ -529,7 +552,7 @@ const CEFDetail = () => {
             )}
 
             {chartType === "priceNAV" && showComparisonSelector && (
-              <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-lg relative">
+              <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-lg relative" style={{ touchAction: 'manipulation' }}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-semibold text-sm">Search CEFs to Compare</h3>
                   <button
@@ -543,13 +566,21 @@ const CEFDetail = () => {
                   </button>
                 </div>
                 <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
                   <Input
+                    ref={comparisonInputRef}
                     type="text"
+                    inputMode="text"
+                    autoCapitalize="characters"
                     placeholder="Search by symbol..."
                     value={comparisonSearchQuery}
                     onChange={(e) => setComparisonSearchQuery(e.target.value.toUpperCase())}
-                    className="pl-9"
+                    onFocus={(e) => {
+                      // Ensure input gets focus on mobile
+                      e.target.focus();
+                    }}
+                    className="pl-9 touch-manipulation"
+                    style={{ touchAction: 'manipulation' }}
                   />
                 </div>
                 {/* Only show search results when there's a query */}
