@@ -4,6 +4,26 @@
  * Handles newsletter/campaign management API calls for admins
  */
 
+export interface CampaignStats {
+    sent?: number;
+    opens_count?: number;
+    unique_opens_count?: number;
+    open_rate?: {
+        float?: number;
+        string?: string;
+    };
+    clicks_count?: number;
+    unique_clicks_count?: number;
+    click_rate?: {
+        float?: number;
+        string?: string;
+    };
+    unsubscribes_count?: number;
+    spam_count?: number;
+    hard_bounces_count?: number;
+    soft_bounces_count?: number;
+}
+
 export interface Campaign {
     id?: string;
     name: string;
@@ -13,6 +33,8 @@ export interface Campaign {
         html?: string;
         plain?: string;
     };
+    html?: string;
+    plain?: string;
     from_name?: string;
     from_email?: string;
     reply_to?: string;
@@ -20,6 +42,8 @@ export interface Campaign {
     created_at?: string;
     updated_at?: string;
     sent_at?: string;
+    // Statistics from MailerLite
+    stats?: CampaignStats;
 }
 
 export interface CampaignListResponse {
@@ -49,11 +73,11 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
     };
-    
+
     if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
     }
-    
+
     return headers;
 }
 
@@ -164,10 +188,10 @@ export async function createCampaignWithAttachments(
     try {
         const headers = await getAuthHeaders();
         const formData = new FormData();
-        
+
         // Add campaign data as JSON
         formData.append('campaign', JSON.stringify(campaign));
-        
+
         // Add attachments
         attachments.forEach((file) => {
             formData.append('attachments', file);
@@ -175,7 +199,7 @@ export async function createCampaignWithAttachments(
 
         // Remove Content-Type header to let browser set it with boundary for FormData
         const { 'Content-Type': _, ...headersWithoutContentType } = headers as Record<string, string>;
-        
+
         const response = await fetch(
             `${API_URL}/api/admin/newsletters`,
             {

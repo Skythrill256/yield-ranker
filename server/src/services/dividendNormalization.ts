@@ -328,8 +328,8 @@ export function calculateNormalizedDividendsForCEFs(
 
     const daysSincePrev = prevDate
       ? Math.round(
-          (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
+        (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
       : null;
 
     // GOLDEN LOGIC: CEF cadence should be based on the *look-back* gap (ex-date to previous ex-date).
@@ -337,38 +337,38 @@ export function calculateNormalizedDividendsForCEFs(
     // by a special just a few days later (e.g., DJIA/BST/SPE).
     const daysToNext = nextDate
       ? Math.round(
-          (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
+        (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
       : null;
 
     const gapDays =
       daysSincePrev !== null && daysSincePrev > 0
         ? daysSincePrev
         : daysToNext !== null && daysToNext > 0
-        ? daysToNext
-        : 0;
+          ? daysToNext
+          : 0;
 
     const amount =
       current.adj_amount !== null && current.adj_amount > 0
         ? Number(current.adj_amount)
         : current.div_cash > 0
-        ? Number(current.div_cash)
-        : 0;
+          ? Number(current.div_cash)
+          : 0;
 
     const prevAmount = prev
       ? prev.adj_amount !== null && prev.adj_amount > 0
         ? Number(prev.adj_amount)
         : prev.div_cash > 0
-        ? Number(prev.div_cash)
-        : 0
+          ? Number(prev.div_cash)
+          : 0
       : null;
 
     const nextAmount = next
       ? next.adj_amount !== null && next.adj_amount > 0
         ? Number(next.adj_amount)
         : next.div_cash > 0
-        ? Number(next.div_cash)
-        : 0
+          ? Number(next.div_cash)
+          : 0
       : null;
 
     // Get next 2 payments for lookahead check (for MDP funds)
@@ -377,8 +377,8 @@ export function calculateNormalizedDividendsForCEFs(
       ? next2.adj_amount !== null && next2.adj_amount > 0
         ? Number(next2.adj_amount)
         : next2.div_cash > 0
-        ? Number(next2.div_cash)
-        : 0
+          ? Number(next2.div_cash)
+          : 0
       : null;
 
     const medianAmount = median(rollingRegularAmounts.slice(-6));
@@ -407,14 +407,14 @@ export function calculateNormalizedDividendsForCEFs(
           historicalPattern === "Weekly"
             ? 52
             : historicalPattern === "Monthly"
-            ? 12
-            : historicalPattern === "Quarterly"
-            ? 4
-            : historicalPattern === "Semi-Annual"
-            ? 2
-            : historicalPattern === "Annual"
-            ? 1
-            : null;
+              ? 12
+              : historicalPattern === "Quarterly"
+                ? 4
+                : historicalPattern === "Semi-Annual"
+                  ? 2
+                  : historicalPattern === "Annual"
+                    ? 1
+                    : null;
       }
     }
 
@@ -479,10 +479,14 @@ export function calculateNormalizedDividendsForCEFs(
 
       // Priority 2: exact same amount as previous => Regular (even if gap is a bit off)
       // BUT: Don't override if we already detected an extreme spike
+      // BUT: Don't apply this rule for very short gaps (1-4 days) - those are likely clustered payments
+      //      which should be handled by the clustered payment rule below (checking lookahead)
       // CRITICAL: This must override December and other rules if amount matches previous
       // This prevents back-to-back specials when amounts are the same (e.g., 12/29/09 and 12/3/09 both $0.0525)
       let amountMatchesPrevious = false;
-      if (pmtType !== "Special" && prevAmount !== null && prevAmount > 0) {
+      const isClusteredGap = daysSincePrev !== null && daysSincePrev >= 1 && daysSincePrev <= 4;
+      if (pmtType !== "Special" && prevAmount !== null && prevAmount > 0 && !isClusteredGap) {
+        // For non-clustered gaps, same amount = Regular
         const a = Number(amount.toFixed(6));
         const b = Number(prevAmount.toFixed(6));
         if (a === b) {
@@ -781,14 +785,14 @@ export function calculateNormalizedDividendsForCEFs(
           dominantLabel === "Weekly"
             ? 5
             : dominantLabel === "Monthly"
-            ? 20
-            : dominantLabel === "Quarterly"
-            ? 46
-            : dominantLabel === "Semi-Annual"
-            ? 150
-            : dominantLabel === "Annual"
-            ? 250
-            : null;
+              ? 20
+              : dominantLabel === "Quarterly"
+                ? 46
+                : dominantLabel === "Semi-Annual"
+                  ? 150
+                  : dominantLabel === "Annual"
+                    ? 250
+                    : null;
 
         // Cadence break means "too soon" or "too late" relative to the dominant regular cadence.
         // For monthly: broaden window to 20-35 days (allows holiday shifts and early-January ex-dates).
@@ -878,14 +882,14 @@ export function calculateNormalizedDividendsForCEFs(
         dominantLabel === "Weekly"
           ? 52
           : dominantLabel === "Monthly"
-          ? 12
-          : dominantLabel === "Quarterly"
-          ? 4
-          : dominantLabel === "Semi-Annual"
-          ? 2
-          : dominantLabel === "Annual"
-          ? 1
-          : 12; // Default to Monthly (12) for CEFs if pattern unclear
+            ? 12
+            : dominantLabel === "Quarterly"
+              ? 4
+              : dominantLabel === "Semi-Annual"
+                ? 2
+                : dominantLabel === "Annual"
+                  ? 1
+                  : 12; // Default to Monthly (12) for CEFs if pattern unclear
 
       frequencyNum = 1;
       frequencyLabel = "Irregular";
@@ -983,49 +987,214 @@ export function calculateNormalizedDividendsForCEFs(
 }
 
 /**
- * Determine frequency based on days between payments
- * Using ranges to account for weekends/holidays
- * Based on DAYS FORMULA specification:
- * - Weekly: 5-10 days
- * - Monthly: 20-40 days
- * - Quarterly: 60-110 days
- * - Semi-Annually: 150-210 days
- * - Annually: 300-380 days
- * - Irregular/Special: Outside these ranges OR 1-4 days from last regular dividend
+ * ETF Dividend Frequency: Gap-Day Guidelines (Copilot Rules)
+ * 
+ * Core Ranges (strict):
+ * - Weekly: 5-9 days (≥3 of last 4 gaps must be in range)
+ * - Monthly: 26-34 days (≥3 of last 4 gaps must be in range)
+ * - Quarterly: 80-100 days (≥2 of last 3 gaps must be in range)
+ * - Semi-Annual: 160-200 days (≥2 of last 3 gaps must be in range)
+ * - Annual: 350-380 days (last 2 gaps must be in range)
+ * 
+ * Holiday Drift Allowances (when amount unchanged):
+ * - Weekly: 10-13 days (holiday drift around Thanksgiving/Christmas)
+ * - Monthly: 20-25 days (short-month drift) or 35-40 days (holiday drift)
+ * - Quarterly: 70-79 days (short quarter drift)
+ */
+
+// Core strict ranges for frequency classification
+const FREQUENCY_RANGES = {
+  WEEKLY: { min: 5, max: 9 },
+  WEEKLY_DRIFT: { min: 10, max: 13 }, // Holiday drift
+  MONTHLY: { min: 26, max: 34 },
+  MONTHLY_SHORT: { min: 20, max: 25 }, // Short-month drift (Feb, 30-day months)
+  MONTHLY_DRIFT: { min: 35, max: 40 }, // Holiday drift
+  QUARTERLY: { min: 80, max: 100 },
+  QUARTERLY_SHORT: { min: 70, max: 79 }, // Short quarter drift
+  SEMIANNUAL: { min: 160, max: 200 },
+  SEMIANNUAL_SHORT: { min: 140, max: 159 }, // Short semi-annual
+  ANNUAL: { min: 350, max: 380 },
+  ANNUAL_SHORT: { min: 300, max: 349 }, // Short annual
+} as const;
+
+/**
+ * Determine frequency based on days between payments (strict core ranges only)
+ * Returns null for ambiguous gaps that require historical analysis
+ */
+export function getFrequencyFromDaysStrict(days: number): number | null {
+  if (!isFinite(days) || days <= 0) return null;
+
+  // Weekly: 5-9 days (strict)
+  if (days >= FREQUENCY_RANGES.WEEKLY.min && days <= FREQUENCY_RANGES.WEEKLY.max) return 52;
+
+  // Monthly: 26-34 days (strict)
+  if (days >= FREQUENCY_RANGES.MONTHLY.min && days <= FREQUENCY_RANGES.MONTHLY.max) return 12;
+
+  // Quarterly: 80-100 days (strict)
+  if (days >= FREQUENCY_RANGES.QUARTERLY.min && days <= FREQUENCY_RANGES.QUARTERLY.max) return 4;
+
+  // Semi-Annual: 160-200 days (strict)
+  if (days >= FREQUENCY_RANGES.SEMIANNUAL.min && days <= FREQUENCY_RANGES.SEMIANNUAL.max) return 2;
+
+  // Annual: 350-380 days (strict)
+  if (days >= FREQUENCY_RANGES.ANNUAL.min && days <= FREQUENCY_RANGES.ANNUAL.max) return 1;
+
+  // Gap is outside core ranges - needs historical analysis
+  return null;
+}
+
+/**
+ * Check if a gap is within holiday/short-period drift range for a given frequency
+ */
+export function isHolidayDrift(days: number, priorFrequency: number): boolean {
+  if (!isFinite(days) || days <= 0) return false;
+
+  switch (priorFrequency) {
+    case 52: // Weekly - allow 10-13 day gaps as holiday drift
+      return days >= FREQUENCY_RANGES.WEEKLY_DRIFT.min && days <= FREQUENCY_RANGES.WEEKLY_DRIFT.max;
+    case 12: // Monthly - allow 20-25 (short-month) or 35-40 (holiday drift)
+      return (days >= FREQUENCY_RANGES.MONTHLY_SHORT.min && days <= FREQUENCY_RANGES.MONTHLY_SHORT.max) ||
+        (days >= FREQUENCY_RANGES.MONTHLY_DRIFT.min && days <= FREQUENCY_RANGES.MONTHLY_DRIFT.max);
+    case 4: // Quarterly - allow 70-79 day gaps
+      return days >= FREQUENCY_RANGES.QUARTERLY_SHORT.min && days <= FREQUENCY_RANGES.QUARTERLY_SHORT.max;
+    case 2: // Semi-Annual - allow 140-159 day gaps
+      return days >= FREQUENCY_RANGES.SEMIANNUAL_SHORT.min && days <= FREQUENCY_RANGES.SEMIANNUAL_SHORT.max;
+    case 1: // Annual - allow 300-349 day gaps
+      return days >= FREQUENCY_RANGES.ANNUAL_SHORT.min && days <= FREQUENCY_RANGES.ANNUAL_SHORT.max;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Determine dominant frequency from a series of gaps using majority voting
+ * Requires minimum number of gaps based on frequency type
+ * Returns null if no clear majority (≥60%) is found
+ */
+export function getDominantFrequencyFromGaps(gaps: number[]): number | null {
+  if (!gaps || gaps.length < 3) return null;
+
+  // Use last 4-6 gaps for analysis
+  const recentGaps = gaps.filter(g => typeof g === 'number' && isFinite(g) && g > 0).slice(-6);
+  if (recentGaps.length < 3) return null;
+
+  // Count frequencies using strict ranges
+  const counts = new Map<number, number>();
+  for (const gap of recentGaps) {
+    const freq = getFrequencyFromDaysStrict(gap);
+    if (freq !== null) {
+      counts.set(freq, (counts.get(freq) || 0) + 1);
+    }
+  }
+
+  // Find the dominant frequency (must have ≥60% of classified gaps)
+  let best: { freq: number; count: number } | null = null;
+  let totalClassified = 0;
+  for (const [freq, count] of counts.entries()) {
+    totalClassified += count;
+    if (!best || count > best.count) {
+      best = { freq, count };
+    }
+  }
+
+  if (!best || totalClassified < 3) return null;
+
+  // Require ≥60% dominance for confidence
+  const dominanceRatio = best.count / totalClassified;
+  return dominanceRatio >= 0.6 ? best.freq : null;
+}
+
+/**
+ * History-aware frequency detection with holiday drift support
+ * 
+ * Logic:
+ * 1. If gap is in a core strict range, use that frequency
+ * 2. If gap is in a drift range AND amount is unchanged from prior pattern, keep prior frequency
+ * 3. If neither, determine dominant frequency from historical gaps
+ * 4. A frequency change requires 2+ consecutive gaps in new band (not explainable by drift)
+ */
+export function getFrequencyWithHistoryAware(
+  currentGap: number,
+  priorGaps: number[],
+  currentAmount: number | null,
+  priorMedianAmount: number | null,
+  amountTolerance: number = 0.02 // 2% default
+): number {
+  // Step 1: Check if current gap is in a strict core range
+  const strictFreq = getFrequencyFromDaysStrict(currentGap);
+  if (strictFreq !== null) {
+    return strictFreq;
+  }
+
+  // Step 2: Get the dominant historical frequency
+  const dominantFreq = getDominantFrequencyFromGaps(priorGaps);
+
+  // Step 3: Check if this is holiday drift (gap is in drift range AND amount unchanged)
+  if (dominantFreq !== null) {
+    const isDrift = isHolidayDrift(currentGap, dominantFreq);
+
+    // Check if amount is stable (within tolerance of median)
+    const amountUnchanged =
+      currentAmount !== null &&
+      priorMedianAmount !== null &&
+      priorMedianAmount > 0 &&
+      Math.abs(currentAmount - priorMedianAmount) / priorMedianAmount <= amountTolerance;
+
+    if (isDrift && amountUnchanged) {
+      // Holiday/short-period drift with unchanged amount - keep prior frequency
+      return dominantFreq;
+    }
+
+    // Even if amount changed, if we have a clear dominant pattern, prefer it
+    // over arbitrary classification for ambiguous gaps (e.g., 15-25 days)
+    // This prevents the "Weekly" misclassification for monthly payers with short gaps
+    if (dominantFreq !== null && priorGaps.length >= 4) {
+      // Check if this could be a frequency CHANGE (need 2+ consecutive gaps in new band)
+      // For now, trust the dominant pattern unless we see evidence of a real change
+      return dominantFreq;
+    }
+  }
+
+  // Step 4: Fallback - use extended ranges (less strict but covers edge cases)
+  return getFrequencyFromDays(currentGap);
+}
+
+/**
+ * Legacy function: Determine frequency based on days between payments
+ * This function is kept for backward compatibility but uses extended ranges
+ * that are more forgiving than strict ranges.
+ * 
+ * IMPORTANT: This function should NOT be used for new frequency detection.
+ * Use getFrequencyWithHistoryAware() instead when historical data is available.
  */
 export function getFrequencyFromDays(days: number): number {
-  // Weekly: 5-10 days
-  if (days >= 5 && days <= 10) return 52; // Weekly
+  // First try strict ranges
+  const strict = getFrequencyFromDaysStrict(days);
+  if (strict !== null) return strict;
 
-  // Monthly: 20-40 days
-  if (days >= 20 && days <= 40) return 12; // Monthly
+  // Extended ranges for edge cases (with defaults that err toward Monthly)
+  // Weekly holiday drift: 10-13 days
+  if (days >= 10 && days <= 13) return 52;
 
-  // Quarterly: 60-110 days
-  if (days >= 60 && days <= 110) return 4; // Quarterly
+  // Short-month monthly: 14-25 days → Monthly (NOT Weekly!)
+  // This fixes the CCD issue where 18-day gaps were being classified as Weekly
+  if (days >= 14 && days <= 25) return 12;
 
-  // Semi-Annually: 150-210 days
-  if (days >= 150 && days <= 210) return 2; // Semi-annual
+  // Monthly extended: 35-59 days
+  if (days >= 35 && days <= 59) return 12;
 
-  // Annually: 300-380 days
-  if (days >= 300 && days <= 380) return 1; // Annual
+  // Quarterly extended: 60-79 days (before strict range starts)
+  if (days >= 60 && days < 80) return 4;
+  // Quarterly extended: 101-159 days (after strict range ends)
+  if (days > 100 && days < 160) return 4;
 
-  // Edge cases for gaps outside standard ranges but within reasonable bounds
-  // 11-19 days: between weekly and monthly, treat as weekly (transition periods)
-  if (days >= 11 && days < 20) return 52; // Transition periods (monthly to weekly)
+  // Semi-Annual extended: 201-349 days
+  if (days > 200 && days < 350) return 2;
 
-  // 41-59 days: between monthly and quarterly, treat as monthly
-  if (days > 40 && days < 60) return 12; // Irregular monthly pattern
+  // Beyond annual range: treat as annual
+  if (days > 380) return 1;
 
-  // 111-149 days: between quarterly and semi-annual, treat as quarterly
-  if (days > 110 && days < 150) return 4; // Irregular quarterly pattern
-
-  // 211-299 days: between semi-annual and annual, treat as semi-annual
-  if (days > 210 && days < 300) return 2; // Irregular semi-annual pattern
-
-  // > 380 days: beyond annual range, treat as annual (irregular)
-  if (days > 380) return 1; // Irregular annual pattern
-
-  // Default to monthly for any other case (shouldn't happen with valid data)
+  // Default to monthly for any unhandled case
   return 12;
 }
 
@@ -1124,8 +1293,8 @@ export function calculateNormalizedDividends(
 
     const daysSincePrev = prevDate
       ? Math.round(
-          (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
+        (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
       : null;
 
     const lastReg =
@@ -1135,16 +1304,16 @@ export function calculateNormalizedDividends(
     const lastRegDate = lastReg ? new Date(lastReg.ex_date) : null;
     const daysSinceLastRegularLike = lastRegDate
       ? Math.round(
-          (currentDate.getTime() - lastRegDate.getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
+        (currentDate.getTime() - lastRegDate.getTime()) /
+        (1000 * 60 * 60 * 24)
+      )
       : null;
 
     const nextDate = next ? new Date(next.ex_date) : null;
     const daysToNext = nextDate
       ? Math.round(
-          (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
+        (nextDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
       : null;
 
     const currentAmount = (current.adj_amount ?? current.div_cash) || 0;
@@ -1191,8 +1360,8 @@ export function calculateNormalizedDividends(
       modeFrequencyFromGaps(rollingRegularGaps) ??
       (rollingRegularGaps.length > 0
         ? getFrequencyFromDays(
-            rollingRegularGaps[rollingRegularGaps.length - 1]!
-          )
+          rollingRegularGaps[rollingRegularGaps.length - 1]!
+        )
         : null);
     const medianAmount = getMedianAmount(rollingRegularAmounts.slice(-6));
 
@@ -1253,8 +1422,8 @@ export function calculateNormalizedDividends(
 
     const daysSincePrev = prevDate
       ? Math.round(
-          (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
+        (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+      )
       : null;
 
     const pmtType = types[i];
@@ -1281,7 +1450,7 @@ export function calculateNormalizedDividends(
           const prevNSDate = new Date(sortedDividends[prevIdx].ex_date);
           const gapFromPrevNonSpecial = Math.round(
             (currentDate.getTime() - prevNSDate.getTime()) /
-              (1000 * 60 * 60 * 24)
+            (1000 * 60 * 60 * 24)
           );
           if (gapFromPrevNonSpecial > 0) {
             frequencyNum = getFrequencyFromDays(gapFromPrevNonSpecial);

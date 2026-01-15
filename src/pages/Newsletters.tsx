@@ -1,33 +1,26 @@
 /**
  * Newsletters Archive Page
  * 
- * Premium user page for viewing newsletter archive with Dashboard-style layout
+ * Premium user page for viewing newsletter archive with Home-style layout
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Logo } from '@/components/Logo';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { SEO } from '@/components/SEO';
 import {
     Loader2,
     Mail,
     Lock,
-    ChevronLeft,
-    PanelLeftClose,
-    PanelLeft,
-    Menu,
-    LogOut,
-    Home,
-    BarChart3,
-    Settings,
-    Star,
     ArrowLeft,
+    Calendar,
+    Crown,
 } from 'lucide-react';
 import { listCampaigns, getCampaign, type Campaign } from '@/services/newsletterAdmin';
-import { useFavorites } from '@/hooks/useFavorites';
-import { useCategory } from '@/utils/category';
 
 const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
@@ -43,22 +36,18 @@ const formatDate = (dateString?: string) => {
 };
 
 export default function Newsletters() {
-    const { user, profile, signOut } = useAuth();
+    const { user, profile } = useAuth();
     const navigate = useNavigate();
-    const currentCategory = useCategory();
-    const { favorites } = useFavorites(currentCategory === "cef" ? "cef" : "etf");
-    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
     const [loadingCampaign, setLoadingCampaign] = useState(false);
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     const isPremium = profile?.is_premium || user?.user_metadata?.is_premium;
 
     useEffect(() => {
         if (!isPremium) {
+            setLoading(false);
             return;
         }
         loadCampaigns();
@@ -102,398 +91,202 @@ export default function Newsletters() {
         }
     };
 
-    const logout = async () => {
-        await signOut();
-        navigate('/login');
-    };
-
-    if (!isPremium) {
-        return (
-            <div className="min-h-screen bg-slate-50 flex">
-                <aside
-                    className={`${sidebarCollapsed ? "w-16" : "w-64"
-                        } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
-                        }`}
-                >
-                    <div
-                        className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
-                            }`}
-                    >
-                        {!sidebarCollapsed && (
-                            <button
-                                onClick={() => navigate('/')}
-                                className="hover:opacity-80 transition-opacity cursor-pointer"
-                            >
-                                <Logo simple />
-                            </button>
-                        )}
-                        <button
-                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors hidden lg:block"
-                            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        >
-                            {sidebarCollapsed ? (
-                                <PanelLeft className="w-5 h-5 text-slate-600" />
-                            ) : (
-                                <PanelLeftClose className="w-5 h-5 text-slate-600" />
-                            )}
-                        </button>
-                        <button
-                            onClick={() => setMobileSidebarOpen(false)}
-                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors lg:hidden"
-                        >
-                            <ChevronLeft className="w-5 h-5 text-slate-600" />
-                        </button>
-                    </div>
-                    <nav
-                        className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
-                            }`}
-                    >
-                        <button
-                            onClick={() => navigate('/')}
-                            className={`w-full flex items-center ${sidebarCollapsed
-                                ? "justify-center px-0 py-2.5"
-                                : "gap-3 px-4 py-3"
-                                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
-                            title={sidebarCollapsed ? "Home" : ""}
-                        >
-                            <Home className="w-5 h-5" />
-                            {!sidebarCollapsed && "Home"}
-                        </button>
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className={`w-full flex items-center ${sidebarCollapsed
-                                ? "justify-center px-0 py-2.5"
-                                : "gap-3 px-4 py-3"
-                                } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
-                            title={sidebarCollapsed ? "Dashboard" : ""}
-                        >
-                            <BarChart3 className="w-5 h-5" />
-                            {!sidebarCollapsed && "Dashboard"}
-                        </button>
-                        <button
-                            onClick={() => navigate('/settings')}
-                            className={`w-full flex items-center ${sidebarCollapsed
-                                ? "justify-center px-0 py-2.5"
-                                : "gap-3 px-4 py-3"
-                                } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
-                            title={sidebarCollapsed ? "Settings" : ""}
-                        >
-                            <Settings className="w-5 h-5" />
-                            {!sidebarCollapsed && "Settings"}
-                        </button>
-                    </nav>
-                    <div
-                        className={`border-t border-slate-200 flex-shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"
-                            }`}
-                    >
-                        <button
-                            onClick={logout}
-                            className={`w-full flex items-center ${sidebarCollapsed
-                                ? "justify-center px-0 py-2.5"
-                                : "gap-3 px-4 py-3"
-                                } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
-                            title={sidebarCollapsed ? "Logout" : ""}
-                        >
-                            <LogOut className="w-5 h-5" />
-                            {!sidebarCollapsed && "Logout"}
-                        </button>
-                    </div>
-                </aside>
-                <main className="flex-1 flex flex-col overflow-hidden">
-                    <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-4 md:px-6 lg:px-8 flex items-center flex-shrink-0">
-                        <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="lg:hidden h-12 w-12"
-                                    onClick={() => setMobileSidebarOpen(true)}
-                                >
-                                    <Menu className="h-8 w-8" />
-                                </Button>
-                                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
-                                    Newsletter Archive
-                                </h1>
-                            </div>
-                        </div>
-                    </header>
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-                            <Card className="p-6 sm:p-8 md:p-10 lg:p-12 text-center border-2 border-slate-200">
-                                <Lock className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto text-muted-foreground mb-3 sm:mb-4" />
-                                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Premium Access Required</h1>
-                                <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 px-4">
-                                    You need a premium account to view newsletter archives.
-                                </p>
-                                <Button onClick={() => navigate('/dashboard')} className="text-sm sm:text-base">
-                                    Go to Dashboard
-                                </Button>
-                            </Card>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {mobileSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                    onClick={() => setMobileSidebarOpen(false)}
-                />
-            )}
-            <aside
-                className={`${sidebarCollapsed ? "w-16" : "w-64"
-                    } bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0 transition-all duration-300 ${mobileSidebarOpen ? "fixed left-0 top-0 z-50" : "hidden lg:flex"
-                    }`}
-            >
-                <div
-                    className={`h-16 border-b border-slate-200 flex items-center flex-shrink-0 ${sidebarCollapsed ? "justify-center px-2" : "px-6 justify-between"
-                        }`}
-                >
-                    {!sidebarCollapsed && (
-                        <button
-                            onClick={() => navigate('/')}
-                            className="hover:opacity-80 transition-opacity cursor-pointer"
-                        >
-                            <Logo simple />
-                        </button>
-                    )}
-                    <button
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors hidden lg:block"
-                        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    >
-                        {sidebarCollapsed ? (
-                            <PanelLeft className="w-5 h-5 text-slate-600" />
-                        ) : (
-                            <PanelLeftClose className="w-5 h-5 text-slate-600" />
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setMobileSidebarOpen(false)}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors lg:hidden"
-                    >
-                        <ChevronLeft className="w-5 h-5 text-slate-600" />
-                    </button>
-                </div>
-                <nav
-                    className={`flex-1 overflow-y-auto ${sidebarCollapsed ? "p-2 space-y-1" : "p-4 space-y-2"
-                        }`}
-                >
-                    <button
-                        onClick={() => navigate('/')}
-                        className={`w-full flex items-center ${sidebarCollapsed
-                            ? "justify-center px-0 py-2.5"
-                            : "gap-3 px-4 py-3"
-                            } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
-                        title={sidebarCollapsed ? "Home" : ""}
-                    >
-                        <Home className="w-5 h-5" />
-                        {!sidebarCollapsed && "Home"}
-                    </button>
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className={`w-full flex items-center ${sidebarCollapsed
-                            ? "justify-center px-0 py-2.5"
-                            : "gap-3 px-4 py-3"
-                            } rounded-lg text-sm font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-foreground`}
-                        title={sidebarCollapsed ? "Dashboard" : ""}
-                    >
-                        <BarChart3 className="w-5 h-5" />
-                        {!sidebarCollapsed && "Dashboard"}
-                    </button>
-                    <button
-                        onClick={() => {
-                            setShowFavoritesOnly(!showFavoritesOnly);
-                        }}
-                        className={`w-full flex items-center ${sidebarCollapsed
-                            ? "justify-center px-0 py-2.5"
-                            : "gap-3 px-4 py-3"
-                            } rounded-lg text-sm font-medium transition-colors ${showFavoritesOnly
-                                ? sidebarCollapsed
-                                    ? "bg-yellow-50 text-yellow-600"
-                                    : "bg-yellow-500 text-white"
-                                : "text-slate-600 hover:bg-slate-100 hover:text-foreground"
-                            }`}
-                        title={sidebarCollapsed ? "Favorites" : ""}
-                    >
-                        <Star
-                            className={`w-5 h-5 ${showFavoritesOnly && !sidebarCollapsed
-                                ? "fill-white"
-                                : showFavoritesOnly
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : ""
-                                }`}
-                        />
-                        {!sidebarCollapsed && (
-                            <span className="flex items-center gap-2">
-                                Favorites
-                                {favorites.size > 0 && (
-                                    <span
-                                        className={`text-xs px-2 py-0.5 rounded-full ${showFavoritesOnly
-                                            ? "bg-yellow-600 text-white"
-                                            : "bg-yellow-100 text-yellow-700"
-                                            }`}
-                                    >
-                                        {favorites.size}
-                                    </span>
-                                )}
+        <div className="min-h-screen bg-background flex flex-col">
+            <SEO
+                title="Newsletter Archive - Premium"
+                description="Access exclusive newsletter archive with in-depth analysis of covered call ETFs, closed-end funds, and dividend investing strategies."
+                keywords="premium newsletter, dividend investing, covered call ETF, CEF analysis, investment newsletter, premium content"
+                noIndex={true}
+            />
+            <Header />
+
+            {/* Hero Section */}
+            <section className="relative border-b overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5"></div>
+                <div className="absolute top-10 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-10 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl"></div>
+
+                <div className="container max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-20 relative">
+                    <div className="max-w-3xl mx-auto text-center space-y-4">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 text-amber-600 font-medium text-sm">
+                            <Crown className="w-4 h-4" />
+                            Premium Archive
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+                            Newsletter{' '}
+                            <span className="bg-gradient-to-r from-primary via-blue-600 to-accent bg-clip-text text-transparent">
+                                Archive
                             </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => navigate('/newsletters/archive')}
-                        className={`w-full flex items-center ${sidebarCollapsed
-                            ? "justify-center px-0 py-2.5"
-                            : "gap-3 px-4 py-3"
-                            } rounded-lg text-sm font-medium transition-colors bg-primary text-white`}
-                        title={sidebarCollapsed ? "Newsletters" : ""}
-                    >
-                        <Mail className="w-5 h-5" />
-                        {!sidebarCollapsed && "Newsletters"}
-                    </button>
-                    <button
-                        onClick={() => navigate('/settings')}
-                        className={`w-full flex items-center ${sidebarCollapsed
-                            ? "justify-center px-0 py-2.5"
-                            : "gap-3 px-4 py-3"
-                            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
-                        title={sidebarCollapsed ? "Settings" : ""}
-                    >
-                        <Settings className="w-5 h-5" />
-                        {!sidebarCollapsed && "Settings"}
-                    </button>
-                </nav>
-                <div
-                    className={`border-t border-slate-200 flex-shrink-0 ${sidebarCollapsed ? "p-2" : "p-4"
-                        }`}
-                >
-                    <button
-                        onClick={logout}
-                        className={`w-full flex items-center ${sidebarCollapsed
-                            ? "justify-center px-0 py-2.5"
-                            : "gap-3 px-4 py-3"
-                            } rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-foreground transition-colors`}
-                        title={sidebarCollapsed ? "Logout" : ""}
-                    >
-                        <LogOut className="w-5 h-5" />
-                        {!sidebarCollapsed && "Logout"}
-                    </button>
+                        </h1>
+                        <p className="text-lg text-muted-foreground leading-relaxed">
+                            Exclusive access to our complete newsletter archive with premium insights
+                        </p>
+                    </div>
                 </div>
-            </aside>
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-4 md:px-6 lg:px-8 flex items-center flex-shrink-0">
-                    <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="lg:hidden h-12 w-12"
-                                onClick={() => setMobileSidebarOpen(true)}
-                            >
-                                <Menu className="h-8 w-8" />
-                            </Button>
-                            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
-                                Newsletter Archive
-                            </h1>
+            </section>
+
+            {/* Main Content */}
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-12">
+                {!isPremium ? (
+                    // Non-premium user - show upgrade prompt
+                    <Card className="p-8 md:p-12 border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-yellow-50/50">
+                        <div className="text-center max-w-lg mx-auto">
+                            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center">
+                                <Lock className="w-8 h-8 text-amber-600" />
+                            </div>
+                            <h2 className="text-2xl md:text-3xl font-bold mb-3">Premium Access Required</h2>
+                            <p className="text-muted-foreground mb-6">
+                                Upgrade to premium to unlock our complete newsletter archive with exclusive insights and analysis.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                <Button onClick={() => navigate('/plans')} className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600">
+                                    <Crown className="w-4 h-4 mr-2" />
+                                    Upgrade to Premium
+                                </Button>
+                                <Button variant="outline" onClick={() => navigate('/newsletters')} className="border-2">
+                                    View Public Newsletters
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                ) : loading ? (
+                    <Card className="p-8 md:p-12 border-2 border-slate-200">
+                        <div className="flex flex-col items-center justify-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                            <p className="text-muted-foreground">Loading newsletter archive...</p>
+                        </div>
+                    </Card>
+                ) : selectedCampaign ? (
+                    // Viewing a specific campaign
+                    <div className="space-y-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setSelectedCampaign(null)}
+                            className="border-2"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Archive
+                        </Button>
+                        <Card className="p-6 sm:p-8 border-2 border-slate-200">
+                            <div className="mb-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                        <Crown className="w-3 h-3" />
+                                        Premium
+                                    </span>
+                                </div>
+                                <h2 className="text-2xl sm:text-3xl font-bold mb-2 break-words">
+                                    {selectedCampaign.name}
+                                </h2>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Calendar className="w-4 h-4" />
+                                    {formatDate(selectedCampaign.sent_at)}
+                                </div>
+
+                                {/* Campaign Statistics */}
+                                {selectedCampaign.stats && (
+                                    <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                        <h3 className="text-sm font-semibold text-foreground mb-3">Campaign Statistics</h3>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                            <div className="text-center">
+                                                <p className="text-2xl font-bold text-primary">{selectedCampaign.stats.sent || 0}</p>
+                                                <p className="text-xs text-muted-foreground">Sent</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-2xl font-bold text-green-600">{selectedCampaign.stats.unique_opens_count || 0}</p>
+                                                <p className="text-xs text-muted-foreground">Opens ({selectedCampaign.stats.open_rate?.string || '0%'})</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-2xl font-bold text-blue-600">{selectedCampaign.stats.unique_clicks_count || 0}</p>
+                                                <p className="text-xs text-muted-foreground">Clicks ({selectedCampaign.stats.click_rate?.string || '0%'})</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-2xl font-bold text-red-500">{(selectedCampaign.stats.unsubscribes_count || 0) + (selectedCampaign.stats.hard_bounces_count || 0)}</p>
+                                                <p className="text-xs text-muted-foreground">Unsubs/Bounces</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            {selectedCampaign.content?.html ? (
+                                <div
+                                    className="prose prose-sm sm:prose-base md:prose-lg max-w-none 
+                                        prose-headings:break-words prose-p:break-words 
+                                        prose-a:text-primary prose-a:break-all
+                                        prose-img:max-w-full prose-img:h-auto
+                                        prose-table:w-full prose-table:overflow-x-auto
+                                        [&_table]:block [&_table]:overflow-x-auto [&_table]:whitespace-nowrap"
+                                    dangerouslySetInnerHTML={{ __html: selectedCampaign.content.html }}
+                                />
+                            ) : selectedCampaign.content?.plain ? (
+                                <div className="whitespace-pre-wrap text-sm md:text-base break-words overflow-x-auto">
+                                    {selectedCampaign.content.plain}
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground">No content available</p>
+                            )}
+                        </Card>
+                    </div>
+                ) : campaigns.length === 0 ? (
+                    <Card className="p-8 md:p-12 border-2 border-slate-200">
+                        <div className="text-center">
+                            <Mail className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                            <h2 className="text-xl font-semibold mb-2">No Newsletters Yet</h2>
+                            <p className="text-muted-foreground">
+                                Check back soon for exclusive premium newsletters.
+                            </p>
+                        </div>
+                    </Card>
+                ) : (
+                    // Newsletter list
+                    <div className="space-y-6">
+                        <div className="mb-6">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-xl font-semibold text-foreground">
+                                    Premium Newsletter Archive
+                                </h2>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                                    <Crown className="w-3 h-3" />
+                                    Premium
+                                </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                {campaigns.length} exclusive newsletter{campaigns.length !== 1 ? 's' : ''} available
+                            </p>
+                        </div>
+                        <div className="grid gap-4">
+                            {campaigns.map((campaign) => (
+                                <Card
+                                    key={campaign.id}
+                                    className="p-5 sm:p-6 border-2 border-slate-200 hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group"
+                                    onClick={() => handleViewCampaign(campaign)}
+                                >
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-lg sm:text-xl font-semibold mb-2 break-words group-hover:text-primary transition-colors">
+                                                {campaign.name}
+                                            </h3>
+                                            <p className="text-sm text-muted-foreground mb-3 break-words line-clamp-2">
+                                                {campaign.subject}
+                                            </p>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                {formatDate(campaign.sent_at)}
+                                            </div>
+                                        </div>
+                                        {loadingCampaign && selectedCampaign?.id === campaign.id && (
+                                            <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0 mt-1" />
+                                        )}
+                                    </div>
+                                </Card>
+                            ))}
                         </div>
                     </div>
-                </header>
-                <div className="flex-1 overflow-y-auto">
-                    <div className="p-3 sm:p-4 md:p-6 lg:p-8 space-y-4 sm:space-y-6">
-                        {loading ? (
-                            <Card className="p-6 sm:p-8 md:p-12 border-2 border-slate-200">
-                                <div className="flex items-center justify-center">
-                                    <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-primary" />
-                                </div>
-                            </Card>
-                        ) : selectedCampaign ? (
-                            <div className="space-y-3 sm:space-y-4">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => setSelectedCampaign(null)}
-                                    className="border-2 text-sm sm:text-base"
-                                >
-                                    <ArrowLeft className="w-4 h-4 mr-2" />
-                                    <span className="hidden sm:inline">Back to Archive</span>
-                                    <span className="sm:hidden">Back</span>
-                                </Button>
-                                <Card className="p-4 sm:p-5 md:p-6 lg:p-8 border-2 border-slate-200">
-                                    <div className="mb-3 sm:mb-4">
-                                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 break-words">{selectedCampaign.name}</h2>
-                                        <p className="text-xs sm:text-sm text-muted-foreground">
-                                            Sent: {formatDate(selectedCampaign.sent_at)}
-                                        </p>
-                                    </div>
-                                    {selectedCampaign.content?.html ? (
-                                        <div
-                                            className="prose prose-sm sm:prose-base md:prose-lg max-w-none 
-                                                prose-headings:break-words prose-p:break-words 
-                                                prose-a:text-primary prose-a:break-all
-                                                prose-img:max-w-full prose-img:h-auto
-                                                prose-table:w-full prose-table:overflow-x-auto
-                                                [&_table]:block [&_table]:overflow-x-auto [&_table]:whitespace-nowrap"
-                                            dangerouslySetInnerHTML={{ __html: selectedCampaign.content.html }}
-                                        />
-                                    ) : selectedCampaign.content?.plain ? (
-                                        <div className="whitespace-pre-wrap text-xs sm:text-sm md:text-base break-words overflow-x-auto">
-                                            {selectedCampaign.content.plain}
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm sm:text-base text-muted-foreground">No content available</p>
-                                    )}
-                                </Card>
-                            </div>
-                        ) : campaigns.length === 0 ? (
-                            <Card className="p-6 sm:p-8 md:p-12 border-2 border-slate-200">
-                                <div className="text-center">
-                                    <Mail className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
-                                    <p className="text-sm sm:text-base text-muted-foreground">No newsletters available yet</p>
-                                </div>
-                            </Card>
-                        ) : (
-                            <div className="space-y-3 sm:space-y-4">
-                                <div className="mb-3 sm:mb-4">
-                                    <h2 className="text-base sm:text-lg md:text-xl font-semibold text-foreground">
-                                        Past Newsletters
-                                    </h2>
-                                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                                        Browse and read past newsletter issues
-                                    </p>
-                                </div>
-                                <div className="grid gap-3 sm:gap-4 md:gap-5">
-                                    {campaigns.map((campaign) => (
-                                        <Card
-                                            key={campaign.id}
-                                            className="p-4 sm:p-5 md:p-6 border-2 border-slate-200 hover:shadow-md transition-shadow cursor-pointer"
-                                            onClick={() => handleViewCampaign(campaign)}
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-base sm:text-lg md:text-xl font-semibold mb-1 sm:mb-2 break-words">{campaign.name}</h3>
-                                                    <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2 break-words">
-                                                        {campaign.subject}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Sent: {formatDate(campaign.sent_at)}
-                                                    </p>
-                                                </div>
-                                                {loadingCampaign && selectedCampaign?.id === campaign.id && (
-                                                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-primary flex-shrink-0 mt-1" />
-                                                )}
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                )}
             </main>
+
+            <Footer />
         </div>
     );
 }

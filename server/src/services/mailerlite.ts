@@ -37,6 +37,28 @@ export interface Campaign {
     created_at?: string;
     updated_at?: string;
     sent_at?: string;
+    // Statistics from MailerLite
+    stats?: CampaignStats;
+}
+
+export interface CampaignStats {
+    sent?: number;
+    opens_count?: number;
+    unique_opens_count?: number;
+    open_rate?: {
+        float?: number;
+        string?: string;
+    };
+    clicks_count?: number;
+    unique_clicks_count?: number;
+    click_rate?: {
+        float?: number;
+        string?: string;
+    };
+    unsubscribes_count?: number;
+    spam_count?: number;
+    hard_bounces_count?: number;
+    soft_bounces_count?: number;
 }
 
 export interface CampaignListResult {
