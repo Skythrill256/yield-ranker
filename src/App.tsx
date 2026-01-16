@@ -18,61 +18,51 @@ setupGlobalErrorHandlers();
 // Component to restore app state on mount and handle OAuth callbacks
 function AppStateRestorer() {
   useEffect(() => {
-    // Handle OAuth callback - clean up hash fragment after session is established
-    const handleAuthCallback = async () => {
-      // Check if we have an auth hash fragment (OAuth callback)
-      const hash = window.location.hash;
-      if (hash.includes('access_token') || hash.includes('error')) {
-        // Wait for Supabase to process the auth from the hash
-        // Supabase automatically processes hash fragments on initialization
-        let attempts = 0;
-        const maxAttempts = 10;
-        
-        const checkSession = async () => {
-          try {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            
-            // If we have a session or max attempts reached, clean up the hash
-            if (session || attempts >= maxAttempts || error) {
-              // Get the current pathname (should be root for OAuth callback)
-              const currentPath = window.location.pathname || '/';
-              
-              // Clean up the hash fragment
-              const cleanUrl = currentPath + window.location.search;
-              window.history.replaceState(null, '', cleanUrl);
-              
-              return;
-            }
-            
-            // No session yet, wait a bit more and retry
-            attempts++;
-            if (attempts < maxAttempts) {
-              setTimeout(checkSession, 300);
-            } else {
-              // Max attempts reached, clean up hash anyway
-              const cleanUrl = window.location.pathname || '/';
-              window.history.replaceState(null, '', cleanUrl);
-            }
-          } catch (error) {
-            console.error('Error checking session during OAuth callback:', error);
-            // Clean up hash on error
-            const cleanUrl = window.location.pathname || '/';
+    // Check if we have an auth hash fragment (OAuth callback)
+    const hash = window.location.hash;
+    const isOAuthCallback = hash.includes('access_token') || hash.includes('error');
+    
+    // Listen for auth state changes to know when OAuth is processed
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // When auth state changes and we have a session (or error), clean up the hash
+      if (isOAuthCallback && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT' || session)) {
+        // Clean up the hash fragment after a brief delay to ensure everything is processed
+        setTimeout(() => {
+          const currentPath = window.location.pathname || '/';
+          const cleanUrl = currentPath + window.location.search;
+          if (window.location.hash) {
             window.history.replaceState(null, '', cleanUrl);
           }
-        };
-        
-        // Start checking after a short delay to let Supabase process
-        setTimeout(checkSession, 200);
+        }, 100);
       }
-    };
+    });
 
-    handleAuthCallback();
+    // Also clean up hash if it still exists after a delay (fallback)
+    if (isOAuthCallback) {
+      const cleanupTimer = setTimeout(() => {
+        const currentPath = window.location.pathname || '/';
+        const cleanUrl = currentPath + window.location.search;
+        if (window.location.hash) {
+          window.history.replaceState(null, '', cleanUrl);
+        }
+      }, 2000); // Fallback cleanup after 2 seconds
+
+      return () => {
+        subscription.unsubscribe();
+        clearTimeout(cleanupTimer);
+      };
+    }
     
     // Restore app state after component mounts
     const timer = setTimeout(() => {
       restoreAppState();
     }, 100);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (!isOAuthCallback) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
   return null;
 }
