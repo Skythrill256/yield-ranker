@@ -271,28 +271,13 @@ export default function PublicNewsletters() {
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Button 
                                     onClick={() => {
-                                        // Navigate to home page and scroll to footer
-                                        if (window.location.pathname !== '/') {
-                                            navigate('/');
-                                            // Wait for navigation, then scroll
-                                            setTimeout(() => {
-                                                const footer = document.querySelector('footer');
-                                                const subscribeSection = footer?.querySelector('[data-newsletter-section]');
-                                                if (subscribeSection) {
-                                                    subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                } else if (footer) {
-                                                    footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                }
-                                            }, 100);
-                                        } else {
-                                            // Already on home page, just scroll
-                                            const footer = document.querySelector('footer');
-                                            const subscribeSection = footer?.querySelector('[data-newsletter-section]');
-                                            if (subscribeSection) {
-                                                subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            } else if (footer) {
-                                                footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            }
+                                        // Stay on same page and scroll to footer
+                                        const footer = document.querySelector('footer');
+                                        const subscribeSection = footer?.querySelector('[data-newsletter-section]');
+                                        if (subscribeSection) {
+                                            subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        } else if (footer) {
+                                            footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                         }
                                     }} 
                                     className="bg-primary hover:bg-primary/90 text-white h-11 px-6"

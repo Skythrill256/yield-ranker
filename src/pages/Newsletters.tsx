@@ -234,18 +234,14 @@ export default function Newsletters() {
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Button 
                                     onClick={() => {
-                                        // Navigate to home page and scroll to footer
-                                        navigate('/');
-                                        // Wait for navigation, then scroll
-                                        setTimeout(() => {
-                                            const footer = document.querySelector('footer');
-                                            const subscribeSection = footer?.querySelector('[data-newsletter-section]');
-                                            if (subscribeSection) {
-                                                subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            } else if (footer) {
-                                                footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                            }
-                                        }, 100);
+                                        // Stay on same page and scroll to footer
+                                        const footer = document.querySelector('footer');
+                                        const subscribeSection = footer?.querySelector('[data-newsletter-section]');
+                                        if (subscribeSection) {
+                                            subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        } else if (footer) {
+                                            footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }
                                     }} 
                                     className="bg-primary hover:bg-primary/90 text-white h-11 px-6"
                                 >

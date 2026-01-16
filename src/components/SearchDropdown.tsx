@@ -70,14 +70,19 @@ export const SearchDropdown = () => {
   const hasResults = filteredETFs.length > 0 || filteredCEFs.length > 0 || filteredPages.length > 0;
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // Use capture phase to handle events before they bubble
+    document.addEventListener("mousedown", handleClickOutside, true);
+    document.addEventListener("touchstart", handleClickOutside, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("touchstart", handleClickOutside, true);
+    };
   }, []);
 
   const handleSelect = (path: string) => {
@@ -177,8 +182,20 @@ export const SearchDropdown = () => {
             setQuery(e.target.value);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={(e) => {
+            e.stopPropagation();
+            setIsOpen(true);
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(true);
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            setIsOpen(true);
+          }}
           className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 bg-muted/50 border-2 border-border/50 focus:bg-background focus:border-primary/50 text-base sm:text-lg rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all"
+          style={{ touchAction: 'manipulation' }}
         />
         {query && (
           <button
