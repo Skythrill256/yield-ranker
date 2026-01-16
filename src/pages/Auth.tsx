@@ -8,7 +8,6 @@ import { useAuth } from "@/contexts/AuthContext";
 const Auth = () => {
   const [mode, setMode] = useState<"login" | "register">("login");
   const { session, loading } = useAuth();
-  console.log(1)
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as { from?: { pathname: string } } | null;

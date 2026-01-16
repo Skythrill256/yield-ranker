@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -16,12 +16,15 @@ import { supabase } from "@/lib/supabase";
 setupGlobalErrorHandlers();
 
 // Component to restore app state on mount and handle OAuth callbacks
+// This component must be rendered inside BrowserRouter for navigation to work
 function AppStateRestorer() {
+  const navigate = useNavigate();
+
   useEffect(() => {
     // Check if we have an auth hash fragment (OAuth callback)
     const hash = window.location.hash;
     const isOAuthCallback = hash.includes('access_token') || hash.includes('error');
-    
+
     // Listen for auth state changes to know when OAuth is processed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // When auth state changes and we have a session (or error), clean up the hash
@@ -32,6 +35,10 @@ function AppStateRestorer() {
           const cleanUrl = currentPath + window.location.search;
           if (window.location.hash) {
             window.history.replaceState(null, '', cleanUrl);
+          }
+          // After OAuth success, navigate to home page using React Router
+          if (session && event === 'SIGNED_IN') {
+            navigate('/', { replace: true });
           }
         }, 100);
       }
@@ -52,7 +59,7 @@ function AppStateRestorer() {
         clearTimeout(cleanupTimer);
       };
     }
-    
+
     // Restore app state after component mounts
     const timer = setTimeout(() => {
       restoreAppState();
@@ -63,7 +70,7 @@ function AppStateRestorer() {
         subscription.unsubscribe();
       }
     };
-  }, []);
+  }, [navigate]);
   return null;
 }
 
@@ -123,10 +130,10 @@ const retryLazyImport = (
                   });
                   window.location.reload();
                 }).catch(() => {
-                  window.location.reload();
+                  (window as Window).location.reload();
                 });
               } else {
-                window.location.reload();
+                (window as Window).location.reload();
               }
             }, 500);
             // Return a minimal loading component while reload happens
@@ -375,9 +382,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <GlobalErrorDialog />
-        <AppStateRestorer />
         <BrowserRouter>
           <ScrollToTop />
+          <AppStateRestorer />
           <AuthProvider>
             <ErrorBoundary>
               <Suspense fallback={null}>
