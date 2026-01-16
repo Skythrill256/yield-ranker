@@ -14,9 +14,36 @@ import { setupGlobalErrorHandlers, restoreAppState } from "@/utils/errorHandler"
 // Setup global error handlers on app initialization
 setupGlobalErrorHandlers();
 
-// Component to restore app state on mount
+// Component to restore app state on mount and handle OAuth callbacks
 function AppStateRestorer() {
   useEffect(() => {
+    // Handle OAuth callback - clean up hash fragment after session is established
+    const handleAuthCallback = () => {
+      // Check if we have an auth hash fragment (OAuth callback)
+      if (window.location.hash.includes('access_token') || window.location.hash.includes('error')) {
+        // Let Supabase handle the auth first (it reads from hash), then clean up URL
+        const timer = setTimeout(() => {
+          // Extract pathname from hash if it exists, otherwise use current pathname
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const redirectTo = hashParams.get('redirect_to') || window.location.pathname;
+          
+          // Only clean up if we're not on a specific auth page
+          if (!redirectTo.includes('/login') && !redirectTo.includes('/auth')) {
+            // Remove hash fragment but keep pathname and search
+            const cleanUrl = redirectTo + window.location.search;
+            window.history.replaceState(null, '', cleanUrl);
+          } else {
+            // If redirecting to auth page, just clean the hash
+            const cleanUrl = window.location.pathname + window.location.search;
+            window.history.replaceState(null, '', cleanUrl);
+          }
+        }, 1500); // Wait a bit longer for auth to complete
+        return () => clearTimeout(timer);
+      }
+    };
+
+    handleAuthCallback();
+    
     // Restore app state after component mounts
     const timer = setTimeout(() => {
       restoreAppState();

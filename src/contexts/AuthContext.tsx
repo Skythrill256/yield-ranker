@@ -25,6 +25,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setProfile(null);
       return;
     }
+    
+    // Get user email from auth session
+    const { data: { session } } = await supabase.auth.getSession();
+    const userEmail = session?.user?.email;
+    
     // Retry logic to handle race conditions on mobile/slow connections
     let attempts = 0;
     const maxAttempts = 3;
@@ -39,6 +44,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!error && data) {
         setProfile(data as ProfileRow);
         return;
+      }
+      
+      // If profile doesn't exist and we have user email, try to create it
+      if (error && error.code === 'PGRST116' && userEmail) {
+        // Profile doesn't exist, create it with premium status
+        const displayName = session?.user?.user_metadata?.display_name || 
+                          session?.user?.user_metadata?.full_name ||
+                          session?.user?.user_metadata?.name ||
+                          userEmail.split('@')[0];
+        
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            email: userEmail,
+            role: 'premium',
+            is_premium: true,
+            display_name: displayName,
+          })
+          .select('id,email,role,is_premium,display_name,created_at,updated_at,last_login,preferences')
+          .single();
+        
+        if (!createError && newProfile) {
+          setProfile(newProfile as ProfileRow);
+          return;
+        }
       }
       
       attempts++;

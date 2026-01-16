@@ -30,10 +30,18 @@ export const signInEmail = async (email: string, password: string) => {
 };
 
 export const signInGoogle = async () => {
+  // Get current pathname to redirect back after OAuth
+  const currentPath = window.location.pathname;
+  const redirectTo = currentPath && currentPath !== '/login' ? `${appUrl}${currentPath}` : appUrl;
+  
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: appUrl,
+      redirectTo: redirectTo,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
     },
   });
   if (error) {

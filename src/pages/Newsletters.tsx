@@ -185,7 +185,7 @@ export default function Newsletters() {
 
             {/* Main Content */}
             <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-                {checkingSubscription || loading ? (
+                {(checkingSubscription || loading) && user ? (
                     <Card className="p-8 md:p-12 border-2 border-slate-200">
                         <div className="flex flex-col items-center justify-center">
                             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
@@ -194,7 +194,7 @@ export default function Newsletters() {
                             </p>
                         </div>
                     </Card>
-                ) : !isPremium ? (
+                ) : !isPremium && user ? (
                     // Non-premium user - show upgrade prompt
                     <Card className="p-8 md:p-12 border-2 border-amber-200/50 bg-gradient-to-br from-amber-50/50 to-yellow-50/50">
                         <div className="text-center max-w-lg mx-auto">
@@ -234,13 +234,18 @@ export default function Newsletters() {
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Button 
                                     onClick={() => {
-                                        // Scroll to footer newsletter subscription
-                                        const footer = document.querySelector('footer');
-                                        if (footer) {
-                                            footer.scrollIntoView({ behavior: 'smooth' });
-                                        } else {
-                                            navigate('/');
-                                        }
+                                        // Navigate to home page and scroll to footer
+                                        navigate('/');
+                                        // Wait for navigation, then scroll
+                                        setTimeout(() => {
+                                            const footer = document.querySelector('footer');
+                                            const subscribeSection = footer?.querySelector('[data-newsletter-section]');
+                                            if (subscribeSection) {
+                                                subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            } else if (footer) {
+                                                footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            }
+                                        }, 100);
                                     }} 
                                     className="bg-primary hover:bg-primary/90 text-white h-11 px-6"
                                 >

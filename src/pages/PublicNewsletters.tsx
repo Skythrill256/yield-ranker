@@ -176,7 +176,7 @@ export default function PublicNewsletters() {
 
             {/* Main Content */}
             <main className="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-8 md:py-12">
-                {checkingSubscription || loading ? (
+                {(checkingSubscription || loading) && !isGuest && user ? (
                     <Card className="p-8 md:p-12 border-2 border-slate-200">
                         <div className="flex flex-col items-center justify-center">
                             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
@@ -271,12 +271,28 @@ export default function PublicNewsletters() {
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Button 
                                     onClick={() => {
-                                        // Scroll to footer newsletter subscription
-                                        const footer = document.querySelector('footer');
-                                        if (footer) {
-                                            footer.scrollIntoView({ behavior: 'smooth' });
-                                        } else {
+                                        // Navigate to home page and scroll to footer
+                                        if (window.location.pathname !== '/') {
                                             navigate('/');
+                                            // Wait for navigation, then scroll
+                                            setTimeout(() => {
+                                                const footer = document.querySelector('footer');
+                                                const subscribeSection = footer?.querySelector('[data-newsletter-section]');
+                                                if (subscribeSection) {
+                                                    subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                } else if (footer) {
+                                                    footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                }
+                                            }, 100);
+                                        } else {
+                                            // Already on home page, just scroll
+                                            const footer = document.querySelector('footer');
+                                            const subscribeSection = footer?.querySelector('[data-newsletter-section]');
+                                            if (subscribeSection) {
+                                                subscribeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            } else if (footer) {
+                                                footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            }
                                         }
                                     }} 
                                     className="bg-primary hover:bg-primary/90 text-white h-11 px-6"
