@@ -1,7 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
-const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+// IMPORTANT:
+// OAuth/email redirects must go back to the same origin the user is currently on.
+// If we use a hardcoded env URL (e.g. www vs non-www), and that host points to MailerLite,
+// the user will land on a MailerLite 404 after Google login.
+const appUrl = window.location.origin;
 
 export const signUpEmail = async (email: string, password: string, displayName?: string) => {
   const { data, error } = await supabase.auth.signUp({
