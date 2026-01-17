@@ -18,9 +18,9 @@ import { useToast } from '@/components/ui/use-toast';
 import {
     listPublicNewsletters,
     getPublicNewsletter,
+    checkSubscription,
     type PublicNewsletter,
 } from '@/services/publicNewsletter';
-import { listSubscribers } from '@/services/newsletterAdmin';
 import { NewsletterTemplate, type Attachment } from '@/components/NewsletterTemplate';
 
 const formatDate = (dateString?: string) => {
@@ -53,7 +53,7 @@ export default function PublicNewsletters() {
 
     // Check subscription status for any logged-in user (removed premium requirement)
     useEffect(() => {
-        const checkSubscription = async () => {
+        const doCheckSubscription = async () => {
             // Wait for auth to load
             if (authLoading) {
                 return;
@@ -65,12 +65,9 @@ export default function PublicNewsletters() {
             }
 
             try {
-                const result = await listSubscribers(10000, 0);
-                if (result.success && result.subscribers) {
-                    const subscribed = result.subscribers.some(
-                        (sub) => sub.email.toLowerCase() === userEmail.toLowerCase() && sub.status === 'active'
-                    );
-                    setIsSubscribed(subscribed);
+                const result = await checkSubscription(userEmail);
+                if (result.success) {
+                    setIsSubscribed(result.isSubscribed);
                 }
             } catch (error) {
                 console.error('Failed to check subscription:', error);
@@ -79,7 +76,7 @@ export default function PublicNewsletters() {
             }
         };
 
-        checkSubscription();
+        doCheckSubscription();
     }, [userEmail, authLoading]);
 
     // Listen for subscription changes from footer component

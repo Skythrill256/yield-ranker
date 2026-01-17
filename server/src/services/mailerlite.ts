@@ -199,7 +199,8 @@ export async function removeSubscriber(email: string): Promise<UnsubscribeResult
 }
 
 /**
- * List all subscribers
+ * Get a single subscriber by email
+ * Uses MailerLite API: GET /api/subscribers/{email}
  */
 export interface Subscriber {
     id: string;
@@ -208,6 +209,80 @@ export interface Subscriber {
     subscribed_at?: string;
     unsubscribed_at?: string;
 }
+
+export interface GetSubscriberResult {
+    success: boolean;
+    subscriber?: Subscriber;
+    isSubscribed: boolean;
+    message?: string;
+}
+
+export async function getSubscriber(email: string): Promise<GetSubscriberResult> {
+    const mailerlite = getClient();
+
+    if (!mailerlite) {
+        return {
+            success: false,
+            isSubscribed: false,
+            message: 'Newsletter service is not configured',
+        };
+    }
+
+    try {
+        const response = await mailerlite.subscribers.find(email.toLowerCase().trim());
+        const sub = response.data?.data;
+
+        if (!sub) {
+            return {
+                success: true,
+                isSubscribed: false,
+                message: 'Subscriber not found',
+            };
+        }
+
+        const subscriber: Subscriber = {
+            id: sub.id || '',
+            email: sub.email || '',
+            status: sub.status || 'active',
+            subscribed_at: sub.subscribed_at,
+            unsubscribed_at: sub.unsubscribed_at,
+        };
+
+        // Check if the subscriber status is active
+        const isSubscribed = subscriber.status === 'active';
+
+        logger.info('MailerLite', `Found subscriber: ${email} (status: ${subscriber.status})`);
+        return {
+            success: true,
+            subscriber,
+            isSubscribed,
+        };
+    } catch (error: unknown) {
+        const err = error as { response?: { status?: number; data?: { message?: string } }; message?: string };
+
+        // 404 means subscriber not found - this is not an error, just means they're not subscribed
+        if (err?.response?.status === 404) {
+            logger.info('MailerLite', `Subscriber not found: ${email}`);
+            return {
+                success: true,
+                isSubscribed: false,
+                message: 'Subscriber not found',
+            };
+        }
+
+        const errorMessage = err?.response?.data?.message || err?.message || 'Unknown error';
+        logger.error('MailerLite', `Failed to get subscriber: ${errorMessage}`);
+        return {
+            success: false,
+            isSubscribed: false,
+            message: 'Failed to check subscription status. Please try again later.',
+        };
+    }
+}
+
+/**
+ * List all subscribers
+ */
 
 export interface SubscriberListResult {
     success: boolean;

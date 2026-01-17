@@ -21,7 +21,8 @@ import {
     Calendar,
     Crown,
 } from 'lucide-react';
-import { listCampaigns, getCampaign, type Campaign, listSubscribers } from '@/services/newsletterAdmin';
+import { listCampaigns, getCampaign, type Campaign } from '@/services/newsletterAdmin';
+import { checkSubscription } from '@/services/publicNewsletter';
 
 const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
@@ -52,19 +53,16 @@ export default function Newsletters() {
 
     // Check subscription status for premium users
     useEffect(() => {
-        const checkSubscription = async () => {
+        const doCheckSubscription = async () => {
             if (!isPremium || !userEmail) {
                 setCheckingSubscription(false);
                 return;
             }
 
             try {
-                const result = await listSubscribers(10000, 0);
-                if (result.success && result.subscribers) {
-                    const subscribed = result.subscribers.some(
-                        (sub) => sub.email.toLowerCase() === userEmail.toLowerCase() && sub.status === 'active'
-                    );
-                    setIsSubscribed(subscribed);
+                const result = await checkSubscription(userEmail);
+                if (result.success) {
+                    setIsSubscribed(result.isSubscribed);
                 }
             } catch (error) {
                 console.error('Failed to check subscription:', error);
@@ -73,7 +71,7 @@ export default function Newsletters() {
             }
         };
 
-        checkSubscription();
+        doCheckSubscription();
     }, [isPremium, userEmail]);
 
     // Listen for subscription changes from footer component
@@ -232,7 +230,7 @@ export default function Newsletters() {
                                 </p>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                                <Button 
+                                <Button
                                     onClick={() => {
                                         // Stay on same page and scroll to footer
                                         const footer = document.querySelector('footer');
@@ -242,7 +240,7 @@ export default function Newsletters() {
                                         } else if (footer) {
                                             footer.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                         }
-                                    }} 
+                                    }}
                                     className="bg-primary hover:bg-primary/90 text-white h-11 px-6"
                                 >
                                     <Mail className="w-4 h-4 mr-2" />

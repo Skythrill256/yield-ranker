@@ -103,3 +103,44 @@ export async function getPublicNewsletter(
         };
     }
 }
+
+export interface CheckSubscriptionResponse {
+    success: boolean;
+    isSubscribed: boolean;
+    message?: string;
+}
+
+/**
+ * Check if an email is subscribed to the newsletter
+ */
+export async function checkSubscription(
+    email: string
+): Promise<CheckSubscriptionResponse> {
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/api/newsletter/check-subscription`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            }
+        );
+
+        const data = await response.json();
+
+        return {
+            success: data.success ?? false,
+            isSubscribed: data.isSubscribed ?? false,
+            message: data.message,
+        };
+    } catch (error) {
+        console.error('Failed to check subscription:', error);
+        return {
+            success: false,
+            isSubscribed: false,
+            message: (error as Error).message || 'Network error',
+        };
+    }
+}
