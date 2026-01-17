@@ -168,17 +168,25 @@ export const NewsletterSubscribe = () => {
     // Show subscribed state with archive link and unsubscribe option
     if (isSubscribed) {
         return (
-            <div className="flex flex-col gap-3 w-full max-w-md">
-                {/* Subscribed badge and actions */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full flex-shrink-0">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                        <span className="text-sm font-medium text-green-700">Subscribed</span>
+            <div className="w-full max-w-md">
+                {/* Mobile-optimized subscribed card */}
+                <div className="flex flex-col gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50/50 border border-green-200/60 shadow-sm">
+                    {/* Success indicator with animation */}
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 shadow-md shadow-green-500/20">
+                            <CheckCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-green-800">You're subscribed!</p>
+                            <p className="text-xs text-green-600/80 truncate">Newsletter updates enabled</p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+
+                    {/* Actions - stacked on mobile for better touch targets */}
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <Link
-                            to="/public-newsletters"
-                            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 bg-primary/5 hover:bg-primary/10 rounded-lg transition-colors flex-1 sm:flex-initial justify-center"
+                            to="/newsletters"
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary rounded-lg transition-all shadow-sm hover:shadow-md active:scale-[0.98] flex-1"
                         >
                             <Archive className="h-4 w-4" />
                             View Archive
@@ -186,14 +194,17 @@ export const NewsletterSubscribe = () => {
                         <Button
                             onClick={handleUnsubscribe}
                             disabled={unsubscribing}
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 whitespace-nowrap"
+                            className="h-10 px-4 text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-all"
                         >
                             {unsubscribing ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                                <X className="h-4 w-4" />
+                                <>
+                                    <X className="h-4 w-4 mr-1.5" />
+                                    <span className="text-xs">Unsubscribe</span>
+                                </>
                             )}
                         </Button>
                     </div>
