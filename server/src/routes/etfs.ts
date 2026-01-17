@@ -314,6 +314,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
     }
 
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    // Use array format (header: 1) which works reliably regardless of Excel formatting
     const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false }) as unknown[][];
 
     logger.info('Upload', `Total rows in file: ${allRows.length}`);
@@ -324,13 +325,18 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       logger.info('Upload', `Second row: ${JSON.stringify(allRows[1])}`);
     }
 
-    // Find header row
+    if (allRows.length < 2) {
+      cleanupFile(filePath);
+      res.status(400).json({ error: 'Excel file is empty or has no data rows' });
+      return;
+    }
+
+    // Find header row - look for row containing 'symbol' or 'ticker'
     let headerRowIndex = 0;
     for (let i = 0; i < Math.min(allRows.length, 20); i++) {
       const row = allRows[i];
       if (!Array.isArray(row)) continue;
       const rowStr = row.map(c => String(c).toLowerCase().trim());
-      logger.info('Upload', `Checking row ${i} for headers: ${JSON.stringify(rowStr)}`);
       if (rowStr.includes('symbol') || rowStr.includes('ticker')) {
         headerRowIndex = i;
         logger.info('Upload', `Found header row at index: ${headerRowIndex}`);
@@ -338,22 +344,41 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       }
     }
 
-    const rawData = XLSX.utils.sheet_to_json(sheet, { range: headerRowIndex, defval: null, blankrows: false }) as Record<string, unknown>[];
+    // Extract headers from the identified header row
+    const headerRow = allRows[headerRowIndex] as unknown[];
+    const headers: string[] = headerRow.map((h, idx) => {
+      const headerStr = String(h || `column_${idx}`).trim();
+      return headerStr || `column_${idx}`;
+    });
+    logger.info('Upload', `Extracted headers: ${JSON.stringify(headers)}`);
 
-    if (!rawData || rawData.length === 0) {
-      cleanupFile(filePath);
-      res.status(400).json({ error: 'Excel file is empty' });
-      return;
-    }
-
-    // Build header map
-    const headers = Object.keys(rawData[0] ?? {});
-    logger.info('Upload', `Detected headers: ${JSON.stringify(headers)}`);
+    // Build header map (lowercase -> original header name)
     const headerMap: Record<string, string> = {};
     headers.forEach(h => {
       if (h) headerMap[String(h).trim().toLowerCase()] = h;
     });
     logger.info('Upload', `Header map: ${JSON.stringify(headerMap)}`);
+
+    // Convert remaining rows to objects using extracted headers
+    const rawData: Record<string, unknown>[] = [];
+    for (let i = headerRowIndex + 1; i < allRows.length; i++) {
+      const row = allRows[i] as unknown[];
+      if (!row || row.length === 0) continue;
+
+      const obj: Record<string, unknown> = {};
+      headers.forEach((header, idx) => {
+        obj[header] = row[idx] ?? null;
+      });
+      rawData.push(obj);
+    }
+
+    logger.info('Upload', `Parsed ${rawData.length} data rows`);
+
+    if (rawData.length === 0) {
+      cleanupFile(filePath);
+      res.status(400).json({ error: 'Excel file has no data rows after header' });
+      return;
+    }
 
     // Find columns
     const symbolCol = findColumn(headerMap, 'symbol', 'symbols', 'ticker');
@@ -377,6 +402,7 @@ async function handleStaticUpload(req: Request, res: Response): Promise<void> {
       });
       return;
     }
+
 
     const issuerCol = findColumn(headerMap, 'issuer');
     const descCol = findColumn(headerMap, 'desc', 'description', 'name');
