@@ -424,13 +424,22 @@ export function calculateNormalizedDividendsForCEFs(
       medianAmount !== null &&
       amount > 0 &&
       isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
-    if (amountStable && rollingRegularGapsToNext.length >= 3) {
+    
+    // Also check if amount is "reasonably close" (within 15%) for year-end adjustments
+    // This handles cases like NIE where $0.526 is a small adjustment from $0.50 regular quarterly
+    const amountReasonablyClose =
+      medianAmount !== null &&
+      amount > 0 &&
+      medianAmount > 0 &&
+      Math.abs(amount - medianAmount) / medianAmount <= 0.15; // 15% tolerance for small adjustments
+    
+    if ((amountStable || amountReasonablyClose) && rollingRegularGapsToNext.length >= 3) {
       const historicalPattern = determinePatternFrequencyLabel(
         rollingRegularGapsToNext
       );
       if (historicalPattern && historicalPattern !== "Irregular") {
-        // Override gap-based frequency with historical pattern when amount is stable
-        // This ensures all $0.4625 dividends get the same frequency, not different ones based on gaps
+        // Override gap-based frequency with historical pattern when amount is stable or reasonably close
+        // This ensures all $0.50 quarterly dividends get Quarterly frequency, even if gap is off-cadence (e.g., 18 days)
         frequencyLabel = historicalPattern;
         frequencyNum =
           historicalPattern === "Weekly"
