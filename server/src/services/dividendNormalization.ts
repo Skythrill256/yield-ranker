@@ -324,8 +324,9 @@ export function calculateNormalizedDividendsForCEFs(
     amountStabilityRelTol?: number; // "unchanged" threshold
   }
 ): NormalizedDividendCEF[] {
-  // "Golden logic": only call something Special on a very strong amount signal by default (>= 250% of median).
-  const specialMultiplier = options?.specialMultiplier ?? 2.5;
+  // "Golden logic": only call something Special on a very strong amount signal by default (>= 230% of median).
+  // Lowered from 2.5× to 2.3× to catch borderline cases like BSTZ 12/22/25 ($0.517 = 2.37× median)
+  const specialMultiplier = options?.specialMultiplier ?? 2.3;
   const roundNumberMultiplier = options?.roundNumberMultiplier ?? 1.5;
   const amountStabilityRelTol = options?.amountStabilityRelTol ?? 0.02; // 2% default
 
