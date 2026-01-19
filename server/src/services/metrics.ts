@@ -927,8 +927,21 @@ export async function calculateMetrics(ticker: string): Promise<ETFMetrics> {
     return new Date(b.ex_date).getTime() - new Date(a.ex_date).getTime();
   });
 
+  // CRITICAL: For lastDividend calculation, use ONLY actual Regular or Initial dividends
+  // Do NOT use Special dividends, even if they have a regular_component
+  // Special dividends should never be used for annual dividend calculation
+  // The regular_component is for display/analysis, but for "last regular dividend" we need the actual last regular
+  const actualRegularOnly = sortedRegular.filter((d: any) => {
+    const pmtType = String(d?.pmt_type ?? '').trim().toLowerCase();
+    return pmtType === 'regular' || pmtType === 'initial';
+  });
+
   let lastDividend: number | null = null;
-  if (sortedRegular.length > 0) {
+  // Use actual regular dividends first (excluding specials)
+  if (actualRegularOnly.length > 0) {
+    lastDividend = getDivAmount(actualRegularOnly[0]);
+  } else if (sortedRegular.length > 0) {
+    // Fallback to the filtered list (which may include specials with regular_component) only if no actual regulars exist
     lastDividend = getDivAmount(sortedRegular[0]);
   }
 
