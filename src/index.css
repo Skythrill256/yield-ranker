@@ -258,4 +258,33 @@ All colors MUST be HSL.
   .scrollbar-track-slate-100::-webkit-scrollbar-track {
     background: rgb(241 245 249);
   }
+
+  /* Mobile touch optimization for Samsung and other devices */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* Ensure input fields are tappable and focusable on all mobile devices */
+  input[type="search"],
+  input[type="text"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    touch-action: manipulation;
+  }
+
+  /* Prevent zoom on input focus for mobile devices while keeping accessibility */
+  @media screen and (max-width: 768px) {
+    input[type="search"],
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="url"],
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+  }
 }
