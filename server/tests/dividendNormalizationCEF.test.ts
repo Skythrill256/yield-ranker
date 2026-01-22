@@ -156,9 +156,12 @@ describe('dividendNormalization (CEF) - BUI/BST special dividend detection', () 
     expect(dec12!.days_since_prev).toBe(28); // on-cadence (within 20-35 days)
   });
 
-  test('Off-cadence dividend NOT > 3× median should remain REGULAR', () => {
+  test('Off-cadence dividend NOT > 3× median should remain REGULAR (non-December)', () => {
     // User requirement: BOTH conditions must be true
     // If amount is not > 3× median, even off-cadence should be Regular
+    // NOTE: This test uses a non-December off-cadence scenario because
+    // second December dividends have a separate rule that marks them as Special
+    // when amount differs from regular pattern (see NIE 12/29 special detection)
     const divs = [
       { id: 1, ticker: 'TEST', ex_date: '2024-01-15', div_cash: 0.10, adj_amount: 0.10 },
       { id: 2, ticker: 'TEST', ex_date: '2024-02-14', div_cash: 0.10, adj_amount: 0.10 },
@@ -172,8 +175,43 @@ describe('dividendNormalization (CEF) - BUI/BST special dividend detection', () 
       { id: 10, ticker: 'TEST', ex_date: '2024-10-14', div_cash: 0.10, adj_amount: 0.10 },
       { id: 11, ticker: 'TEST', ex_date: '2024-11-14', div_cash: 0.10, adj_amount: 0.10 },
       { id: 12, ticker: 'TEST', ex_date: '2024-12-12', div_cash: 0.10, adj_amount: 0.10 },
-      // Off-cadence (5 days) but NOT > 3× median ($0.20 < 3 × $0.10 = $0.30)
+      { id: 13, ticker: 'TEST', ex_date: '2025-01-14', div_cash: 0.10, adj_amount: 0.10 },
+      // Off-cadence (5 days, in February) but NOT > 3× median ($0.20 < 3 × $0.10 = $0.30)
       // Should be REGULAR because amount is not > 3× median
+      { id: 14, ticker: 'TEST', ex_date: '2025-02-19', div_cash: 0.20, adj_amount: 0.20 },
+      { id: 15, ticker: 'TEST', ex_date: '2025-03-14', div_cash: 0.10, adj_amount: 0.10 },
+    ];
+
+    const res = calculateNormalizedDividendsForCEFs(divs);
+    const byDate = new Map(res.map((r) => [divs.find((d) => d.id === r.id)!.ex_date, r]));
+
+    const feb19 = byDate.get('2025-02-19');
+    expect(feb19).toBeDefined();
+    // Off-cadence (5 days from Jan 14) but amount ($0.20) is only 2× median ($0.10), not > 3×
+    // Should be Regular because both conditions are NOT met
+    expect(feb19!.pmt_type).toBe('Regular');
+  });
+
+  test('Second December dividend with different amount should be SPECIAL (NIE-style)', () => {
+    // Second December dividend rule: Even if amount is NOT > 3× median,
+    // having two dividends in December is inherently unusual and indicates a special distribution.
+    // Real-world example: NIE 2025-12-29 ($0.526) is officially a "special year-end distribution"
+    // even though it's only 5.2% more than the regular $0.50 quarterly amount.
+    const divs = [
+      { id: 1, ticker: 'TEST', ex_date: '2024-01-15', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 2, ticker: 'TEST', ex_date: '2024-02-14', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 3, ticker: 'TEST', ex_date: '2024-03-14', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 4, ticker: 'TEST', ex_date: '2024-04-15', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 5, ticker: 'TEST', ex_date: '2024-05-14', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 6, ticker: 'TEST', ex_date: '2024-06-13', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 7, ticker: 'TEST', ex_date: '2024-07-15', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 8, ticker: 'TEST', ex_date: '2024-08-14', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 9, ticker: 'TEST', ex_date: '2024-09-12', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 10, ticker: 'TEST', ex_date: '2024-10-14', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 11, ticker: 'TEST', ex_date: '2024-11-14', div_cash: 0.10, adj_amount: 0.10 },
+      { id: 12, ticker: 'TEST', ex_date: '2024-12-12', div_cash: 0.10, adj_amount: 0.10 }, // First December
+      // Second December dividend, 5 days later, with different amount (2× median)
+      // Should be SPECIAL because it's a second December dividend with different amount
       { id: 13, ticker: 'TEST', ex_date: '2024-12-17', div_cash: 0.20, adj_amount: 0.20 },
       { id: 14, ticker: 'TEST', ex_date: '2025-01-16', div_cash: 0.10, adj_amount: 0.10 },
     ];
@@ -183,9 +221,12 @@ describe('dividendNormalization (CEF) - BUI/BST special dividend detection', () 
 
     const dec17 = byDate.get('2024-12-17');
     expect(dec17).toBeDefined();
-    // Off-cadence (5 days) but amount ($0.20) is only 2× median ($0.10), not > 3×
-    // Should be Regular because both conditions are NOT met
-    expect(dec17!.pmt_type).toBe('Regular');
+    // Second December dividend with different amount = Special
+    expect(dec17!.pmt_type).toBe('Special');
+
+    // First December should remain Regular
+    const dec12 = byDate.get('2024-12-12');
+    expect(dec12!.pmt_type).toBe('Regular');
   });
 
   test('Median should use last 12 dividends, not last 6', () => {
