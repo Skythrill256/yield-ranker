@@ -17,6 +17,8 @@ export const SearchDropdown = () => {
   const location = useLocation();
   const currentCategory = useCategory();
   const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isInteractingRef = useRef(false);
 
   const pages = [
     { name: "Our Focus", path: "/our-focus", icon: FileText },
@@ -71,17 +73,30 @@ export const SearchDropdown = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+      // Don't close if currently interacting with input
+      if (isInteractingRef.current) {
+        return;
       }
+
+      const target = event.target as Node;
+      
+      // Don't close if clicking inside the search component
+      if (searchRef.current && searchRef.current.contains(target)) {
+        return;
+      }
+
+      // Close the dropdown
+      setIsOpen(false);
     };
 
-    // Use capture phase to handle events before they bubble
-    document.addEventListener("mousedown", handleClickOutside, true);
-    document.addEventListener("touchstart", handleClickOutside, true);
+    // Use both mousedown and touchend for better mobile compatibility
+    // touchend is more reliable than touchstart on Samsung devices
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchend", handleClickOutside);
+    
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
-      document.removeEventListener("touchstart", handleClickOutside, true);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchend", handleClickOutside);
     };
   }, []);
 
@@ -175,7 +190,9 @@ export const SearchDropdown = () => {
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground pointer-events-none z-10" />
         <Input
+          ref={inputRef}
           type="text"
+          inputMode="search"
           placeholder={currentCategory === "cef" ? "Search CEFs..." : "Search ETFs..."}
           value={query}
           onChange={(e) => {
@@ -184,26 +201,64 @@ export const SearchDropdown = () => {
           }}
           onFocus={(e) => {
             e.stopPropagation();
+            e.preventDefault();
+            isInteractingRef.current = true;
             setIsOpen(true);
+            // Ensure input maintains focus on mobile
+            setTimeout(() => {
+              inputRef.current?.focus();
+              isInteractingRef.current = false;
+            }, 100);
+          }}
+          onBlur={() => {
+            // Delay to allow clicks on results to register
+            setTimeout(() => {
+              isInteractingRef.current = false;
+            }, 200);
           }}
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
+            isInteractingRef.current = true;
             setIsOpen(true);
+            setTimeout(() => {
+              isInteractingRef.current = false;
+            }, 100);
           }}
           onTouchStart={(e) => {
             e.stopPropagation();
+            isInteractingRef.current = true;
             setIsOpen(true);
+          }}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            // Keep dropdown open after touch
+            setTimeout(() => {
+              isInteractingRef.current = false;
+            }, 200);
+          }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            isInteractingRef.current = true;
           }}
           className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 bg-muted/50 border-2 border-border/50 focus:bg-background focus:border-primary/50 text-base sm:text-lg rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all"
           style={{ touchAction: 'manipulation' }}
         />
         {query && (
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuery("");
+              setIsOpen(false);
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               setQuery("");
               setIsOpen(false);
             }}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            style={{ touchAction: 'manipulation' }}
           >
             <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
@@ -223,7 +278,13 @@ export const SearchDropdown = () => {
                       <button
                         key={etf.symbol}
                         onClick={() => handleETFSelect(etf.symbol)}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleETFSelect(etf.symbol);
+                        }}
                         className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left border-b border-slate-100 last:border-0"
+                        style={{ touchAction: 'manipulation' }}
                       >
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                           <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
@@ -252,7 +313,13 @@ export const SearchDropdown = () => {
                       <button
                         key={cef.symbol}
                         onClick={() => handleCEFSelect(cef.symbol)}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCEFSelect(cef.symbol);
+                        }}
                         className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left border-b border-slate-100 last:border-0"
+                        style={{ touchAction: 'manipulation' }}
                       >
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
                           <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
@@ -283,7 +350,13 @@ export const SearchDropdown = () => {
                         <button
                           key={page.path}
                           onClick={() => handleSelect(page.path)}
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleSelect(page.path);
+                          }}
                           className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center gap-3 sm:gap-4 hover:bg-slate-50 active:bg-slate-100 transition-colors text-left border-b border-slate-100 last:border-0"
+                          style={{ touchAction: 'manipulation' }}
                         >
                           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
                             <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
