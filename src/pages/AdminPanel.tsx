@@ -1128,18 +1128,41 @@ const AdminPanel = () => {
                             if (profiles.length === 0) return;
 
                             // Create CSV with email and newsletter subscription status
+                            // For ADMIN: check preferences.emailNotifications
+                            // For PREMIUM: check subscribers Set
                             const csvRows = [
                               "Email,Newsletter Subscription", // Header row
                               ...profiles
                                 .filter((p) => p.email)
                                 .map((p) => {
-                                  const isSubscribed = subscribers.has(p.email!.toLowerCase());
+                                  let isSubscribed = false;
+                                  if (p.role === "admin") {
+                                    // ADMIN users use preferences.emailNotifications
+                                    isSubscribed = p.preferences?.emailNotifications !== false;
+                                  } else {
+                                    // PREMIUM users use subscribers Set
+                                    isSubscribed = subscribers.has(p.email!.toLowerCase());
+                                  }
                                   return `${p.email},${isSubscribed ? "SUBSCRIBED" : "NOT SUBSCRIBED"}`;
                                 }),
                               "", // Empty row for spacing
                               `Total Users,${profiles.filter((p) => p.email).length}`,
-                              `Newsletter Subscribers,${profiles.filter((p) => p.email && subscribers.has(p.email.toLowerCase())).length}`,
-                              `Not Subscribed,${profiles.filter((p) => p.email && !subscribers.has(p.email.toLowerCase())).length}`,
+                              `Newsletter Subscribers,${profiles.filter((p) => {
+                                if (!p.email) return false;
+                                if (p.role === "admin") {
+                                  return p.preferences?.emailNotifications !== false;
+                                } else {
+                                  return subscribers.has(p.email.toLowerCase());
+                                }
+                              }).length}`,
+                              `Not Subscribed,${profiles.filter((p) => {
+                                if (!p.email) return false;
+                                if (p.role === "admin") {
+                                  return p.preferences?.emailNotifications === false;
+                                } else {
+                                  return !subscribers.has(p.email.toLowerCase());
+                                }
+                              }).length}`,
                             ];
 
                             const csvContent = csvRows.join("\n");
@@ -1156,7 +1179,14 @@ const AdminPanel = () => {
                             URL.revokeObjectURL(url);
 
                             const totalUsers = profiles.filter((p) => p.email).length;
-                            const newsletterCount = profiles.filter((p) => p.email && subscribers.has(p.email.toLowerCase())).length;
+                            const newsletterCount = profiles.filter((p) => {
+                              if (!p.email) return false;
+                              if (p.role === "admin") {
+                                return p.preferences?.emailNotifications !== false;
+                              } else {
+                                return subscribers.has(p.email.toLowerCase());
+                              }
+                            }).length;
 
                             toast({
                               title: "CSV Downloaded",
