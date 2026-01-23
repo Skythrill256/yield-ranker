@@ -236,8 +236,13 @@ export const SearchDropdown = () => {
               isInteractingRef.current = false;
             }, 300);
           }}
-          className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:bg-white dark:focus:bg-slate-900 focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground text-base sm:text-lg leading-[1.5] rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md placeholder:text-slate-400 dark:placeholder:text-slate-500"
-          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 focus:bg-white dark:focus:bg-slate-900 focus:border-primary focus:ring-2 focus:ring-primary/20 text-base sm:text-lg leading-[1.5] rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md"
+          style={{
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            color: '#1e293b',
+            caretColor: '#1e293b'
+          }}
         />
         {query && (
           <button
