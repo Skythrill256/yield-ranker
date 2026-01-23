@@ -275,6 +275,13 @@ All colors MUST be HSL.
     touch-action: manipulation;
   }
 
+  /* Fix mobile WebKit cursor height bug - cursor renders based on line-height */
+  /* Setting line-height to normal prevents the tall caret issue on DuckDuckGo/Edge mobile */
+  input[type="search"],
+  input[type="text"] {
+    line-height: normal !important;
+  }
+
   /* Prevent zoom on input focus for mobile devices while keeping accessibility */
   @media screen and (max-width: 768px) {
     input[type="search"],
