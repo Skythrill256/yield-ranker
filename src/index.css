@@ -139,7 +139,12 @@ All colors MUST be HSL.
     font-feature-settings: "cv11", "ss01";
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
   }
 
@@ -195,6 +200,7 @@ All colors MUST be HSL.
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -205,6 +211,7 @@ All colors MUST be HSL.
       opacity: 0;
       transform: translateY(20px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -275,15 +282,19 @@ All colors MUST be HSL.
     touch-action: manipulation;
   }
 
-  /* Fix mobile WebKit cursor height bug - cursor renders based on line-height */
-  /* Setting line-height to normal prevents the tall caret issue on DuckDuckGo/Edge mobile */
+  /* Fix mobile WebKit cursor height bug (DuckDuckGo, Edge mobile) */
+  /* WebKit browsers render cursor height based on line-height */
+  /* The fix: use explicit line-height relative to font-size, not container height */
   input[type="search"],
   input[type="text"] {
-    line-height: normal !important;
+    line-height: 1.5 !important;
+    /* Ensure caret respects font metrics, not box height */
+    caret-color: currentColor;
   }
 
   /* Prevent zoom on input focus for mobile devices while keeping accessibility */
   @media screen and (max-width: 768px) {
+
     input[type="search"],
     input[type="text"],
     input[type="email"],
@@ -292,6 +303,8 @@ All colors MUST be HSL.
     textarea,
     select {
       font-size: 16px !important;
+      /* Override any height-based line-height for proper cursor sizing */
+      line-height: 1.5 !important;
     }
   }
 }

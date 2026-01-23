@@ -236,7 +236,7 @@ export const SearchDropdown = () => {
               isInteractingRef.current = false;
             }, 300);
           }}
-          className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 py-3 sm:py-4 leading-normal bg-muted/50 border-2 border-border/50 focus:bg-background focus:border-primary/50 text-base sm:text-lg rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all touch-manipulation"
+          className="pl-12 sm:pl-14 pr-10 sm:pr-12 py-3 sm:py-4 leading-normal bg-muted/50 border-2 border-border/50 focus:bg-background focus:border-primary/50 text-base sm:text-lg rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all touch-manipulation"
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         />
         {query && (
