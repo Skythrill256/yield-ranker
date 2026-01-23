@@ -200,9 +200,8 @@ export const SearchDropdown = () => {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground pointer-events-none z-10" />
         <Input
           ref={inputRef}
-          type="text"
+          type="search"
           inputMode="search"
-          enterKeyHint="search"
           autoComplete="off"
           autoCorrect="off"
           autoCapitalize="off"
@@ -228,14 +227,17 @@ export const SearchDropdown = () => {
               // Don't auto-close on blur to avoid Samsung keyboard issues
             }, 300);
           }}
-          className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 bg-muted/50 border-2 border-border/50 focus:bg-background focus:border-primary/50 text-base sm:text-lg rounded-xl transition-all"
-          style={{
-            WebkitTapHighlightColor: 'transparent',
-            WebkitUserSelect: 'text',
-            userSelect: 'text',
-            WebkitAppearance: 'none',
-            appearance: 'none'
+          onTouchStart={() => {
+            isInteractingRef.current = true;
           }}
+          onTouchEnd={() => {
+            // Release interaction lock after touch completes
+            setTimeout(() => {
+              isInteractingRef.current = false;
+            }, 300);
+          }}
+          className="pl-12 sm:pl-14 pr-10 sm:pr-12 h-12 sm:h-14 bg-muted/50 border-2 border-border/50 focus:bg-background focus:border-primary/50 text-base sm:text-lg rounded-xl [&::-webkit-search-cancel-button]:hidden transition-all touch-manipulation"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         />
         {query && (
           <button
