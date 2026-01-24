@@ -710,21 +710,32 @@ export function calculateNormalizedDividendsForCEFs(
         if (decemberDividendsThisYear.length > 1) {
           const firstDecember = decemberDividendsThisYear[0];
           if (current.ex_date !== firstDecember.ex_date) {
-            // Second December dividend is inherently off-cadence
+            // Second December dividend is inherently off-cadence (two dividends in one month = special distribution)
             // For second December payment, mark as Special if amount is different from regular pattern
             // (even if not > 2.3× median, because it's inherently a special distribution)
+            //
+            // CRITICAL FIX: The "repeatsNext" check was using 5% tolerance which was TOO GENEROUS.
+            // Example: NIE 12/29/25 ($0.526) vs next Q1 ($0.50) = 5.2% difference
+            // With 5% tolerance: 0.526 vs 0.50 → "approximately equal" → Special SKIPPED incorrectly!
+            //
+            // Solution: For second December dividends, ONLY skip Special if amount EXACTLY matches next
+            // (within 1% tolerance, to account for minor rounding). Second December dividends are 
+            // inherently special distributions unless proven otherwise with exact amount match.
             const amountDifferent = 
               medianAmount !== null &&
               medianAmount > 0 &&
               !isApproximatelyEqual(amount, medianAmount, amountStabilityRelTol);
 
             if (amountDifferent) {
-              const repeatsNext =
+              // Use STRICT 1% tolerance for second December - only skip if amount EXACTLY matches next
+              // This prevents NIE-style special distributions ($0.526) from being classified as Regular
+              // just because the next quarterly ($0.50) is within 5% tolerance
+              const repeatsNextStrict =
                 nextAmount !== null &&
                 nextAmount > 0 &&
-                isApproximatelyEqual(amount, nextAmount, 0.05);
+                isApproximatelyEqual(amount, nextAmount, 0.01); // STRICT 1% tolerance
 
-              if (!repeatsNext) {
+              if (!repeatsNextStrict) {
                 pmtType = "Special";
               }
             }
